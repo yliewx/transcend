@@ -1,0 +1,30 @@
+services:
+
+#---------------------------------NODE-----------------------------------
+
+  node:
+    container_name: app
+    build:
+      context: ./requirements/node
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    networks:
+      - ft_transcendence
+    restart: always
+
+#--------------------------------DATABASE--------------------------------
+
+
+
+#--------------------------------VOLUMES---------------------------------
+
+
+
+#--------------------------------NETWORKS--------------------------------
+
+networks:
+  ft_transcendence:
+    name: ft_transcendence
+
+#--------------------------------SECRETS---------------------------------
