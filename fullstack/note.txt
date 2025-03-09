@@ -1,0 +1,3 @@
+To verify registration run the following commands in bash:
+sqlite3 database.sqlite 
+SELECT * FROM users;
