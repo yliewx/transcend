@@ -1,0 +1,49 @@
+services:
+
+#--------------------------------FRONTEND---------------------------------
+
+  frontend:
+    container_name: frontend
+    build:
+      context: ./fullstack/frontend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - NODE_ENV=development
+    networks:
+      - ft_transcendence
+    depends_on:
+      - backend
+    restart: always
+
+#--------------------------------BACKEND---------------------------------
+
+  backend:
+    container_name: backend
+    build:
+      context: ./fullstack/backend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+    networks:
+      - ft_transcendence
+    restart: always
+
+#--------------------------------DATABASE--------------------------------
+
+
+
+#--------------------------------VOLUMES---------------------------------
+
+
+
+#--------------------------------NETWORKS--------------------------------
+
+networks:
+  ft_transcendence:
+    name: ft_transcendence
+
+#--------------------------------SECRETS---------------------------------
