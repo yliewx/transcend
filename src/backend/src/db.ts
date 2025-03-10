@@ -19,7 +19,7 @@ export async function setupDbConnection(): Promise<Database> {
   
   // Initialize database schema
   //const schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
-  const schemaPath = join(__dirname, '..', 'src', 'schema.sql');
+  const schemaPath = join(__dirname, '..', '..', 'src', 'server', 'schema.sql');
   const schema = readFileSync(schemaPath, 'utf8');
   await db.exec(schema);
   
@@ -53,8 +53,12 @@ export async function registerUser(username: string, password: string, email: st
   const hashedPassword = await bcrypt.hash(password, 10);
   
   // Insert user
-  return db.run(
-    'INSERT INTO users (username, password, email, created_at) VALUES (?, ?, ?, ?)',
-    username, hashedPassword, email, new Date().toISOString()
+  // return db.run(
+  //   'INSERT INTO users (username, password, email, created_at) VALUES (?, ?, ?, ?)',
+  //   username, hashedPassword, email, new Date().toISOString()
+  // );
+  db.run(
+    'INSERT INTO users (username, password, email) VALUES (?, ?, ?)',
+    username, hashedPassword, email
   );
 }
