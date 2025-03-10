@@ -6,10 +6,10 @@
         "esModuleInterop": true,
         "strict": true,
         "outDir": "./public/js",
-        "rootDir": "./src/client/ts",
+        "rootDir": "./src/ts",
         "sourceMap": true,
         "lib": ["DOM", "DOM.Iterable", "ESNext"]
     },
-    "include": ["src/client/ts/**/*"],
+    "include": ["src/ts/**/*"],
     "exclude": ["node_modules"]
 }

@@ -1,7 +1,7 @@
 # define makefile variables
 
 COMPOSE = docker compose
-COMPOSE_FILE = ./docker_src/docker-compose.yml
+COMPOSE_FILE = ./src/docker-compose.yml
 
 #------------------------------------------------------------------------
 

@@ -4,13 +4,21 @@ const TerserPlugin = require('terser-webpack-plugin');
 
 module.exports = {
   mode: process.env.NODE_ENV === 'production' ? 'production' : 'development',
-  entry: './src/client/ts/main.ts',
+  entry: './src/ts/main.ts',
   module: {
     rules: [
       {
         test: /\.tsx?$/,
         use: 'ts-loader',
         exclude: /node_modules/,
+      },
+      {
+        test: /\.css$/,
+        use: [
+          'style-loader', // Injects styles into the DOM
+          'css-loader', // Resolves CSS imports
+          'postcss-loader', // Processes Tailwind CSS
+        ],
       },
     ],
   },
@@ -26,7 +34,7 @@ module.exports = {
     new CopyWebpackPlugin({
       patterns: [
         { 
-          from: './src/client/index.html', 
+          from: './src/index.html', 
           to: 'index.html' 
         },
         // Add any other static assets like images, favicon, etc.
@@ -38,4 +46,12 @@ module.exports = {
     minimizer: [new TerserPlugin()],
   },
   devtool: process.env.NODE_ENV === 'production' ? 'source-map' : 'inline-source-map',
+  devServer: {
+    static: {
+      directory: path.join(__dirname, 'public'),
+    },
+    historyApiFallback: true,
+    port: 8080,
+    open: true
+  }
 };

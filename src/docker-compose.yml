@@ -1,11 +1,11 @@
 services:
 
-#--------------------------------FRONTEND---------------------------------
+#--------------------------------FRONTEND--------------------------------
 
   frontend:
     container_name: frontend
     build:
-      context: ./fullstack/frontend
+      context: ./frontend
       dockerfile: Dockerfile
     ports:
       - "8080:8080"
@@ -17,12 +17,12 @@ services:
       - backend
     restart: always
 
-#--------------------------------BACKEND---------------------------------
+#---------------------------------SERVER---------------------------------
 
   backend:
     container_name: backend
     build:
-      context: ./fullstack/backend
+      context: ./backend
       dockerfile: Dockerfile
     ports:
       - "3000:3000"

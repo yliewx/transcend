@@ -1,0 +1,33 @@
+{
+  "name": "transcend-frontend",
+  "version": "1.0.0",
+  "description": "Ping Pong Game",
+  "main": "public/js/main.js",
+  "scripts": {
+    "build": "webpack && npx @tailwindcss/cli -i src/css/input.css -o public/css/style.css --minify",
+    "dev": "concurrently \"webpack --watch\" \"npx @tailwindcss/cli -i src/css/input.css -o public/css/style.css --watch\"",
+    "start": "webpack serve"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.0.12",
+    "@types/node": "^22.13.10",
+    "autoprefixer": "^10.4.21",
+    "concurrently": "^9.1.2",
+    "copy-webpack-plugin": "^13.0.0",
+    "css-loader": "^7.1.2",
+    "nodemon": "^3.1.9",
+    "postcss-loader": "^8.1.1",
+    "serve": "^14.2.4",
+    "style-loader": "^4.0.0",
+    "tailwindcss": "^4.0.12",
+    "terser-webpack-plugin": "^5.3.14",
+    "ts-loader": "^9.5.2",
+    "typescript": "^5.8.2",
+    "webpack": "^5.98.0",
+    "webpack-cli": "^6.0.1",
+    "webpack-dev-server": "^5.2.0"
+  }
+}
