@@ -53,8 +53,12 @@ export async function registerUser(username: string, password: string, email: st
   const hashedPassword = await bcrypt.hash(password, 10);
   
   // Insert user
-  return db.run(
-    'INSERT INTO users (username, password, email, created_at) VALUES (?, ?, ?, ?)',
-    username, hashedPassword, email, new Date().toISOString()
+  // return db.run(
+  //   'INSERT INTO users (username, password, email, created_at) VALUES (?, ?, ?, ?)',
+  //   username, hashedPassword, email, new Date().toISOString()
+  // );
+  db.run(
+    'INSERT INTO users (username, password, email) VALUES (?, ?, ?)',
+    username, hashedPassword, email
   );
 }
