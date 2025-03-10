@@ -3,6 +3,7 @@ import fastifyStatic from '@fastify/static';
 import { join } from 'path';
 import { setupDbConnection } from './db';
 import { registerRoutes } from './routes';
+import fastifyCors from '@fastify/cors';
 
 // Initialize database
 setupDbConnection();
@@ -20,6 +21,14 @@ server.register(fastifyStatic, {
 
 // Register routes
 registerRoutes(server);
+
+// Enable CORS for the frontend running on port 8080
+server.register(fastifyCors, {
+  origin: '*',
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type'],
+  // credentials: true // If you need to send cookies or authentication headers
+});
 
 // Start server
 const start = async () => {

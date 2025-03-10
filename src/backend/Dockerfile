@@ -4,6 +4,9 @@ FROM node:23-bullseye
 
 WORKDIR /usr/src/app
 
+# for debugging
+RUN apt-get update && apt-get upgrade -y && apt-get install sqlite3
+
 # copy package.json and package-lock.json into container
 COPY ./package*.json ./
 
