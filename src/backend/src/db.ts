@@ -8,7 +8,7 @@ import bcrypt from 'bcrypt';
 
 let db: Database;
 
-const dbPath = process.env.SQLITE_DB_PATH || './database.sqlite';
+const dbPath = process.env.DB_PATH || './database.sqlite';
 
 export async function setupDbConnection(): Promise<Database> {
   if (db) return db;
@@ -33,34 +33,4 @@ export async function getDb(): Promise<Database> {
     return setupDbConnection();
   }
   return db;
-}
-
-// User registration
-export async function registerUser(username: string, password: string, email: string) {
-  const db = await getDb();
-  
-  // Check if username already exists
-  const existingUser = await db.get('SELECT username FROM users WHERE username = ?', username);
-  if (existingUser) {
-    throw new Error('Username already exists');
-  }
-  
-  // Check if email already exists
-  const existingEmail = await db.get('SELECT email FROM users WHERE email = ?', email);
-  if (existingEmail) {
-    throw new Error('Email already exists');
-  }
-  
-  // Hash password
-  const hashedPassword = await bcrypt.hash(password, 10);
-  
-  // Insert user
-  return db.run(
-    'INSERT INTO users (username, password, email, created_at) VALUES (?, ?, ?, ?)',
-    username, hashedPassword, email, new Date().toISOString()
-  );
-  // db.run(
-  //   'INSERT INTO users (username, password, email) VALUES (?, ?, ?)',
-  //   username, hashedPassword, email
-  // );
 }
