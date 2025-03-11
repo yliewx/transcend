@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS users (
   username TEXT UNIQUE NOT NULL,
   email TEXT UNIQUE NOT NULL,
   password TEXT NOT NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  created_at DATETIME DEFAULT (datetime('now')) NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS profiles (

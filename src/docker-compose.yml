@@ -1,5 +1,23 @@
 services:
 
+#---------------------------------BACKEND--------------------------------
+
+  backend:
+    container_name: backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - DB_PATH=/db/database.sqlite
+    networks:
+      - ft_transcendence
+    volumes:
+      - sqlite_data:/db
+    restart: always
+
 #--------------------------------FRONTEND--------------------------------
 
   frontend:
@@ -17,28 +35,15 @@ services:
       - backend
     restart: always
 
-#---------------------------------SERVER---------------------------------
-
-  backend:
-    container_name: backend
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    ports:
-      - "3000:3000"
-    environment:
-      - NODE_ENV=development
-    networks:
-      - ft_transcendence
-    restart: always
-
 #--------------------------------DATABASE--------------------------------
 
 
 
 #--------------------------------VOLUMES---------------------------------
 
-
+volumes:
+  sqlite_data:
+    driver: local
 
 #--------------------------------NETWORKS--------------------------------
 
