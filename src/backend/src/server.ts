@@ -1,9 +1,13 @@
 import fastify from 'fastify';
 import fastifyStatic from '@fastify/static';
 import { join } from 'path';
+import fastifyCookie from '@fastify/cookie'
+// From ./plugins
+import setupJwt from './plugins/jwt';
+import setupCors from './plugins/cors';
 import { setupDbConnection } from './db';
-import { registerRoutes } from './routes';
-import fastifyCors from '@fastify/cors';
+// import { registerRoutes } from './routes';
+import setupRoutes from './routes';
 
 // Initialize database
 setupDbConnection();
@@ -19,16 +23,14 @@ server.register(fastifyStatic, {
   prefix: '/'
 });
 
-// Register routes
-registerRoutes(server);
+// Register plugins for authentication
+server.register(setupJwt);
+server.register(fastifyCookie);
 
-// Enable CORS for the frontend running on port 8080
-server.register(fastifyCors, {
-  origin: '*',
-  methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type'],
-  // credentials: true // If you need to send cookies or authentication headers
-});
+// Register routes
+// registerRoutes(server);
+server.register(setupRoutes);
+server.register(setupCors);
 
 // Start server
 const start = async () => {

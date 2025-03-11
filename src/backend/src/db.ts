@@ -4,7 +4,6 @@ import { open, Database } from 'sqlite';
 // import path from 'path';
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import bcrypt from 'bcrypt';
 
 let db: Database;
 

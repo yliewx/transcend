@@ -6,8 +6,9 @@
     "strict": true,
     "outDir": "./dist",
     "rootDir": "./src",
-    "sourceMap": true
+    "sourceMap": true,
+    "typeRoots": ["./node_modules/@types", "./@types"] // load custom types
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "./@types/**/*"],
   "exclude": ["node_modules"]
 }
