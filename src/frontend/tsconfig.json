@@ -11,5 +11,5 @@
         "lib": ["DOM", "DOM.Iterable", "ESNext"]
     },
     "include": ["src/ts/**/*"],
-    "exclude": ["node_modules"]
+    "exclude": ["node_modules", "src/ts/*_old.ts"]
 }
