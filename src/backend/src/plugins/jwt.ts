@@ -10,10 +10,10 @@ export default fp(async function setupJwt(server: FastifyInstance) {
     // Register JWT plugin
     server.register(fastifyJwt, {
         secret: process.env.JWT_SECRET as string,
-        cookie: {
-            cookieName: 'token',
-            signed: false,
-        },
+        // cookie: {
+        //     cookieName: 'token',
+        //     signed: false,
+        // },
     });
 
     // Authentication decorator: attach method to the fastify instance

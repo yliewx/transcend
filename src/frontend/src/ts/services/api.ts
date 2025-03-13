@@ -51,7 +51,16 @@ export class ApiService
             error: data.error || 'Login failed' 
           };
         }
-        
+        if (data.token) {
+          localStorage.setItem('jwt', data.token);
+        }
+        else {
+          console.error('No token received from server');
+          return {
+            success: false,
+            error: 'Authentication token missing from response'
+          };
+        }
         return { 
           success: true, 
           message: data.message || 'Login successful' 
@@ -132,13 +141,20 @@ export class ApiService
         console.log('Attempting to fetch profile from API');
         
         const token = localStorage.getItem('jwt') || sessionStorage.getItem('jwt');
-    
+        if (!token) {
+          return {
+            success: false,
+            error: 'Not authenticated'
+          };
+        }
+
         const response = await fetch('http://localhost:3000/profile', {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
           },
-          credentials: 'include' // Keep this for cookie-based auth
+          //credentials: 'include' // Keep this for cookie-based auth
         });
         // Log the response status
         console.log('Profile API response status:', response.status);

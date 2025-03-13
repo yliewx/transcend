@@ -42,16 +42,17 @@ export async function loginHandler(request: FastifyRequest, reply: FastifyReply)
         });
         
         // Store token in cookie
-        reply.setCookie('token', token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            path: '/',
-            maxAge: 24 * 60 * 60 // 1 day in seconds
-        });
+        // reply.setCookie('token', token, {
+        //     httpOnly: true,
+        //     secure: process.env.NODE_ENV === 'production',
+        //     sameSite: 'none',
+        //     path: '/',
+        //     maxAge: 24 * 60 * 60 // 1 day in seconds
+        // });
         
         return { 
             success: true,
+            token: token,
             message: 'Login successful',
             user: {
                 id: user.id,
