@@ -2,6 +2,7 @@ import { FastifyInstance } from 'fastify';
 import { registerUser } from './controllers/user.register';
 import { loginHandler, logoutHandler, profileHandler } from './controllers/auth.controller';
 import fp from 'fastify-plugin';
+import { AuthenticatedRequest } from '../@types/fastify';
 
 export default fp(async function setupRoutes(server: FastifyInstance) {
   // User registration
@@ -10,8 +11,11 @@ export default fp(async function setupRoutes(server: FastifyInstance) {
   // Authentication routes
   server.post('/login', loginHandler);
   server.post('/logout', logoutHandler);
-  server.get('/profile', { preHandler: [server.authenticate] }, profileHandler);
-
+  //server.get('/profile', { preValidation: [server.authenticate] }, profileHandler);
+  server.get('/profile', { preHandler: server.authenticate }, (request, reply) => {
+    // Use type assertion here
+    return profileHandler(request as AuthenticatedRequest, reply);
+  });
   // Catch-all route for SPA
   server.setNotFoundHandler((request, reply) => {
     // Only handle GET requests for HTML pages

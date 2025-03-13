@@ -1,5 +1,7 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
 import User from '../models/user';
+import Profile from '../models/profile';
+import { getDb } from '../db.js';
 
 interface RegistrationRequest {
   username: string;
@@ -20,7 +22,7 @@ export async function registerUser(
           success: false, 
           error: 'All fields are required' 
         });
-      }
+    }
 
     // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -39,22 +41,44 @@ export async function registerUser(
         });
     }
 
-    try
-    {
-        // Register user
-        await User.create({ username, password, email });
-    
-        return reply.status(201).send({ 
-            success: true, 
-            message: 'Registration successful' 
-        });
-    }
-    catch (error)
-    {
+    try {
+        // Get database connection
+        const db = await getDb();
+        
+        // Begin transaction
+        await db.run('BEGIN TRANSACTION');
+        
+        try {
+            // Create user
+            const userResult = await User.create(db, { username, password, email });
+            if (userResult.lastID === undefined) {
+                throw new Error("Failed to create user: No user ID was generated");
+            }
+            const userId = userResult.lastID; // Now userId is guaranteed to be a number
+            // Create profile
+            await Profile.create(db, {
+                user_id: userId,
+                display_name: username // Use username as default display name
+            });
+            const profResult = Profile.findByUserId(db, userId);
+            console.log(`profResult: ${profResult}`);
+            // Commit transaction
+            await db.run('COMMIT');
+            
+            return reply.status(201).send({ 
+                success: true, 
+                message: 'Registration successful' 
+            });
+        } catch (error) {
+            // Rollback transaction if error occurs
+            await db.run('ROLLBACK');
+            throw error;
+        }
+    } catch (error) {
         if (error instanceof Error && error.message.includes('already exists')) {
-        return reply.status(409).send({
-            success: false,
-            error: error.message
+            return reply.status(409).send({
+                success: false,
+                error: error.message
             });
         }
     
