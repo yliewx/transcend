@@ -18,12 +18,23 @@ export default fp(async function setupJwt(server: FastifyInstance) {
 
     // Authentication decorator: attach method to the fastify instance
     // Verify JWT from cookies
-    server.decorate("authenticate", async (request: FastifyRequest, reply: FastifyReply) => {
+    // server.decorate("authenticate", async (request: FastifyRequest, reply: FastifyReply) => {
+    //     try {
+    //         await request.jwtVerify();
+    //     }
+    //     catch (err) {
+    //         reply.status(401).send({ error: 'Unauthorized' });
+    //     }
+    // });
+    server.decorate("authenticate", async (request, reply) => {
         try {
-            await request.jwtVerify();
-        }
+          console.log('Authentication middleware called');
+          await request.jwtVerify();
+          console.log('Authentication successful');
+        } 
         catch (err) {
-            reply.status(401).send({ error: 'Unauthorized' });
+          console.error('Authentication error:', err);
+          reply.status(401).send({ error: 'Unauthorized' });
         }
-    });
+      });
 })

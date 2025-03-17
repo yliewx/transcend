@@ -68,13 +68,6 @@ export async function loginHandler(request: FastifyRequest, reply: FastifyReply)
     }
 }
 
-// export async function logoutHandler(request: FastifyRequest, reply: FastifyReply) {
-//     reply.header('Access-Control-Allow-Credentials', 'true');
-//     // Remove stored JWT cookie
-//     reply.clearCookie('token');
-//     return { message: 'Logged out' };
-// }
-
 export async function logoutHandler(request: FastifyRequest, reply: FastifyReply) {
     try {
       reply.header('Access-Control-Allow-Credentials', 'true');
@@ -96,14 +89,6 @@ export async function logoutHandler(request: FastifyRequest, reply: FastifyReply
   }
 
 
-  // interface AuthenticatedRequest extends FastifyRequest {
-  //   user: {
-  //     id: number;
-  //     username: string;
-  //     email: string;
-  //   }
-  // }
-  
   export async function profileHandler(request: AuthenticatedRequest, reply: FastifyReply) {
     try {
       const userId = request.user.id;
@@ -133,5 +118,50 @@ export async function logoutHandler(request: FastifyRequest, reply: FastifyReply
     } catch (error) {
       request.log.error(error);
       return reply.status(500).send({ error: 'Failed to retrieve profile' });
+    }
+  }
+
+  export async function updateProfileDataHandler(request: AuthenticatedRequest, reply: FastifyReply) {
+    try {
+      const userId = request.user.id;
+      // console.log('Updating profile for user:', userId);
+      // console.log('Request body:', request.body);
+      
+      const { displayName } = request.body as { displayName?: string };
+      //console.log('Display name to update:', displayName);
+      
+      if (displayName === undefined) {
+        return reply.status(400).send({
+          success: false,
+          error: 'Display name is required'
+        });
+      }
+      
+      const db = await getDb();
+      console.log('Database connection established');
+      
+      let profile = await Profile.findByUserId(db, userId);
+      //console.log('Existing profile:', profile);
+      
+      profile = await Profile.updateDisplayName(db, userId, displayName);
+            if (!profile) 
+        throw new Error('Failed to update or retrieve profile after update');
+      
+      // console.log('Profile after update:', profile);
+      
+      return {
+        success: true,
+        profile: {
+          displayName: profile.display_name,
+          avatarPath: profile.avatar_path
+        }
+      };
+    } catch (error) {
+      //console.error('Profile update error:', error);
+      request.log.error(error);
+      return reply.status(500).send({ 
+        success: false, 
+        error: 'Failed to update profile' 
+      });
     }
   }
