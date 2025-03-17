@@ -1,19 +1,16 @@
+import { Page } from '../types';
 import { Router } from '../router';
-import { ApiService } from '../services/api';
 
-export class HomeView {
-  private container: HTMLElement;
+export class HomePage implements Page {
   private router: Router;
-  private apiService: ApiService;
   
-  constructor(container: HTMLElement, router: Router, apiService: ApiService) {
-    this.container = container;
+  constructor(router: Router) {
     this.router = router;
-    this.apiService = apiService;
   }
   
-  public render(): void {
-    this.container.innerHTML = `
+  render(): HTMLElement {
+    const container = document.createElement('div');
+    container.innerHTML = `
       <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div class="px-4 py-6 sm:px-0">
           <div class="bg-white shadow-md rounded-lg p-8">
@@ -47,5 +44,7 @@ export class HomeView {
         </div>
       </div>
     `;
+    
+    return container;
   }
 }

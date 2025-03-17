@@ -1,28 +1,37 @@
+// views/profile.ts
+import { Page } from '../types';
 import { Router } from '../router';
-import { ApiService } from '../services/api';
+import { AuthService } from '../services/auth_service';
 
-export class ProfileView {
-  private container: HTMLElement;
+export class ProfilePage implements Page {
   private router: Router;
-  private apiService: ApiService;
+  private authService: AuthService;
   private userProfile: any = null;
   
-  constructor(container: HTMLElement, router: Router, apiService: ApiService) {
-    this.container = container;
+  constructor(router: Router) {
     this.router = router;
-    this.apiService = apiService;
+    this.authService = router.getAuthService();
   }
-
-  public async render(): Promise<void> {
+  
+  async render(): Promise<HTMLElement> {
+    const container = document.createElement('div');
+    
     // Fetch current user profile
     try {
-      this.userProfile = await this.apiService.getProfile();
-      console.log('User profile data:', this.userProfile);
+      const apiService = this.authService.getApiService();
+      const profileData = await apiService.getProfile();
+      
+      if (profileData.success) {
+        this.userProfile = profileData;
+        console.log('User profile data:', this.userProfile);
+      } else {
+        console.error('Failed to fetch profile:', profileData.error);
+      }
     } catch (error) {
       console.error('Failed to fetch user profile:', error);
     }
     
-    this.container.innerHTML = `
+    container.innerHTML = `
       <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div class="px-4 py-6 sm:px-0">
           <div class="bg-white shadow-md rounded-lg p-8">
@@ -173,7 +182,10 @@ export class ProfileView {
       </div>
     `;
     
-    this.attachEventListeners();
+    // Add event listeners after rendering
+    setTimeout(() => this.attachEventListeners(), 0);
+    
+    return container;
   }
  
   private attachEventListeners(): void {
@@ -193,7 +205,7 @@ export class ProfileView {
     const cancelButton = document.getElementById('cancel-button');
     if (cancelButton) {
       cancelButton.addEventListener('click', () => {
-        this.router.navigate('/');
+        this.router.navigateTo('/home');
       });
     }
   }
@@ -235,25 +247,30 @@ export class ProfileView {
     } : null;
     
     try {
+      const apiService = this.authService.getApiService();
+      
       // Update user data
       if (Object.keys(userDataUpdate).length > 0) {
-        await this.apiService.updateUserData(userDataUpdate);
+        await apiService.updateUserData(userDataUpdate);
       }
       
       // Update profile data
       if (Object.keys(profileDataUpdate).length > 0) {
-        await this.apiService.updateProfileData(profileDataUpdate);
+        await apiService.updateProfileData(profileDataUpdate);
       }
       
       // Update password if provided
       if (passwordData) {
-        await this.apiService.updatePassword(passwordData);
+        await apiService.updatePassword(passwordData);
       }
       
       this.showNotification('Profile updated successfully', 'success');
       
       // Refresh the profile data
-      this.userProfile = await this.apiService.getProfile();
+      const profileData = await apiService.getProfile();
+      if (profileData.success) {
+        this.userProfile = profileData;
+      }
     } catch (error) {
       console.error('Failed to update profile:', error);
       this.showNotification('Failed to update profile', 'error');

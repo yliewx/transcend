@@ -1,4 +1,3 @@
-// @types/fastify.d.ts
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import "@fastify/jwt";
 
