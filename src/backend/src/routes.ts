@@ -11,7 +11,6 @@ export default fp(async function setupRoutes(server: FastifyInstance) {
   // Authentication routes
   server.post('/login', loginHandler);
   server.post('/logout', logoutHandler);
-  //server.get('/profile', { preValidation: [server.authenticate] }, profileHandler);
   server.get('/profile', { preHandler: server.authenticate }, (request, reply) => {
     return profileHandler(request as AuthenticatedRequest, reply);
   });
@@ -22,6 +21,8 @@ export default fp(async function setupRoutes(server: FastifyInstance) {
     return updateUserDataHandler(request as AuthenticatedRequest, reply);
   })
   server.put('/user/password', { preHandler: server.authenticate }, (request, reply) => {
+    console.log('Password update route hit');
+
     return updatePasswordHandler(request as AuthenticatedRequest, reply);
   });
 
@@ -34,4 +35,3 @@ export default fp(async function setupRoutes(server: FastifyInstance) {
     reply.sendFile('index.html');
   });
 })
-
