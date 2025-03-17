@@ -236,30 +236,7 @@ export class Router {
     this.appContainer.appendChild(header);
   }
   
-  // private async handleLogout(): Promise<void> {
-  //   try {
-  //     // Make a request to your logout endpoint
-  //     const response = await fetch('/logout', {
-  //       method: 'POST',
-  //       headers: {
-  //         'Content-Type': 'application/json'
-  //       },
-  //       credentials: 'include' // Include cookies
-  //     });
-      
-  //     if (response.ok) {
-  //       // Update authentication status
-  //       this.isAuthenticated = false;
-        
-  //       // Navigate to login page
-  //       this.navigate('/login');
-  //     } else {
-  //       console.error('Logout failed');
-  //     }
-  //   } catch (error) {
-  //     console.error('Logout error:', error);
-  //   }
-  // }
+
 
   private async performLogout(): Promise<void> {
     const result = await this.apiService.logout();

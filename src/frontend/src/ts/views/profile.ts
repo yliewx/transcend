@@ -12,12 +12,12 @@ export class ProfileView {
     this.router = router;
     this.apiService = apiService;
   }
-  
+
   public async render(): Promise<void> {
     // Fetch current user profile
     try {
       this.userProfile = await this.apiService.getProfile();
-      console.log('User profile data:', this.userProfile); // Add this line
+      console.log('User profile data:', this.userProfile);
     } catch (error) {
       console.error('Failed to fetch user profile:', error);
     }
@@ -41,7 +41,7 @@ export class ProfileView {
                   <div class="avatar-container mb-4">
                     <img 
                       id="current-avatar" 
-                      src="${this.userProfile?.avatarUrl || '/assets/default-avatar.png'}" 
+                      src="${this.userProfile?.profileData?.avatarPath || '/assets/default-avatar.png'}" 
                       alt="Profile picture" 
                       class="w-40 h-40 rounded-full mx-auto object-cover border-4 border-indigo-200"
                     >
@@ -67,7 +67,7 @@ export class ProfileView {
                       id="username" 
                       name="username" 
                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
-                      value="${this.userProfile?.username || ''}"
+                      value="${this.userProfile?.userData?.username || ''}"
                     >
                   </div>
                   
@@ -79,7 +79,7 @@ export class ProfileView {
                       id="displayName" 
                       name="displayName" 
                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
-                      value="${this.userProfile?.displayName || ''}"
+                      value="${this.userProfile?.profileData?.displayName || ''}"
                     >
                   </div>
                   
@@ -91,7 +91,7 @@ export class ProfileView {
                       id="email" 
                       name="email" 
                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
-                      value="${this.userProfile?.email || ''}"
+                      value="${this.userProfile?.userData?.email || ''}"
                     >
                   </div>
                   
@@ -175,7 +175,7 @@ export class ProfileView {
     
     this.attachEventListeners();
   }
-  
+ 
   private attachEventListeners(): void {
     // Avatar upload
     const avatarUpload = document.getElementById('avatar-upload') as HTMLInputElement;
@@ -217,11 +217,15 @@ export class ProfileView {
       return;
     }
     
-    // Prepare profile update data
-    const profileData = {
+    // Prepare user data update
+    const userDataUpdate = {
       username: (formData.get('username') as string) || undefined,
-      displayName: (formData.get('displayName') as string) || undefined,
       email: (formData.get('email') as string) || undefined,
+    };
+    
+    // Prepare profile data update
+    const profileDataUpdate = {
+      displayName: (formData.get('displayName') as string) || undefined,
     };
     
     // Prepare password update data if provided
@@ -230,37 +234,30 @@ export class ProfileView {
       newPassword: newPassword,
     } : null;
     
-    // Mock successful update for testing
-    if (Object.keys(profileData).length > 0 || passwordData) {
+    try {
+      // Update user data
+      if (Object.keys(userDataUpdate).length > 0) {
+        await this.apiService.updateUserData(userDataUpdate);
+      }
+      
+      // Update profile data
+      if (Object.keys(profileDataUpdate).length > 0) {
+        await this.apiService.updateProfileData(profileDataUpdate);
+      }
+      
+      // Update password if provided
+      if (passwordData) {
+        await this.apiService.updatePassword(passwordData);
+      }
+      
       this.showNotification('Profile updated successfully', 'success');
       
-      // Update the mock profile
-      this.userProfile = {
-        ...this.userProfile,
-        ...profileData
-      };
+      // Refresh the profile data
+      this.userProfile = await this.apiService.getProfile();
+    } catch (error) {
+      console.error('Failed to update profile:', error);
+      this.showNotification('Failed to update profile', 'error');
     }
-    
-    // Comment out actual API calls for now
-    // try {
-    //   // Update profile
-    //   if (Object.keys(profileData).length > 0) {
-    //     await this.apiService.updateUserProfile(profileData);
-    //   }
-    //   
-    //   // Update password if provided
-    //   if (passwordData) {
-    //     await this.apiService.updatePassword(passwordData);
-    //   }
-    //   
-    //   this.showNotification('Profile updated successfully', 'success');
-    //   
-    //   // Refresh the profile data
-    //   this.userProfile = await this.apiService.getCurrentUserProfile();
-    // } catch (error) {
-    //   console.error('Failed to update profile:', error);
-    //   this.showNotification('Failed to update profile', 'error');
-    // }
   }
   
   private showNotification(message: string, type: 'success' | 'error'): void {

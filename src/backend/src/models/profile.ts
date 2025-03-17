@@ -16,31 +16,15 @@ class Profile {
         );
     }
 
-    // Update profile
-    static async update(db: Database, userId: number, { display_name, avatar_path }: 
-        { display_name?: string; avatar_path?: string }) {
-        
-        const updates = [];
-        const params = [];
-        
-        if (display_name !== undefined) {
-            updates.push('display_name = ?');
-            params.push(display_name);
-        }
-        
-        if (avatar_path !== undefined) {
-            updates.push('avatar_path = ?');
-            params.push(avatar_path);
-        }
-        
-        if (updates.length === 0) return null;
-        
-        params.push(userId);
-        
-        return db.run(
-            `UPDATE profiles SET ${updates.join(', ')} WHERE user_id = ?`, 
-            params
+    static async updateDisplayName(db: Database, userId: number, displayName: string) {
+        // Execute the update
+        await db.run(
+            'UPDATE profiles SET display_name = ? WHERE user_id = ?', 
+            [displayName, userId]
         );
+        
+        // Return the updated profile record
+        return await this.findByUserId(db, userId);
     }
 }
 

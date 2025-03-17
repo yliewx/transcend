@@ -17,6 +17,11 @@ class User {
         return db.get('SELECT * FROM users WHERE username = ?', username);
     }
 
+    // Find user by email
+    static async findByEmail(db: Database, email: string) {
+        return db.get('SELECT * FROM users WHERE email = ?', email);
+    }
+
     // User registration
     static async create(db: Database, { username, email, password }: { username: string; email: string; password: string }) {
         const existingUser = await db.get('SELECT username FROM users WHERE username = ?', username);
@@ -24,11 +29,11 @@ class User {
             throw new Error('Username already exists');
         }
 
-        const existingEmail = await db.get('SELECT email FROM users WHERE email = ?', email);
+        const existingEmail = await this.findByEmail(db, email);
         if (existingEmail) {
             throw new Error('Email already exists');
         }
-
+    
         // Hash password
         const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -40,9 +45,48 @@ class User {
     }
 
     // Update user info
-    static async update(db: Database, id: number, { username, email, password }: { username: string; email: string; password: string }) {
-        await db.run('UPDATE users SET username = ?, email = ?, password = ? WHERE id = ?', [username, email, password, id]);
-        return { id, username, email };
+    // static async update(db: Database, id: number, { username, email, password }: { username: string; email: string; password: string }) {
+    //     await db.run('UPDATE users SET username = ?, email = ?, password = ? WHERE id = ?', [username, email, password, id]);
+    //     return { id, username, email };
+    // }
+
+    static async update(db: Database, id: number, { username, email }: { username?: string; email?: string }) 
+    {
+        // Build dynamic update query based on provided fields
+        const updateFields = [];
+        const params = [];
+        
+        if (username !== undefined) {
+            updateFields.push('username = ?');
+            params.push(username);
+        }
+        
+        if (email !== undefined) {
+            updateFields.push('email = ?');
+            params.push(email);
+        }
+        
+        // Only update if there are fields to update
+        if (updateFields.length === 0) {
+            const user = await this.findById(db, id);
+            return user;
+        }
+        
+        // Create SQL query with only the fields that need updating
+        const query = `UPDATE users SET ${updateFields.join(', ')} WHERE id = ?`;
+        params.push(id);
+        
+        await db.run(query, params);
+        
+        // Fetch and return the updated user
+        return await this.findById(db, id);
+    }
+    
+    // Add a separate method for password updates
+    static async updatePassword(db: Database, id: number, passwordHash: string) {
+        await db.run('UPDATE users SET password = ? WHERE id = ?', 
+            [passwordHash, id]);
+        return true;
     }
 
     // Delete user
