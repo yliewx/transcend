@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
   router.addRoute('/', new PageWithHeader(new HomePage(router), router));
   router.addRoute('/home', new PageWithHeader(new HomePage(router), router));
   router.addRoute('/profile', new PageWithHeader(new ProfilePage(router, userService), router));
-  
+
   // Placeholder routes
   router.addRoute('/play', new PageWithHeader(new PlaceholderPage('Play Game', 'This feature is coming soon!'), router));
   router.addRoute('/stats', new PageWithHeader(new PlaceholderPage('Game Stats', 'Stats feature is under development.'), router));
