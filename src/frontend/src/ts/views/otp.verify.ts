@@ -52,7 +52,7 @@ export class OTPVerificationPage implements Page {
       </div>
     `;
     
-    this.attachEventListeners();
+    setTimeout(() => this.attachEventListeners(), 0);
 
     return container;
   }

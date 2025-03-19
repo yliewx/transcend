@@ -4,6 +4,8 @@ import { LoginPage } from './views/login';
 import { RegisterPage } from './views/register';
 import { HomePage } from './views/home';
 import { ProfilePage } from './views/profile';
+import { OTPSetupPage } from './views/otp.setup';
+import { OTPVerificationPage } from './views/otp.verify';
 import { PageWithHeader } from './views/layout';
 import { AuthService } from './services/auth.service';
 import { ControlAccess } from './services/control.access';
@@ -22,6 +24,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Auth pages
   router.addRoute('/login', new LoginPage(router));
   router.addRoute('/register', new RegisterPage(router));
+  router.addRoute('/otp/setup', new OTPSetupPage(router));
+  router.addRoute('/otp/verify', new OTPVerificationPage(router));
   
   // Protected pages with header
   router.addRoute('/', new PageWithHeader(new HomePage(router), router));
