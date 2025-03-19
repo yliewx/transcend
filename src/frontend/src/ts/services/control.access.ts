@@ -38,13 +38,13 @@ export class ControlAccess {
   /**
    * Attempts to log in the user with provided credentials
    */
-  public async login(username: string, password: string): Promise<{ success: boolean, error?: string }> {
+  public async login(username: string, password: string): Promise<{ success: boolean, error?: string, user?: any }> {
     try {
       const result = await this.authService.login(username, password);
       
-      if (result.success) {
-        this.setAuthenticated(true);
-      }
+      // if (result.success) {
+      //   this.setAuthenticated(true);
+      // }
       
       return result;
     } catch (error) {
