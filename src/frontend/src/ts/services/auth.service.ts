@@ -23,33 +23,35 @@ export class AuthService extends BaseApiService {
   public async login(
     username: string, 
     password: string
-  ): Promise<{success: boolean, message?: string, error?: string}> {
-    const response = await this.request<{message?: string, error?: string, token?: string}>(
+  ): Promise<{success: boolean, message?: string, error?: string, user?: any}> {
+    const response = await this.request<{
+      success: boolean, message?: string, preAuthToken?: string, user: any
+    }>(
       '/login', 
       'POST', 
       { username, password }
     );
     
-    // // Store the token in localStorage if login was successful
-    // if (response.success && response.preAuthToken) {
-    //   localStorage.setItem('preAuthToken', response.preAuthToken);
-    // } else if (response.success && !response.preAuthToken) {
-    //   console.error('No pre-authentication token received from server');
-    //   return {
-    //     success: false,
-    //     error: 'Pre-authentication token missing from response'
-    //   };
-    // }
-      // Set JWT token in local storage if exists in response
-      if (response.token) {
-        localStorage.setItem('jwt', response.token);
-        return {
-          success: true,
-          message: response.message || 'Login successful'
-        };
-      } else {
-        throw new Error('Authentication token missing from response');
-      }
+    // Store the token in localStorage if login was successful
+    if (response.success && response.preAuthToken) {
+      localStorage.setItem('preAuthToken', response.preAuthToken);
+    } else if (response.success && !response.preAuthToken) {
+      console.error('No pre-authentication token received from server');
+      return {
+        success: false,
+        error: 'Pre-authentication token missing from response'
+      };
+    }
+      // // Set JWT token in local storage if exists in response
+      // if (response.token) {
+      //   localStorage.setItem('jwt', response.token);
+      //   return {
+      //     success: true,
+      //     message: response.message || 'Login successful'
+      //   };
+      // } else {
+      //   throw new Error('Authentication token missing from response');
+      // }
 
     return response;
   }

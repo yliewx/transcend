@@ -116,10 +116,14 @@ export class LoginPage implements Page {
         if (loginMessage) {
           loginMessage.classList.remove('hidden');
         }
-        
-        //For debugging
-        console.log("Login successful, ControlAccess will handle navigation");
-        
+
+        if (result.user.preferredMethod !== null) {
+          this.router.navigateTo('/otp/verify');
+        }
+        else {
+          this.router.navigateTo('/otp/setup');
+        }
+
         // Hide error message if it was shown
         if (errorMessage) {
           errorMessage.classList.add('hidden');
