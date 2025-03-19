@@ -5,17 +5,18 @@ import { RegisterPage } from './views/register';
 import { HomePage } from './views/home';
 import { ProfilePage } from './views/profile';
 import { PageWithHeader } from './views/layout';
-import { ApiService } from './services/api';
-import { AuthService } from './services/auth_service';
+import { AuthService } from './services/auth.service';
+import { ControlAccess } from './services/control.access';
+import { UserService } from './services/user.service';
 
 document.addEventListener('DOMContentLoaded', () => {
   // Initialize application dependencies
   const appContainer = document.getElementById('app') as HTMLElement;
-  const apiService = new ApiService('http://localhost:3000');
-  const authService = new AuthService(apiService);
+  const controlAccess = new ControlAccess(new AuthService());
+  const userService = new UserService();
   
   // Create router instance with auth service
-  const router = new Router(appContainer, authService);
+  const router = new Router(appContainer, controlAccess);
   
   // Register routes with Page implementations
   // Auth pages
@@ -25,7 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Protected pages with header
   router.addRoute('/', new PageWithHeader(new HomePage(router), router));
   router.addRoute('/home', new PageWithHeader(new HomePage(router), router));
-  router.addRoute('/profile', new PageWithHeader(new ProfilePage(router), router));
+  router.addRoute('/profile', new PageWithHeader(new ProfilePage(router, userService), router));
   
   // Placeholder routes
   router.addRoute('/play', new PageWithHeader(new PlaceholderPage('Play Game', 'This feature is coming soon!'), router));
@@ -35,7 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
   router.addRoute('/404', new PageWithHeader(new NotFoundPage(), router));
   
   // Start the router
-  router.init(authService.isLoggedIn() ? '/home' : '/login');
+  router.init(controlAccess.isLoggedIn() ? '/home' : '/login');
 });
 
 // Placeholder Page class for routes under development

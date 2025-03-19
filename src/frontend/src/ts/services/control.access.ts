@@ -1,11 +1,11 @@
-// services/auth.service.ts
-import { ApiService } from './api';
+import { AuthService } from './auth.service';
+import { UserService } from './user.service';
 
-export class AuthService {
+export class ControlAccess {
   private isAuthenticated: boolean = false;
   private authStateChangeListeners: ((isAuthenticated: boolean) => void)[] = [];
   
-  constructor(private apiService: ApiService) {
+  constructor(private authService: AuthService) {
     this.checkAuthentication();
   }
   
@@ -40,7 +40,7 @@ export class AuthService {
    */
   public async login(username: string, password: string): Promise<{ success: boolean, error?: string }> {
     try {
-      const result = await this.apiService.login(username, password);
+      const result = await this.authService.login(username, password);
       
       if (result.success) {
         this.setAuthenticated(true);
@@ -57,7 +57,7 @@ export class AuthService {
    */
   public async logout(): Promise<{ success: boolean, error?: string }> {
     try {
-      const result = await this.apiService.logout();
+      const result = await this.authService.logout();
       
       if (result.success) {
         this.setAuthenticated(false);
@@ -99,7 +99,7 @@ export class AuthService {
    * Get the API service instance
    * This method provides access to the API service for components
    */
-  public getApiService(): ApiService {
-    return this.apiService;
+  public getAuthService(): AuthService {
+    return this.authService;
   }
 }

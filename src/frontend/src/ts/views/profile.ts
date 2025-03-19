@@ -1,16 +1,16 @@
 // views/profile.ts
 import { Page } from '../types';
 import { Router } from '../router';
-import { AuthService } from '../services/auth_service';
+import { UserService } from '../services/user.service';
 
 export class ProfilePage implements Page {
   private router: Router;
-  private authService: AuthService;
+  private userService: UserService;
   private userProfile: any = null;
   
-  constructor(router: Router) {
+  constructor(router: Router, userService: UserService) {
     this.router = router;
-    this.authService = router.getAuthService();
+    this.userService = userService;
   }
   
   async render(): Promise<HTMLElement> {
@@ -18,8 +18,7 @@ export class ProfilePage implements Page {
     
     // Fetch current user profile
     try {
-      const apiService = this.authService.getApiService();
-      const profileData = await apiService.getProfile();
+      const profileData = await this.userService.getProfile();
       
       if (profileData.success) {
         this.userProfile = profileData;
@@ -246,28 +245,26 @@ export class ProfilePage implements Page {
       newPassword: newPassword,
     } : null;
     
-    try {
-      const apiService = this.authService.getApiService();
-      
+    try {      
       // Update user data
       if (Object.keys(userDataUpdate).length > 0) {
-        await apiService.updateUserData(userDataUpdate);
+        await this.userService.updateUserData(userDataUpdate);
       }
       
       // Update profile data
       if (Object.keys(profileDataUpdate).length > 0) {
-        await apiService.updateProfileData(profileDataUpdate);
+        await this.userService.updateProfileData(profileDataUpdate);
       }
       
       // Update password if provided
       if (passwordData) {
-        await apiService.updatePassword(passwordData);
+        await this.userService.updatePassword(passwordData);
       }
       
       this.showNotification('Profile updated successfully', 'success');
       
       // Refresh the profile data
-      const profileData = await apiService.getProfile();
+      const profileData = await this.userService.getProfile();
       if (profileData.success) {
         this.userProfile = profileData;
       }
