@@ -1,7 +1,7 @@
 // views/register.ts
 import { Page } from '../types';
 import { Router } from '../router';
-import { AuthService } from '../services/auth_service';
+import { AuthService } from '../services/auth.service';
 
 export class RegisterPage implements Page {
   private router: Router;
@@ -9,7 +9,7 @@ export class RegisterPage implements Page {
   
   constructor(router: Router) {
     this.router = router;
-    this.authService = router.getAuthService();
+    this.authService = router.getControlAccess().getAuthService();
   }
   
   render(): HTMLElement {
@@ -151,8 +151,7 @@ export class RegisterPage implements Page {
     }
     
     // Use API service via AuthService
-    const apiService = this.authService.getApiService();
-    const result = await apiService.register(username, email, password);
+    const result = await this.authService.register(username, email, password);
     
     if (result.success) {
       // Show success message

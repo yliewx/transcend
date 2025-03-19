@@ -3,7 +3,12 @@ CREATE TABLE IF NOT EXISTS users (
   username TEXT UNIQUE NOT NULL,
   email TEXT UNIQUE NOT NULL,
   password TEXT NOT NULL,
-  created_at DATETIME DEFAULT (datetime('now')) NOT NULL
+  created_at DATETIME DEFAULT (datetime('now')) NOT NULL,
+  otp_verified BOOLEAN NOT NULL DEFAULT 0,
+  otp_secret TEXT,
+  otp_auth_url TEXT,
+  preferred_2fa_method TEXT CHECK(preferred_2fa_method IN ('sms', 'email', 'authenticator')) DEFAULT NULL,
+  phone_number TEXT DEFAULT NULL
 );
 
 CREATE TABLE IF NOT EXISTS profiles (

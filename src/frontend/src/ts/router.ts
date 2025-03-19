@@ -1,12 +1,13 @@
 import { Page } from './types';
-import { AuthService } from './services/auth_service';
+import { ControlAccess } from './services/control.access';
+import { UserService } from './services/user.service';
 
 export class Router {
   private routes: Map<string, Page>;
   private container: HTMLElement;
   private currentPath: string = '';
 
-  constructor(container: HTMLElement, private authService: AuthService) {
+  constructor(container: HTMLElement, private controlAccess: ControlAccess) {
     this.routes = new Map();
     this.container = container;
 
@@ -16,7 +17,7 @@ export class Router {
     });
     
     // Listen for authentication state changes
-    this.authService.addAuthStateChangeListener((isAuthenticated) => {
+    this.controlAccess.addAuthStateChangeListener((isAuthenticated: boolean) => {
       if (isAuthenticated) {
         // Redirect to home when user logs in
         this.navigateTo('/home');
@@ -34,10 +35,10 @@ export class Router {
 
   // Navigate to a specific route
   navigateTo(path: string): void {
-    console.log(`Attempting to navigate to: ${path}, isAuthenticated: ${this.authService.isLoggedIn()}`);
+    console.log(`Attempting to navigate to: ${path}, isAuthenticated: ${this.controlAccess.isLoggedIn()}`);
     
     // Redirect to login if trying to access protected routes while not authenticated
-    if (!this.authService.isLoggedIn() && this.isProtectedRoute(path)) {
+    if (!this.controlAccess.isLoggedIn() && this.isProtectedRoute(path)) {
       console.log('Redirecting to login - protected route accessed while not authenticated');
       window.history.pushState({ path: '/login' }, '', '/login');
       this.handleRoute('/login');
@@ -45,7 +46,7 @@ export class Router {
     }
     
     // // Redirect to home if trying to access auth routes while authenticated
-    // if (this.authService.isLoggedIn() && this.isAuthRoute(path)) {
+    // if (this.controlAccess.isLoggedIn() && this.isAuthRoute(path)) {
     //   console.log('Redirecting to home - auth route accessed while authenticated');
     //   window.history.pushState({ path: '/home' }, '', '/home');
     //   this.handleRoute('/home');
@@ -67,7 +68,7 @@ export class Router {
     
     // If path is root, redirect based on auth status
     if (path === '/') {
-      if (this.authService.isLoggedIn()) {
+      if (this.controlAccess.isLoggedIn()) {
         this.navigateTo('/home');
       } else {
         this.navigateTo('/login');
@@ -130,8 +131,8 @@ export class Router {
     return this.currentPath;
   }
   
-  // Getter for AuthService (for components that need it)
-  public getAuthService(): AuthService {
-    return this.authService;
+  // Getter for ControlAccess (for components that need it)
+  public getControlAccess(): ControlAccess {
+    return this.controlAccess;
   }
 }

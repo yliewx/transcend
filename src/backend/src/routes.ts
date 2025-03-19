@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify';
-import { registerUser, updateUserDataHandler, updatePasswordHandler } from './controllers/user.register';
-import { loginHandler, logoutHandler, profileHandler, updateProfileDataHandler } from './controllers/auth.controller';
+import { registerUser } from './controllers/user.register';
+import { loginHandler, logoutHandler, verifyOtp, otpPreferenceHandler } from './controllers/auth.controller';
+import { profileHandler, updatePasswordHandler, updateProfileDataHandler, updateUserDataHandler } from './controllers/user.profile';
 import fp from 'fastify-plugin';
 import { AuthenticatedRequest } from '../@types/fastify';
 
@@ -9,18 +10,22 @@ export default fp(async function setupRoutes(server: FastifyInstance) {
   server.post('/api/register', registerUser);
 
   // Authentication routes
-  server.post('/login', loginHandler);
-  server.post('/logout', logoutHandler);
-  server.get('/profile', { preHandler: server.authenticate }, (request, reply) => {
+  server.post('/api/login', loginHandler);
+  server.post('/api/logout', logoutHandler);
+  server.post('/api/otp/preferences', otpPreferenceHandler);
+  server.post('/api/otp/verify', verifyOtp);
+
+  // User routes
+  server.get('/api/profile', { preHandler: server.authenticate }, (request, reply) => {
     return profileHandler(request as AuthenticatedRequest, reply);
   });
-  server.put('/profile/update', { preHandler: server.authenticate }, (request, reply) => {
+  server.put('/api/profile/update', { preHandler: server.authenticate }, (request, reply) => {
     return updateProfileDataHandler(request as AuthenticatedRequest, reply);
   });
-  server.put('/user/update', { preHandler: server.authenticate }, (request, reply) => {
+  server.put('/api/user/update', { preHandler: server.authenticate }, (request, reply) => {
     return updateUserDataHandler(request as AuthenticatedRequest, reply);
   })
-  server.put('/user/password', { preHandler: server.authenticate }, (request, reply) => {
+  server.put('/api/user/password', { preHandler: server.authenticate }, (request, reply) => {
     console.log('Password update route hit');
 
     return updatePasswordHandler(request as AuthenticatedRequest, reply);

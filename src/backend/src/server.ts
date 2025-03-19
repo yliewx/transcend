@@ -28,7 +28,6 @@ server.register(setupJwt);
 server.register(fastifyCookie);
 
 // Register routes
-// registerRoutes(server);
 server.register(setupRoutes);
 server.register(setupCors);
 

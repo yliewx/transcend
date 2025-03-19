@@ -1,14 +1,14 @@
 import { Page } from '../types';
 import { Router } from '../router';
-import { AuthService } from '../services/auth_service';
+import { ControlAccess } from '../services/control.access';
 
 export class HeaderPage implements Page {
   private router: Router;
-  private authService: AuthService;
+  private controlAccess: ControlAccess;
 
   constructor(router: Router) {
     this.router = router;
-    this.authService = this.router.getAuthService();
+    this.controlAccess = this.router.getControlAccess();
   }
 
   render(): HTMLElement {  
@@ -57,12 +57,12 @@ export class HeaderPage implements Page {
 
   private async performLogout(): Promise<void> {
     try {
-      const result = await this.authService.logout();
+      const result = await this.controlAccess.logout();
       
       if (!result.success) {
         console.error('Logout failed:', result.error);
       }
-      // No need to navigate or set authentication state - AuthService handles that
+      // No need to navigate or set authentication state - ControlAccess handles that
     } catch (error) {
       console.error('Logout error:', error);
     }

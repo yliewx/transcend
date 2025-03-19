@@ -1,14 +1,14 @@
 import { Page } from '../types';
 import { Router } from '../router';
-import { AuthService } from '../services/auth_service';
+import { ControlAccess } from '../services/control.access';
 
 export class LoginPage implements Page {
   private router: Router;
-  private authService: AuthService;
+  private controlAccess: ControlAccess;
   
   constructor(router: Router) {
     this.router = router;
-    this.authService = this.router.getAuthService();
+    this.controlAccess = this.router.getControlAccess();
   }
   
   render(): HTMLElement {
@@ -108,8 +108,8 @@ export class LoginPage implements Page {
     }
     
     try {
-      // Use AuthService for login
-      const result = await this.authService.login(username, password);
+      // Use ControlAccess for login
+      const result = await this.controlAccess.login(username, password);
       
       if (result.success) {
         // Show success message
@@ -118,14 +118,14 @@ export class LoginPage implements Page {
         }
         
         //For debugging
-        console.log("Login successful, AuthService will handle navigation");
+        console.log("Login successful, ControlAccess will handle navigation");
         
         // Hide error message if it was shown
         if (errorMessage) {
           errorMessage.classList.add('hidden');
         }
         
-        // Navigation is handled by the AuthService via its event listener in the router
+        // Navigation is handled by the ControlAccess via its event listener in the router
       } else {
         // Show error message
         if (errorMessage) {
