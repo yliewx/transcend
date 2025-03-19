@@ -90,7 +90,7 @@ export async function loginHandler(request: FastifyRequest, reply: FastifyReply)
             id: user.id,
             username: user.username,
             email: user.email,
-            method: preferredMethod
+            preferredMethod: preferredMethod
         }
     });
 
