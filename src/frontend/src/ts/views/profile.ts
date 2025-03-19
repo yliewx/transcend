@@ -1,4 +1,3 @@
-// views/profile.ts
 import { Page } from '../types';
 import { Router } from '../router';
 import { UserService } from '../services/user.service';
@@ -16,20 +15,7 @@ export class ProfilePage implements Page {
   async render(): Promise<HTMLElement> {
     const container = document.createElement('div');
     
-    // Fetch current user profile
-    try {
-      const profileData = await this.userService.getProfile();
-      
-      if (profileData.success) {
-        this.userProfile = profileData;
-        console.log('User profile data:', this.userProfile);
-      } else {
-        console.error('Failed to fetch profile:', profileData.error);
-      }
-    } catch (error) {
-      console.error('Failed to fetch user profile:', error);
-    }
-    
+    // Set initial HTML content first (non-blocking)
     container.innerHTML = `
       <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div class="px-4 py-6 sm:px-0">
@@ -49,7 +35,7 @@ export class ProfilePage implements Page {
                   <div class="avatar-container mb-4">
                     <img 
                       id="current-avatar" 
-                      src="${this.userProfile?.profileData?.avatarPath || '/assets/default-avatar.png'}" 
+                      src="/assets/default-avatar.png" 
                       alt="Profile picture" 
                       class="w-40 h-40 rounded-full mx-auto object-cover border-4 border-indigo-200"
                     >
@@ -75,7 +61,7 @@ export class ProfilePage implements Page {
                       id="username" 
                       name="username" 
                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
-                      value="${this.userProfile?.userData?.username || ''}"
+                      value=""
                     >
                   </div>
                   
@@ -87,7 +73,7 @@ export class ProfilePage implements Page {
                       id="displayName" 
                       name="displayName" 
                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
-                      value="${this.userProfile?.profileData?.displayName || ''}"
+                      value=""
                     >
                   </div>
                   
@@ -99,7 +85,7 @@ export class ProfilePage implements Page {
                       id="email" 
                       name="email" 
                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
-                      value="${this.userProfile?.userData?.email || ''}"
+                      value=""
                     >
                   </div>
                   
@@ -181,10 +167,57 @@ export class ProfilePage implements Page {
       </div>
     `;
     
-    // Add event listeners after rendering
+    // Attach event listeners immediately
     setTimeout(() => this.attachEventListeners(), 0);
     
+    // Fetch profile data separately (non-blocking)
+    this.fetchProfileData().then(() => {
+      this.updateUIWithProfileData();
+    });
+    
     return container;
+  }
+  
+  private async fetchProfileData(): Promise<void> {
+    try {
+      const profileData = await this.userService.getProfile();
+      
+      if (profileData.success) {
+        this.userProfile = profileData;
+        console.log('User profile data:', this.userProfile);
+      } else {
+        console.error('Failed to fetch profile:', profileData.error);
+      }
+    } catch (error) {
+      console.error('Failed to fetch user profile:', error);
+    }
+  }
+  
+  // New method to update UI with profile data
+  private updateUIWithProfileData(): void {
+    if (!this.userProfile) return;
+    
+    // Update avatar
+    const avatarImg = document.getElementById('current-avatar') as HTMLImageElement;
+    if (avatarImg) {
+      avatarImg.src = this.userProfile?.profileData?.avatarPath || '/assets/default-avatar.png';
+    }
+    
+    // Update form fields
+    const usernameInput = document.getElementById('username') as HTMLInputElement;
+    if (usernameInput) {
+      usernameInput.value = this.userProfile?.userData?.username || '';
+    }
+    
+    const displayNameInput = document.getElementById('displayName') as HTMLInputElement;
+    if (displayNameInput) {
+      displayNameInput.value = this.userProfile?.profileData?.displayName || '';
+    }
+    
+    const emailInput = document.getElementById('email') as HTMLInputElement;
+    if (emailInput) {
+      emailInput.value = this.userProfile?.userData?.email || '';
+    }
   }
  
   private attachEventListeners(): void {
@@ -207,6 +240,10 @@ export class ProfilePage implements Page {
         this.router.navigateTo('/home');
       });
     }
+    
+    // Make sure header's logout button works - debug logging
+    const logoutButton = document.getElementById('logout-button');
+    console.log('Logout button found in profile page:', !!logoutButton);
   }
   
   private async handleAvatarUpload(event: Event): Promise<void> {
@@ -214,7 +251,7 @@ export class ProfilePage implements Page {
   }
   
   private async handleFormSubmit(event: Event): Promise<void> {
-    event.preventDefault();
+    event.preventDefault(); // Re-adding this to prevent form submission
     
     const form = event.target as HTMLFormElement;
     const formData = new FormData(form);
@@ -246,27 +283,59 @@ export class ProfilePage implements Page {
     } : null;
     
     try {      
+      let hasError = false;
+      
       // Update user data
       if (Object.keys(userDataUpdate).length > 0) {
-        await this.userService.updateUserData(userDataUpdate);
+        const userResult = await this.userService.updateUserData(userDataUpdate);
+        if (!userResult.success) {
+          this.showNotification(`User data update failed: ${userResult.error}`, 'error');
+          hasError = true;
+        }
       }
       
       // Update profile data
-      if (Object.keys(profileDataUpdate).length > 0) {
-        await this.userService.updateProfileData(profileDataUpdate);
+      if (!hasError && Object.keys(profileDataUpdate).length > 0) {
+        const profileResult = await this.userService.updateProfileData(profileDataUpdate);
+        if (!profileResult.success) {
+          this.showNotification(`Profile data update failed: ${profileResult.error}`, 'error');
+          hasError = true;
+        }
       }
       
       // Update password if provided
-      if (passwordData) {
-        await this.userService.updatePassword(passwordData);
+      if (!hasError && passwordData) {
+        const passwordResult = await this.userService.updatePassword(passwordData);
+        if (!passwordResult.success) {
+          // Display specific password error message from the server
+          const errorMessage = passwordResult.error || 'Password update failed';
+          this.showNotification(errorMessage, 'error');
+          hasError = true;
+          
+          // Clear password fields on error
+          const newPasswordField = document.getElementById('newPassword') as HTMLInputElement;
+          const confirmPasswordField = document.getElementById('confirmPassword') as HTMLInputElement;
+          const currentPasswordField = document.getElementById('currentPassword') as HTMLInputElement;
+          
+          if (newPasswordField) newPasswordField.value = '';
+          if (confirmPasswordField) confirmPasswordField.value = '';
+          if (currentPasswordField) currentPasswordField.value = '';
+          
+          // Focus back on current password field
+          if (currentPasswordField) currentPasswordField.focus();
+        }
       }
       
-      this.showNotification('Profile updated successfully', 'success');
-      
-      // Refresh the profile data
-      const profileData = await this.userService.getProfile();
-      if (profileData.success) {
-        this.userProfile = profileData;
+      // Only show success notification if no errors occurred
+      if (!hasError) {
+        this.showNotification('Profile updated successfully', 'success');
+        
+        // Refresh the profile data
+        const profileData = await this.userService.getProfile();
+        if (profileData.success) {
+          this.userProfile = profileData;
+          this.updateUIWithProfileData(); // Update UI with refreshed data
+        }
       }
     } catch (error) {
       console.error('Failed to update profile:', error);
@@ -288,20 +357,40 @@ export class ProfilePage implements Page {
         notification.classList.add('bg-red-50');
         notificationMessage.classList.remove('text-green-800');
         notificationMessage.classList.add('text-red-800');
+        
+        // Get the SVG icon and change it to an error icon for errors
+        const iconContainer = notification.querySelector('.flex-shrink-0');
+        if (iconContainer) {
+          iconContainer.innerHTML = `
+            <svg class="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+            </svg>
+          `;
+        }
       } else {
         notification.classList.remove('bg-red-50');
         notification.classList.add('bg-green-50');
         notificationMessage.classList.remove('text-red-800');
         notificationMessage.classList.add('text-green-800');
+        
+        // Set success icon
+        const iconContainer = notification.querySelector('.flex-shrink-0');
+        if (iconContainer) {
+          iconContainer.innerHTML = `
+            <svg class="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+            </svg>
+          `;
+        }
       }
       
       // Show notification
       notification.classList.remove('hidden');
       
-      // Auto-hide after 5 seconds
+      // Auto-hide after 5 seconds for success, 8 seconds for errors
       setTimeout(() => {
         notification.classList.add('hidden');
-      }, 5000);
+      }, type === 'error' ? 8000 : 5000);
     }
   }
 }
