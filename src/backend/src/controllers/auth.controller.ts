@@ -26,9 +26,10 @@ interface OtpUpdateRequest {
 /* Login process
 
 1. loginHandler:
+  - [REQUEST]: username, password
   - Check if user exists in database & verify password
-  - Send back temporary pre-authentication token (to identify the user during OTP verification)
-    - Set expiry for pre-auth token
+  - Create pre-authentication token with expiry (to identify the user during OTP verification)
+  - [RESPONSE]: pre-auth token, preferred 2FA method
 
 2. generateOtp: [Request requires: pre-auth token, user's selected 2FA method]
   - Verify pre-auth token to get user
@@ -70,35 +71,28 @@ export async function loginHandler(request: FastifyRequest, reply: FastifyReply)
       });
     }
 
-      // Create JWT token with user data
-      const token = reply.server.jwt.sign({ 
-        id: user.id,
-        username: user.username,
-        email: user.email
-      });
-      
-      // Set JWT token in response
-      return reply.status(200).send({ 
-          success: true,
-          token: token,
-          message: 'OTP verified. Login successful',
-          user: {
-              id: user.id,
-              username: user.username,
-              email: user.email
-          }
-      });
+    // 2. Get preferred 2FA method. If not set (first time), frontend will prompt user to set a method
+    const preferredMethod = await User.getPreferred2FAMethod(db, user.id);
 
-    // // 2. Check if preferred 2FA method is set. If not, prompt user to set a method
-    // const preferredMethod = await User.getPreferred2FAMethod(db, user.id);
-    // if (!preferredMethod) {
-    //   return reply.code(202).send({
-    //     success: true,
-    //     message: 'Please select a preferred 2FA method to log in.',
-    //     method: preferredMethod,
-    //     user_id: user.id
-    //   });
-    // }
+    // Create JWT pre-auth token with user data
+    const preAuthToken = reply.server.jwt.sign({ 
+      id: user.id,
+      username: user.username,
+      email: user.email
+    });
+    
+    // Set JWT token in response
+    return reply.status(202).send({ 
+        success: true,
+        message: 'Please select a preferred 2FA method to log in.',
+        preAuthToken: preAuthToken,
+        user: {
+            id: user.id,
+            username: user.username,
+            email: user.email,
+            method: preferredMethod
+        }
+    });
 
     // // 3. Generate OTP
     // const otpToken = await generateOtp(db, user);
