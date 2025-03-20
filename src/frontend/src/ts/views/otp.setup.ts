@@ -195,28 +195,109 @@ export class OTPSetupPage implements Page {
     const enableEmailBtn = document.getElementById('enable-email');
     const enableAppBtn = document.getElementById('enable-app');
     const continueBtn = document.getElementById('continue-button');
-    
-    // When enable buttons are clicked, show success section
-    enableSmsBtn?.addEventListener('click', () => {
-      this.showSuccessSection();
-      const num = document.getElementById('phone-number').value;
-      const result = await this.authService.update2FAMethod("sms", num)
+
+    // When enable SMS button is clicked
+    enableSmsBtn?.addEventListener('click', async () => {
+      try {
+        const phoneInput = document.getElementById('phone-number') as HTMLInputElement;
+        const phoneNumber = phoneInput.value;
+        
+        if (!phoneNumber) {
+          alert('Please enter a valid phone number');
+          return;
+        }
+        
+        // Call API to enable SMS 2FA
+        const result = await this.authService.update2FAMethod("sms", phoneNumber);
+        
+        if (result.success) {
+          // The server now knows which 2FA method is enabled
+          // No need to store sensitive authentication data in client storage
+          this.showSuccessSection();
+        } else {
+          alert(`Failed to enable SMS verification: ${result.message}`);
+        }
+      } catch (error) {
+        console.error('Error enabling SMS verification:', error);
+        alert('An error occurred while enabling SMS verification. Please try again.');
+      }
     });
     
-    enableEmailBtn?.addEventListener('click', () => {
-      this.showSuccessSection();
+    // When enable Email button is clicked
+    enableEmailBtn?.addEventListener('click', async () => {
+      try {
+        const emailInput = document.getElementById('email-address') as HTMLInputElement;
+        const email = emailInput.value;
+        
+        if (!email || !this.isValidEmail(email)) {
+          alert('Please enter a valid email address');
+          return;
+        }
+        
+        // Call API to enable Email 2FA
+        const result = await this.authService.update2FAMethod("email", email);
+        
+        if (result.success) {
+          // The server now knows which 2FA method is enabled
+          this.showSuccessSection();
+        } else {
+          alert(`Failed to enable Email verification: ${result.message}`);
+        }
+      } catch (error) {
+        console.error('Error enabling Email verification:', error);
+        alert('An error occurred while enabling Email verification. Please try again.');
+      }
     });
     
-    enableAppBtn?.addEventListener('click', () => {
-      this.showSuccessSection();
+    // When enable App button is clicked
+    enableAppBtn?.addEventListener('click', async () => {
+      try {
+        const secretKey = document.getElementById('secret-key')?.textContent || '';
+        
+        // Call API to confirm and enable App 2FA
+        const result = await this.authService.update2FAMethod("app", secretKey);
+        
+        if (result.success) {
+          // The server now knows which 2FA method is enabled
+          this.showSuccessSection();
+        } else {
+          alert(`Failed to enable Authenticator App verification: ${result.message}`);
+        }
+      } catch (error) {
+        console.error('Error enabling App verification:', error);
+        alert('An error occurred while enabling Authenticator App verification. Please try again.');
+      }
     });
     
     // When continue button is clicked
-    continueBtn?.addEventListener('click', () => {
-      console.log('Continue to otp verification page');
-      this.router.navigateTo('/otp/verify');
+    continueBtn?.addEventListener('click', async () => {
+      try {
+        console.log('Generating OTP before navigating to verification page');
+        const result = await this.authService.generateOtp();
+        
+        if (result.success) {
+          console.log('OTP generated successfully');
+          this.router.navigateTo('/otp/verify');
+        } else {
+          console.error('Failed to generate OTP:', result.message);
+          alert(`Failed to generate OTP: ${result.message || 'Unknown error'}`);
+        }
+      } catch (error) {
+        console.error('Error generating OTP:', error);
+        alert('An error occurred while generating OTP. Please try again.');
+      }
     });
   }
+
+  private isValidEmail(email: string): boolean {
+    if (!email) return false;
+    
+    // Basic email validation regex
+    // Checks for format: something@something.something
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  }
+  
   
   private showSuccessSection(): void {
     // Hide all setup sections
