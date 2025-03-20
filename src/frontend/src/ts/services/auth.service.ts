@@ -19,41 +19,105 @@ export class AuthService extends BaseApiService {
 
   /*---------------------------------LOGIN----------------------------------*/
 
-  // TO-DO: CHANGE TO PRE-AUTH TOKEN
   public async login(
     username: string, 
     password: string
   ): Promise<{success: boolean, message?: string, error?: string, user?: any}> {
     const response = await this.request<{
-      success: boolean, message?: string, preAuthToken?: string, user: any
+      success: boolean, message?: string, user: any
     }>(
       '/login', 
       'POST', 
       { username, password }
     );
     
-    // Store the token in localStorage if login was successful
-    if (response.success && response.preAuthToken) {
-      localStorage.setItem('preAuthToken', response.preAuthToken);
-    } else if (response.success && !response.preAuthToken) {
-      console.error('No pre-authentication token received from server');
-      return {
-        success: false,
-        error: 'Pre-authentication token missing from response'
-      };
-    }
-      // // Set JWT token in local storage if exists in response
-      // if (response.token) {
-      //   localStorage.setItem('jwt', response.token);
-      //   return {
-      //     success: true,
-      //     message: response.message || 'Login successful'
-      //   };
-      // } else {
-      //   throw new Error('Authentication token missing from response');
-      // }
+    // // Store the token in localStorage if login was successful
+    // if (response.success && response.preAuthToken) {
+    //   localStorage.setItem('preAuthToken', response.preAuthToken);
+    // } else if (response.success && !response.preAuthToken) {
+    //   console.error('No pre-authentication token received from server');
+    //   return {
+    //     success: false,
+    //     error: 'Pre-authentication token missing from response'
+    //   };
+    // }
+    // // Set JWT token in local storage if exists in response
+    // if (response.token) {
+    //   localStorage.setItem('jwt', response.token);
+    //   return {
+    //     success: true,
+    //     message: response.message || 'Login successful'
+    //   };
+    // } else {
+    //   throw new Error('Authentication token missing from response');
+    // }
 
     return response;
+  }
+
+  /*-----------------------------2FA PREFERENCES----------------------------*/
+
+  public async update2FAMethod(
+    otp_option: string,
+    otp_contact?: string | null
+  ): Promise<{ success: boolean; message?: string }> {
+      const response = await this.request<{ success: boolean; message?: string }>(
+        '/otp/preferences',
+        'POST',
+        { otp_option, otp_contact },
+        true
+      );
+      
+      return {
+        success: response.success,
+        message: response.message || undefined
+      };
+  }
+
+  /*-------------------------------GENERATE OTP-------------------------------*/
+
+  public async generateOtp(): Promise<{ success: boolean; message?: string }> {
+    const response = await this.request<{ success: boolean; message?: string; user?: any }>(
+      '/otp/generate',
+      'POST',
+      undefined,
+      true
+    );
+
+    return {
+      success: response.success,
+      message: response.message || undefined
+    };
+  }
+
+  /*-------------------------------VERIFY OTP-------------------------------*/
+
+  public async verifyOtp(
+    id: number,
+    otp: string
+  ): Promise<{ success: boolean; message?: string }> {
+    const response = await this.request<{ token: string, message?: string }>(
+      '/otp/verify',
+      'POST',
+      { id, otp },
+      true
+    );
+
+    return {
+      success: response.success,
+      message: response.message
+    };
+
+    // // Set JWT token in local storage if exists in response
+    // if (response.token) {
+    //   localStorage.setItem('jwt', response.token);
+    //   return {
+    //     success: true,
+    //     message: response.message || 'Login successful'
+    //   };
+    // } else {
+    //   throw new Error('Authentication token missing from response');
+    // }
   }
 
   /*---------------------------------LOGOUT---------------------------------*/
@@ -64,7 +128,6 @@ export class AuthService extends BaseApiService {
       'POST',
       undefined,
       true,
-      false,
       { omitContentType: true}
     );
     
@@ -75,48 +138,5 @@ export class AuthService extends BaseApiService {
     }
     
     return response;
-  }
-
-  /*-----------------------------2FA PREFERENCES----------------------------*/
-
-  public async update2FAMethod(
-    id: number,
-    method: string
-  ): Promise<{ success: boolean; message?: string }> {
-      const response = await this.request<{ message: string }>(
-        '/otp/preferences',
-        'POST',
-        { id, method },
-        false,
-        true
-      );
-      
-      return response;
-  }
-
-  /*-------------------------------VERIFY OTP-------------------------------*/
-
-  public async verifyOtp(
-    id: number,
-    otp: string
-  ): Promise<{ success: boolean; message?: string }> {
-    const data = await this.request<{ token: string, message: string }>(
-      '/otp/verify',
-      'POST',
-      { id, otp },
-      false,
-      true
-    )
-
-    // Set JWT token in local storage if exists in response
-    if (data.token) {
-      localStorage.setItem('jwt', data.token);
-      return {
-        success: true,
-        message: data.message || 'Login successful'
-      };
-    } else {
-      throw new Error('Authentication token missing from response');
-    }
   }
 }

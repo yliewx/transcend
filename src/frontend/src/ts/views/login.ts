@@ -117,7 +117,7 @@ export class LoginPage implements Page {
           loginMessage.classList.remove('hidden');
         }
 
-        if (result.user.preferredMethod !== null) {
+        if (result.user.otp_option !== null) {
           this.router.navigateTo('/otp/verify');
         }
         else {
