@@ -1,16 +1,19 @@
 import { Page } from '../types';
 import { Router } from '../router';
 
+
 export class OTPSetupPage implements Page {
   private router: Router;
 
   constructor(router: Router) {
-    this.router = router;
+      this.router = router;
   }
 
   render(): HTMLElement {
     const container = document.createElement('div');
     container.className = 'py-10';
+
+    const userEmail = sessionStorage.getItem('userEmail') || 'you@example.com';
 
     container.innerHTML = `
       <div class="py-10">
@@ -82,7 +85,7 @@ export class OTPSetupPage implements Page {
                     <div>
                       <label for="email-address" class="block text-sm font-medium text-gray-700">Email Address</label>
                       <div class="mt-1">
-                        <input type="email" id="email-address" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" placeholder="you@example.com" />
+                        <input type="email" id="email-address" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" value="${userEmail}" />
                       </div>
                     </div>
                     
@@ -148,10 +151,10 @@ export class OTPSetupPage implements Page {
     `;
     
     setTimeout(() => this.attachEventListeners(), 0);
-    
+
     return container;
   }
-  
+
   private attachEventListeners(): void {
     // Method selection radio buttons
     const smsRadio = document.getElementById('2fa-sms') as HTMLInputElement;
