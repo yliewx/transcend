@@ -1,13 +1,16 @@
 import { Page } from '../types';
 import { Router } from '../router';
+import { AuthService } from '../services/auth.service';
 
 
 export class OTPSetupPage implements Page {
   private router: Router;
-
-  constructor(router: Router) {
+  private authService: AuthService;
+    constructor(router: Router) {
       this.router = router;
-  }
+      this.authService = router.getControlAccess().getAuthService();
+    }
+
 
   render(): HTMLElement {
     const container = document.createElement('div');
@@ -196,6 +199,8 @@ export class OTPSetupPage implements Page {
     // When enable buttons are clicked, show success section
     enableSmsBtn?.addEventListener('click', () => {
       this.showSuccessSection();
+      const num = document.getElementById('phone-number').value;
+      const result = await this.authService.update2FAMethod("sms", num)
     });
     
     enableEmailBtn?.addEventListener('click', () => {
