@@ -79,9 +79,9 @@ class User {
 
         // Update the database
         return db.run(
-            'UPDATE users SET otp_option = ?, phone_number = ? WHERE id = ?',
+            'UPDATE users SET otp_option = ?, otp_contact = ? WHERE id = ?',
             otp_option,
-            otp_option === 'sms' ? otp_contact : null, // Store phone number only if SMS is selected
+            otp_option === 'sms' || otp_option === 'email' ? otp_contact : null, // Store otp_contact only for sms/email
             id
         );
     }
