@@ -6,16 +6,11 @@ import { getDb } from '../db.js';
 import { Database } from 'sqlite';
 import OTPAuth from 'otpauth';
 import nodemailer from 'nodemailer';
+import { JwtPayload } from '../plugins/jwt';
 
 interface LoginRequest {
   username: string;
   password: string;
-}
-
-interface VerifyPayloadType {
-  userId: number;
-  username: string;
-  email: string;
 }
 
 /* Login process
@@ -71,7 +66,7 @@ export async function loginHandler(request: FastifyRequest, reply: FastifyReply)
 
     // Create JWT pre-auth token with user data
     const preAuthToken = reply.server.jwt.sign({ 
-      userId: user.id,
+      id: user.id,
       username: user.username,
       email: user.email
     });
@@ -108,12 +103,6 @@ export async function loginHandler(request: FastifyRequest, reply: FastifyReply)
 // Route: /api/otp/preference
 // Accessed from: /otp/setup -> enable 2FA
 export async function otpPreferenceHandler(request: FastifyRequest, reply: FastifyReply) {
-  // // Extract pre-auth token from cookie
-  // const preAuthToken = request.cookie['preAuthToken'];
-  // if (!preAuthToken) {
-  //   return reply.status(400).send({ error: 'Pre-authentication token not found' });
-  // }
-
   // Extract required fields from request body
   const { otp_option, otp_contact } = request.body as { otp_option: string, otp_contact?: string | null };
   if (!otp_option) {
@@ -121,10 +110,13 @@ export async function otpPreferenceHandler(request: FastifyRequest, reply: Fasti
   }
 
   try {
-    // Decode pre-auth token to get user ID
-    const userData = await request.jwtVerify<VerifyPayloadType>({ key: 'preAuthToken' });
+    // Get user data from request
+    const userData = request.user as JwtPayload;
+    if (!userData) {
+      throw new Error('User authentication failed');
+    }
     const db = await getDb();
-    await User.updateOtpOption(db, Number(userData.userId), otp_option, otp_contact);
+    await User.updateOtpOption(db, Number(userData.id), otp_option, otp_contact);
 
     reply.send({
       success: true, 
@@ -172,10 +164,13 @@ async function generateOtpToken(db: Database, user_id: number)
 // Route: /api/otp/generate
 export async function generateOtp(request: FastifyRequest, reply: FastifyReply) {
   try {
-    // Decode pre-auth token to get user ID
-    const userData = await request.jwtVerify<VerifyPayloadType>({ key: 'preAuthToken' });
+    // Get user data from request
+    const userData = request.user as JwtPayload;
+    if (!userData) {
+      throw new Error('User authentication failed');
+    }
     const db = await getDb();
-    const user = await User.findById(db, Number(userData.userId));
+    const user = await User.findById(db, Number(userData.id));
 
     // Check if OTP option is set
     if (user.otp_option === null) {
@@ -216,10 +211,13 @@ export async function verifyOtp(request: FastifyRequest, reply: FastifyReply) {
   const { otp } = request.body as { otp: string };
 
   try {
-    // Decode pre-auth token to get user ID
-    const userData = await request.jwtVerify<VerifyPayloadType>({ key: 'preAuthToken' });
+    // Get user data from request
+    const userData = request.user as JwtPayload;
+    if (!userData) {
+      throw new Error('User authentication failed');
+    }
     const db = await getDb();
-    const user = await User.findById(db, Number(userData.userId));
+    const user = await User.findById(db, Number(userData.id));
 
     if (!user || !user.otp_secret) {
       return reply.status(401).send({
