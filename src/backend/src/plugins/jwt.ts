@@ -10,9 +10,9 @@ export default fp(async function setupJwt(server: FastifyInstance) {
   // Register JWT plugin
   server.register(fastifyJwt, {
     secret: process.env.JWT_SECRET as string,
-    cookie: {
-        signed: false,
-    },
+    // cookie: {
+    //     signed: false,
+    // },
   });
 
   // Authentication decorator: attach method to the fastify instance
@@ -20,7 +20,7 @@ export default fp(async function setupJwt(server: FastifyInstance) {
   server.decorate("preAuthenticate", async (request, reply) => {
     try {
       // Check if pre-auth token is present in cookie
-      const preAuthToken = request.cookie.preAuthToken;
+      const preAuthToken = request.cookies.preAuthToken;
       if (!preAuthToken)
         throw new Error('No pre-authentication token found');
 
@@ -35,7 +35,7 @@ export default fp(async function setupJwt(server: FastifyInstance) {
   server.decorate("authenticate", async (request, reply) => {
     try {
       // Check if auth token is present in cookie
-      const authToken = request.cookie.authToken;
+      const authToken = request.cookies.authToken;
       if (!authToken)
         throw new Error('No authentication token found');
 

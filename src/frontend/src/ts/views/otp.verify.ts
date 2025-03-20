@@ -100,7 +100,7 @@ export class OTPVerificationPage implements Page {
         this.router.navigateTo('/login');
       }
 
-      const result = await this.authService.verifyOtp(Number(user_id), otpCode);
+      const result = await this.authService.verifyOtp(otpCode);
       if (result.success) {
         // Show success message
         console.log("OTP verified. Login successful")
