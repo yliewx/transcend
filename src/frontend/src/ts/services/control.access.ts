@@ -42,16 +42,32 @@ export class ControlAccess {
     try {
       const result = await this.authService.login(username, password);
       
-      // if (result.success) {
-      //   this.setAuthenticated(true);
-      // }
-      
       return result;
     } catch (error) {
       return { success: false, error: 'Login failed: ' + error };
     }
   }
   
+  /**
+   * Attempts to log in the user with provided credentials
+   */
+  public async verifyOtp(): Promise<{ success: boolean, error?: string, user?: any }> {
+    try {
+      const result = await this.authService.generateOtp();
+      
+      if (result.success) {
+        this.setAuthenticated(true);
+      }
+      else {
+        throw new Error(result.message);
+      }
+      
+      return result;
+    } catch (error) {
+      return { success: false, error: 'Two-factor authentication failed: ' + error };
+    }
+  }
+
   /**
    * Logs out the current user
    */

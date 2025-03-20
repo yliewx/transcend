@@ -92,22 +92,15 @@ export class AuthService extends BaseApiService {
 
   /*-------------------------------VERIFY OTP-------------------------------*/
 
-  public async verifyOtp(
-    id: number,
-    otp: string
-  ): Promise<{ success: boolean; message?: string }> {
+  public async verifyOtp(otp: string): Promise<{ success: boolean; message?: string }> {
     const response = await this.request<{ token: string, message?: string }>(
       '/otp/verify',
       'POST',
-      { id, otp },
+      { otp },
       true
     );
-
-    return {
-      success: response.success,
-      message: response.message
-    };
-
+    
+    return response;
     // // Set JWT token in local storage if exists in response
     // if (response.token) {
     //   localStorage.setItem('jwt', response.token);
