@@ -1,14 +1,15 @@
 import { Page } from '../types';
 import { Router } from '../router';
 import { AuthService } from '../services/auth.service';
+import { ControlAccess } from '../services/control.access';
 
 export class OTPVerificationPage implements Page {
   private router: Router;
-  private authService: AuthService;
+  private controlAccess: ControlAccess;
 
   constructor(router: Router) {
     this.router = router;
-    this.authService = router.getControlAccess().getAuthService();
+    this.controlAccess = router.getControlAccess();
   }
 
   render(): HTMLElement {
@@ -100,13 +101,13 @@ export class OTPVerificationPage implements Page {
         this.router.navigateTo('/login');
       }
 
-      const result = await this.authService.verifyOtp(otpCode);
+      const result = await this.controlAccess.verifyOtp(otpCode);
       if (result.success) {
         // Show success message
         console.log("OTP verified. Login successful")
       } else {
         if (errorMessage) {
-          errorMessage.textContent = result.message || 'OTP verification failed. Please try again.';
+          errorMessage.textContent = result.error || 'OTP verification failed. Please try again.';
           errorMessage.classList.remove('hidden');
         }
       }

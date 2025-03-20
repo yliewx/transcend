@@ -51,9 +51,9 @@ export class ControlAccess {
   /**
    * Attempts to log in the user with provided credentials
    */
-  public async verifyOtp(): Promise<{ success: boolean, error?: string, user?: any }> {
+  public async verifyOtp(otp: string): Promise<{ success: boolean, error?: string, user?: any }> {
     try {
-      const result = await this.authService.generateOtp();
+      const result = await this.authService.verifyOtp(otp);
       
       if (result.success) {
         this.setAuthenticated(true);
