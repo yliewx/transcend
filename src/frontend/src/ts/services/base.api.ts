@@ -1,7 +1,7 @@
 export class BaseApiService {
   protected baseUrl: string;
   
-  constructor(baseUrl = 'http://localhost:3000/api') {
+  constructor(baseUrl = "https://localhost:443/api") {
     this.baseUrl = baseUrl;
   }
 

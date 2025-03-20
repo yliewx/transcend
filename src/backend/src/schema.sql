@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS users (
   otp_verified BOOLEAN NOT NULL DEFAULT 0,
   otp_secret TEXT,
   otp_auth_url TEXT,
-  otp_option TEXT CHECK(otp_option IN ('sms', 'email', 'authenticator')) DEFAULT NULL,
+  otp_option TEXT CHECK(otp_option IN ('sms', 'email', 'app')) DEFAULT NULL,
   otp_contact TEXT DEFAULT NULL
 );
 
