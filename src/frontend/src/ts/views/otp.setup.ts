@@ -32,7 +32,7 @@ export class OTPSetupPage implements Page {
                       <input type="radio" name="2fa-method" id="2fa-sms" class="h-4 w-4 text-indigo-600" />
                       <div class="ml-3">
                         <span class="block text-sm font-medium text-gray-700">SMS Verification</span>
-                        <span class="block text-xs text-gray-500">Receive verification codes via text message</span>
+                        <span class="block text-xs text-gray-500">Receive OTP via text message</span>
                       </div>
                     </label>
                     
@@ -40,7 +40,7 @@ export class OTPSetupPage implements Page {
                       <input type="radio" name="2fa-method" id="2fa-email" class="h-4 w-4 text-indigo-600" />
                       <div class="ml-3">
                         <span class="block text-sm font-medium text-gray-700">Email Verification</span>
-                        <span class="block text-xs text-gray-500">Receive verification codes via email</span>
+                        <span class="block text-xs text-gray-500">Receive OTP via email</span>
                       </div>
                     </label>
                     
@@ -48,7 +48,7 @@ export class OTPSetupPage implements Page {
                       <input type="radio" name="2fa-method" id="2fa-app" class="h-4 w-4 text-indigo-600" />
                       <div class="ml-3">
                         <span class="block text-sm font-medium text-gray-700">Authenticator App</span>
-                        <span class="block text-xs text-gray-500">Use Google Authenticator or similar apps</span>
+                        <span class="block text-xs text-gray-500">Receive OPT via Google Authenticator</span>
                       </div>
                     </label>
                   </div>
@@ -57,8 +57,8 @@ export class OTPSetupPage implements Page {
                 <!-- SMS Setup Section (initially hidden) -->
                 <div id="sms-setup" class="mt-6 hidden">
                   <div class="space-y-4">
-                    <h3 class="text-md font-medium text-gray-700">Verify your phone number</h3>
-                    <p class="text-sm text-gray-600">We'll send a verification code to this number.</p>
+                    <h3 class="text-md font-medium text-gray-700">Set up SMS verification</h3>
+                    <p class="text-sm text-gray-600">Enter the mobile number with which you want to enable 2FA.</p>
                     
                     <div>
                       <label for="phone-number" class="block text-sm font-medium text-gray-700">Phone Number</label>
@@ -67,8 +67,8 @@ export class OTPSetupPage implements Page {
                       </div>
                     </div>
                     
-                    <button id="send-sms-code" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                      Send Verification Code
+                    <button id="enable-sms" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                      Enable SMS Verification
                     </button>
                   </div>
                 </div>
@@ -76,8 +76,8 @@ export class OTPSetupPage implements Page {
                 <!-- Email Setup Section (initially hidden) -->
                 <div id="email-setup" class="mt-6 hidden">
                   <div class="space-y-4">
-                    <h3 class="text-md font-medium text-gray-700">Verify your email address</h3>
-                    <p class="text-sm text-gray-600">We'll send a verification code to this email.</p>
+                    <h3 class="text-md font-medium text-gray-700">Set up Email verification</h3>
+                    <p class="text-sm text-gray-600">Enter the email address with which you want to enable 2FA.</p>
                     
                     <div>
                       <label for="email-address" class="block text-sm font-medium text-gray-700">Email Address</label>
@@ -86,8 +86,8 @@ export class OTPSetupPage implements Page {
                       </div>
                     </div>
                     
-                    <button id="send-email-code" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                      Send Verification Code
+                    <button id="enable-email" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                      Enable Email Verification
                     </button>
                   </div>
                 </div>
@@ -101,7 +101,7 @@ export class OTPSetupPage implements Page {
                     <ol class="list-decimal pl-5 text-sm text-gray-600 space-y-2">
                       <li>Download and install Google Authenticator (or similar app)</li>
                       <li>Scan the QR code below using the app</li>
-                      <li>Enter the 6-digit verification code from the app</li>
+                      <li>Use the app to generate codes when you log in</li>
                     </ol>
                     
                     <div class="flex justify-center">
@@ -114,27 +114,9 @@ export class OTPSetupPage implements Page {
                       <p class="text-sm text-gray-600 mb-2">If you can't scan the QR code, enter this key manually:</p>
                       <div id="secret-key" class="font-mono bg-gray-100 p-2 rounded text-sm">ABCDEF123456</div>
                     </div>
-                  </div>
-                </div>
-                
-                <!-- Verification Code Section (initially hidden) -->
-                <div id="verify-code-section" class="mt-6 hidden">
-                  <div class="space-y-4">
-                    <h3 class="text-md font-medium text-gray-700">Verify Code</h3>
-                    <p class="text-sm text-gray-600">Enter the 6-digit verification code:</p>
                     
-                    <div class="flex justify-center gap-2">
-                      ${Array.from({ length: 6 }).map((_, i) => `
-                        <input id="otp-${i}" type="text" maxlength="1" 
-                          class="w-10 h-10 text-center text-lg font-semibold border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                        />
-                      `).join('')}
-                    </div>
-                    
-                    <div id="error-message" class="text-red-600 text-sm hidden text-center mt-2"></div>
-                    
-                    <button id="verify-code" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                      Verify and Enable 2FA
+                    <button id="enable-app" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                      Enable App Verification
                     </button>
                   </div>
                 </div>
@@ -153,7 +135,7 @@ export class OTPSetupPage implements Page {
                     </p>
                     <div class="mt-4">
                       <button id="continue-button" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                        Continue to Dashboard
+                        Continue to OTP Entry
                       </button>
                     </div>
                   </div>
@@ -180,14 +162,12 @@ export class OTPSetupPage implements Page {
     const smsSetup = document.getElementById('sms-setup');
     const emailSetup = document.getElementById('email-setup');
     const appSetup = document.getElementById('app-setup');
-    const verifyCodeSection = document.getElementById('verify-code-section');
     
     // SMS radio button click handler
     smsRadio?.addEventListener('change', () => {
       this.showSection(smsSetup);
       this.hideSection(emailSetup);
       this.hideSection(appSetup);
-      this.hideSection(verifyCodeSection);
     });
     
     // Email radio button click handler
@@ -195,7 +175,6 @@ export class OTPSetupPage implements Page {
       this.hideSection(smsSetup);
       this.showSection(emailSetup);
       this.hideSection(appSetup);
-      this.hideSection(verifyCodeSection);
     });
     
     // App radio button click handler
@@ -203,60 +182,42 @@ export class OTPSetupPage implements Page {
       this.hideSection(smsSetup);
       this.hideSection(emailSetup);
       this.showSection(appSetup);
-      this.showSection(verifyCodeSection);
     });
     
-    // For demonstration: add click handlers for the action buttons
-    const sendSmsCodeBtn = document.getElementById('send-sms-code');
-    const sendEmailCodeBtn = document.getElementById('send-email-code');
-    const verifyCodeBtn = document.getElementById('verify-code');
+    // Action buttons
+    const enableSmsBtn = document.getElementById('enable-sms');
+    const enableEmailBtn = document.getElementById('enable-email');
+    const enableAppBtn = document.getElementById('enable-app');
     const continueBtn = document.getElementById('continue-button');
     
-    // When SMS verification code is sent, show the verification code section
-    sendSmsCodeBtn?.addEventListener('click', () => {
-      this.showSection(verifyCodeSection);
+    // When enable buttons are clicked, show success section
+    enableSmsBtn?.addEventListener('click', () => {
+      this.showSuccessSection();
     });
     
-    // When Email verification code is sent, show the verification code section
-    sendEmailCodeBtn?.addEventListener('click', () => {
-      this.showSection(verifyCodeSection);
+    enableEmailBtn?.addEventListener('click', () => {
+      this.showSuccessSection();
     });
     
-    // When verification code is submitted, show success section
-    verifyCodeBtn?.addEventListener('click', () => {
-      const successSection = document.getElementById('success-section');
-      this.hideSection(smsSetup);
-      this.hideSection(emailSetup);
-      this.hideSection(appSetup);
-      this.hideSection(verifyCodeSection);
-      this.showSection(successSection);
+    enableAppBtn?.addEventListener('click', () => {
+      this.showSuccessSection();
     });
     
-    // When continue button is clicked (just for demo purposes)
+    // When continue button is clicked
     continueBtn?.addEventListener('click', () => {
-      console.log('Continue to dashboard clicked');
-      // In a real implementation, this would navigate to the dashboard
+      console.log('Continue to otp verification page');
       this.router.navigateTo('/otp/verify');
     });
+  }
+  
+  private showSuccessSection(): void {
+    // Hide all setup sections
+    this.hideSection(document.getElementById('sms-setup'));
+    this.hideSection(document.getElementById('email-setup'));
+    this.hideSection(document.getElementById('app-setup'));
     
-    // Set up OTP input behavior (focus on next field after input)
-    const otpInputs = Array.from({ length: 6 }).map((_, i) => document.getElementById(`otp-${i}`) as HTMLInputElement);
-    
-    otpInputs.forEach((input, index) => {
-      if (input) {
-        input.addEventListener('input', () => {
-          if (input.value.length === 1 && index < 5) {
-            otpInputs[index + 1]?.focus();
-          }
-        });
-        
-        input.addEventListener('keydown', (e) => {
-          if (e.key === 'Backspace' && !input.value && index > 0) {
-            otpInputs[index - 1]?.focus();
-          }
-        });
-      }
-    });
+    // Show success section
+    this.showSection(document.getElementById('success-section'));
   }
   
   private showSection(element: HTMLElement | null): void {
