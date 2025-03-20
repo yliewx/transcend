@@ -24,7 +24,7 @@ export class UserService extends BaseApiService {
     
     return response as any;
   }
-  
+    
   /**
    * Update profile data (display name, etc.)
    */
