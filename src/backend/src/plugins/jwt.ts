@@ -2,6 +2,12 @@ import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import fastifyJwt from '@fastify/jwt';
 import fp from 'fastify-plugin';
 
+export interface JwtPayload {
+  id: number;
+  username: string;
+  email: string;
+}
+
 export default fp(async function setupJwt(server: FastifyInstance) {
   if (!process.env.JWT_SECRET) {
     throw new Error("JWT_SECRET is not defined!");
@@ -25,7 +31,8 @@ export default fp(async function setupJwt(server: FastifyInstance) {
       if (!preAuthToken)
         throw new Error('No pre-authentication token found');
 
-      await server.jwt.verify(preAuthToken);
+      // Decode JWT token and attach the decoded user data to the request
+      request.user = await server.jwt.verify<JwtPayload>(preAuthToken);
     }
     catch (err) {
       reply.status(401).send({ error: 'Unauthorized' });
@@ -40,26 +47,11 @@ export default fp(async function setupJwt(server: FastifyInstance) {
       if (!authToken)
         throw new Error('No authentication token found');
 
-      await server.jwt.verify(authToken);
+      // Decode JWT token and attach the decoded user data to the request
+      request.user = await server.jwt.verify<JwtPayload>(authToken);
     }
     catch (err) {
       reply.status(401).send({ error: 'Unauthorized' });
     }
   });
-  // Verify JWT from cookies
-  // server.decorate("authenticate", async (request, reply) => {
-  //   try {
-  //     // Check whether route uses pre-authentication token
-  //     if (request.routeConfig?.requiresPreAuth) {
-  //       await request.jwtVerify({ key: 'preAuthToken' });
-  //     }
-  //     // Else use regular auth token
-  //     else {
-  //       await request.jwtVerify();
-  //     }
-  //   }
-  //   catch (err) {
-  //     reply.status(401).send({ error: 'Unauthorized' });
-  //   }
-  // });
 })
