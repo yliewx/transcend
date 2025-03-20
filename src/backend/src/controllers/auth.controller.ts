@@ -81,7 +81,7 @@ export async function loginHandler(request: FastifyRequest, reply: FastifyReply)
     
     return reply.status(202).send({ 
         success: true,
-        message: 'Please select a preferred OTP option to log in.',
+        message: 'Two-factor authentication is required to login',
         user: {
             id: user.id,
             username: user.username,
@@ -231,8 +231,8 @@ export async function verifyOtp(request: FastifyRequest, reply: FastifyReply) {
       issuer: 'ft_transcendence',
       algorithm: 'SHA256',
       digits: 6,
-      period: 45,
-      secret: user.otp_secret
+      period: 90,
+      secret: OTPAuth.Secret.fromBase32(user.otp_secret)
     });
 
     // Validate OTP token
@@ -270,18 +270,6 @@ export async function verifyOtp(request: FastifyRequest, reply: FastifyReply) {
             email: user.email
         }
     });
-    
-    // // Set JWT token in response
-    // return reply.status(200).send({ 
-    //     success: true,
-    //     token: token,
-    //     message: 'OTP verified. Login successful',
-    //     user: {
-    //         id: user.id,
-    //         username: user.username,
-    //         email: user.email
-    //     }
-    // });
   }
   catch (error) {
     return reply.status(500).send({

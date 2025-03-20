@@ -30,27 +30,6 @@ export class AuthService extends BaseApiService {
       'POST', 
       { username, password }
     );
-    
-    // // Store the token in localStorage if login was successful
-    // if (response.success && response.preAuthToken) {
-    //   localStorage.setItem('preAuthToken', response.preAuthToken);
-    // } else if (response.success && !response.preAuthToken) {
-    //   console.error('No pre-authentication token received from server');
-    //   return {
-    //     success: false,
-    //     error: 'Pre-authentication token missing from response'
-    //   };
-    // }
-    // // Set JWT token in local storage if exists in response
-    // if (response.token) {
-    //   localStorage.setItem('jwt', response.token);
-    //   return {
-    //     success: true,
-    //     message: response.message || 'Login successful'
-    //   };
-    // } else {
-    //   throw new Error('Authentication token missing from response');
-    // }
 
     return response;
   }
@@ -81,7 +60,8 @@ export class AuthService extends BaseApiService {
       '/otp/generate',
       'POST',
       undefined,
-      true
+      true,
+      { omitContentType: true}
     );
 
     return {
@@ -101,16 +81,6 @@ export class AuthService extends BaseApiService {
     );
     
     return response;
-    // // Set JWT token in local storage if exists in response
-    // if (response.token) {
-    //   localStorage.setItem('jwt', response.token);
-    //   return {
-    //     success: true,
-    //     message: response.message || 'Login successful'
-    //   };
-    // } else {
-    //   throw new Error('Authentication token missing from response');
-    // }
   }
 
   /*---------------------------------LOGOUT---------------------------------*/

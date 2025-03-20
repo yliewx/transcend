@@ -21,30 +21,6 @@ export class BaseApiService {
         headers['Content-Type'] = 'application/json';
       }
       
-      // // Add auth token if required
-      // if (requiresAuth) {
-      //   const token = localStorage.getItem('jwt') || sessionStorage.getItem('jwt');
-      //   if (!token) {
-      //     return {
-      //       success: false,
-      //       error: 'No authentication token'
-      //     } as {success: boolean, error?: string} & T;
-      //   }
-      //   headers['Authorization'] = `Bearer ${token}`;
-      // }
-
-      // // Add pre-auth token if required
-      // if (requiresPreAuth) {
-      //   const token = localStorage.getItem('preAuthToken') || sessionStorage.getItem('preAuthToken');
-      //   if (!token) {
-      //     return {
-      //       success: false,
-      //       error: 'No pre-authentication token'
-      //     } as {success: boolean, error?: string} & T;
-      //   }
-      //   headers['Pre-Auth-Token'] = token;
-      // }
-      
       // Make the request
       console.log(`${method} request to ${url}`);
       // Get response from server

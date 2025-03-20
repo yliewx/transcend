@@ -116,11 +116,20 @@ export class LoginPage implements Page {
         if (loginMessage) {
           loginMessage.classList.remove('hidden');
         }
-
+        // Check if user's preferred 2FA option is set
         if (result.user.otp_option !== null) {
-          this.router.navigateTo('/otp/verify');
+          // Send request to generate OTP before navigating to /otp/verify
+          console.log(`Requesting OTP via ${result.user.otp_option}`);
+          const res = await this.controlAccess.getAuthService().generateOtp();
+          if (res.success) {
+            this.router.navigateTo('/otp/verify');
+          }
+          else {
+            console.error('Failed to generate OTP:', res.message);
+          alert(`Failed to generate OTP: ${res.message || 'Unknown error'}`);
+          }
         }
-        else {
+        else { // First time login: 2FA setup required
           if (result.user.email) {
             sessionStorage.setItem('userEmail', result.user.email);
           }
@@ -131,9 +140,9 @@ export class LoginPage implements Page {
         if (errorMessage) {
           errorMessage.classList.add('hidden');
         }
-        
+
         // Navigation is handled by the ControlAccess via its event listener in the router
-      } else {
+      } else { // If login is unsuccessful
         // Show error message
         if (errorMessage) {
           errorMessage.textContent = result.error || 'Login failed. Please try again.';

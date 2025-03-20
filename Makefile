@@ -38,6 +38,7 @@ clean: down
 fclean: clean
 	@echo "$(BROWN)[ Removing volumes... ]$(END)"
 	@docker system prune --volumes -af
+	@docker volume rm src_frontend_data src_sqlite_data
 
 re: down up
 
