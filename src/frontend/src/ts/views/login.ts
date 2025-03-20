@@ -121,6 +121,9 @@ export class LoginPage implements Page {
           this.router.navigateTo('/otp/verify');
         }
         else {
+          if (result.user.email) {
+            sessionStorage.setItem('userEmail', result.user.email);
+          }
           this.router.navigateTo('/otp/setup');
         }
 
