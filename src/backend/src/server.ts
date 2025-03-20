@@ -23,6 +23,10 @@ server.register(fastifyStatic, {
   prefix: '/'
 });
 
+server.addHook("onRequest", async (req, reply) => {
+  server.log.info(`Received request: ${req.method} ${req.url}`);
+});
+
 // Register plugins for authentication
 server.register(setupJwt);
 server.register(fastifyCookie);

@@ -67,7 +67,7 @@ class User {
         }
         
         // Ensure the method is valid
-        const validMethods = ['sms', 'email', 'authenticator'];
+        const validMethods = ['sms', 'email', 'app'];
         if (!validMethods.includes(otp_option)) {
             throw new Error('Invalid 2FA method');
         }

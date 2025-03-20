@@ -28,7 +28,7 @@ interface VerifyPayloadType {
 
 2. generateOtp: [Request requires: pre-auth token, user's selected OTP option]
   - Verify pre-auth token to get user
-  - Verify OTP option: email, sms, authenticator
+  - Verify OTP option: email, sms, (authenticator) app
   - Generate OTP token & store user-specific otp_secret in database
   - Send OTP token via chosen OTP option
 
