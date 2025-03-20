@@ -8,6 +8,14 @@ declare module "fastify" {
     authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
     preAuthenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
   }
+  // interface FastifyRequest {
+  //   user?: {
+  //     userId: number;
+  //     username: string;
+  //     email: string;
+  //     iat: number;
+  //   };
+  // }
 }
 
 export interface AuthenticatedRequest extends FastifyRequest {
