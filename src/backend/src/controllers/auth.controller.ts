@@ -18,9 +18,8 @@ interface OtpRequest {
 }
 
 interface OtpUpdateRequest {
-  id: string;
-  method: string;
-  phoneNumber?: string;
+  otp_option: string;
+  otp_contact?: string | null;
 }
 
 /* Login process
@@ -29,13 +28,13 @@ interface OtpUpdateRequest {
   - [REQUEST]: username, password
   - Check if user exists in database & verify password
   - Create pre-authentication token with expiry (to identify the user during OTP verification)
-  - [RESPONSE]: pre-auth token, preferred 2FA method
+  - [RESPONSE]: pre-auth token, preferred OTP option
 
-2. generateOtp: [Request requires: pre-auth token, user's selected 2FA method]
+2. generateOtp: [Request requires: pre-auth token, user's selected OTP option]
   - Verify pre-auth token to get user
-  - Verify 2FA method: email, sms, authenticator
+  - Verify OTP option: email, sms, authenticator
   - Generate OTP token & store user-specific otp_secret in database
-  - Send OTP token via chosen 2FA method
+  - Send OTP token via chosen OTP option
 
 3. verifyOtp:
   - Verify pre-auth token to get user
@@ -71,8 +70,8 @@ export async function loginHandler(request: FastifyRequest, reply: FastifyReply)
       });
     }
 
-    // 2. Get preferred 2FA method. If not set (first time), frontend will prompt user to set a method
-    const preferredMethod = await User.getPreferred2FAMethod(db, user.id);
+    // 2. Get preferred OTP option. If not set (first time), frontend will prompt user to set a otp_option
+    const otp_option = await User.getPreferred2FAMethod(db, user.id);
 
     // Create JWT pre-auth token with user data
     const preAuthToken = reply.server.jwt.sign({ 
@@ -80,36 +79,25 @@ export async function loginHandler(request: FastifyRequest, reply: FastifyReply)
       username: user.username,
       email: user.email
     });
+
+    // Set JWT token in cookie
+    reply.setCookie('preAuthToken', preAuthToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none',
+      path: '/api/otp/'
+    });
     
-    // Set JWT token in response
     return reply.status(202).send({ 
         success: true,
-        message: 'Please select a preferred 2FA method to log in.',
-        preAuthToken: preAuthToken,
+        message: 'Please select a preferred OTP option to log in.',
         user: {
             id: user.id,
             username: user.username,
             email: user.email,
-            preferredMethod: preferredMethod
+            otp_option: otp_option
         }
     });
-
-    // // 3. Generate OTP
-    // const otpToken = await generateOtp(db, user);
-    // user = await User.findByUsername(db, username);
-
-    // // 4. Send OTP
-    // // await sendOtp(user, otpToken, preferredMethod);
-
-    // return reply.code(202).send({
-    //   success: true,
-    //   message: `OTP will be sent via ${preferredMethod}.`,
-    //   method: preferredMethod,
-    //   user_id: user.id,
-    //   otp: otpToken,
-    //   base32: user.otp_secret,
-    //   auth_url: user.otp_auth_url
-    // })
   }
   catch (error) {
     console.error('Login error:', error);
@@ -119,17 +107,53 @@ export async function loginHandler(request: FastifyRequest, reply: FastifyReply)
   }
 }
 
-/*---------------------------------SEND OTP---------------------------------*/
+/*------------------------------2FA PREFERENCES-----------------------------*/
 
-// Handle sending OTP based on preferred method
-// async function sendOtp(user: any, otp: string, method: string) {
-  // if (method === 'email') {
-  //   await sendEmailOtp(user.email, otp);
+// Route: /api/otp/preference
+// Accessed from: /otp/setup -> enable 2FA
+export async function otpPreferenceHandler(request: FastifyRequest, reply: FastifyReply) {
+  // // Extract pre-auth token from cookie
+  // const preAuthToken = request.cookie['preAuthToken'];
+  // if (!preAuthToken) {
+  //   return reply.status(400).send({ error: 'Pre-authentication token not found' });
   // }
-// }
 
-// Generate OTP
-async function generateOtp(db: Database, user: any)
+  // Extract required fields from request body
+  const { otp_option, otp_contact } = request.body as { otp_option: string, otp_contact?: string | null };
+  if (!otp_option) {
+    return reply.status(400).send({ error: 'User OTP option is required' });
+  }
+
+  try {
+    // Decode pre-auth token to get user ID
+    const userData = await request.jwtVerify({ key: 'preAuthToken' });
+    const db = await getDb();
+    await User.updateOtpOption(db, Number(userData.id), otp_option, otp_contact);
+
+    reply.send({
+      success: true, 
+      message: `OTP option updated as ${otp_option}`
+    });
+  } catch (error) {
+    reply.status(400).send({
+      error: error instanceof Error ? error.message : 'Failed to update OTP option' 
+    });
+  }
+}
+
+/*-------------------------------GENERATE OTP-------------------------------*/
+
+// Handle sending OTP based on preferred otp_option
+async function sendOtp(db: Database, user: any, otpToken: string) {
+  if ((user.otp_option === 'sms' || user.otp_option === 'email') && !user.otp_contact) {
+    throw new Error('Phone number is required for SMS 2FA');
+  }
+  // if (user.otp_option === 'email' ) {
+  //   await sendEmailOtp(user.email, otpToken);
+  // }
+}
+
+async function generateOtpToken(db: Database, user_id: number)
 {
   // Instantiate TOTP object
   const totp = new OTPAuth.TOTP({
@@ -144,9 +168,44 @@ async function generateOtp(db: Database, user: any)
   const token = totp.generate();
 
   // Store secret and auth url in database
-  await User.setOtpSecret(db, user.id, totp.secret.base32, totp.toString());
+  await User.setOtpSecret(db, user_id, totp.secret.base32, totp.toString());
 
   return token;
+}
+
+// Route: /api/otp/generate
+export async function generateOtp(request: FastifyRequest, reply: FastifyReply) {
+  try {
+    // Decode pre-auth token to get user ID
+    const userData = await request.jwtVerify({ key: 'preAuthToken' });
+    const db = await getDb();
+    const user = await User.findById(db, Number(userData.id));
+
+    // Generate OTP
+    const otpToken = await generateOtpToken(db, user.id);
+
+    // TO-DO: Send OTP
+    await sendOtp(db, user, otpToken);
+
+    return reply.code(202).send({
+      success: true,
+      message: `OTP will be sent via ${user.otp_option}.`,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        otp_option: user.otp_option,
+        otp: otpToken,
+        base32: user.otp_secret,
+        auth_url: user.otp_auth_url
+      }
+    })
+  }
+  catch (error) {
+    reply.status(400).send({
+      error: error instanceof Error ? error.message : 'Failed to request OTP' 
+    });
+  }
 }
 
 /*--------------------------------VERIFY OTP--------------------------------*/
@@ -188,16 +247,21 @@ export async function verifyOtp(request: FastifyRequest, reply: FastifyReply) {
     await User.setOtpVerified(db, Number(id), true);
 
     // Create JWT token with user data
-    const token = reply.server.jwt.sign({ 
+    const authToken = reply.server.jwt.sign({ 
       id: user.id,
       username: user.username,
       email: user.email
     });
-    
-    // Set JWT token in response
+
+    // Set JWT token in cookie
+    reply.setCookie('authToken', authToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none'
+    });
+
     return reply.status(200).send({ 
         success: true,
-        token: token,
         message: 'OTP verified. Login successful',
         user: {
             id: user.id,
@@ -205,36 +269,23 @@ export async function verifyOtp(request: FastifyRequest, reply: FastifyReply) {
             email: user.email
         }
     });
+    
+    // // Set JWT token in response
+    // return reply.status(200).send({ 
+    //     success: true,
+    //     token: token,
+    //     message: 'OTP verified. Login successful',
+    //     user: {
+    //         id: user.id,
+    //         username: user.username,
+    //         email: user.email
+    //     }
+    // });
   }
   catch (error) {
     return reply.status(500).send({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error' 
-    });
-  }
-}
-
-/*------------------------------2FA PREFERENCES-----------------------------*/
-
-// Route: /api/otp/preference
-export async function otpPreferenceHandler(request: FastifyRequest, reply: FastifyReply) {
-  const { id, method, phoneNumber } = request.body as OtpUpdateRequest;
-
-  if (!id || !method) {
-    return reply.status(400).send({ error: 'User ID and 2FA method are required' });
-  }
-
-  try {
-    const db = await getDb();
-
-    await User.updatePreferred2FAMethod(db, Number(id), method, phoneNumber);
-    reply.send({
-      success: true, 
-      message: `2FA method updated as ${method}`
-    });
-  } catch (error) {
-    reply.status(400).send({
-      error: error instanceof Error ? error.message : 'Failed to update 2FA method' 
     });
   }
 }

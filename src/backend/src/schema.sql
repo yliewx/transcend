@@ -7,8 +7,8 @@ CREATE TABLE IF NOT EXISTS users (
   otp_verified BOOLEAN NOT NULL DEFAULT 0,
   otp_secret TEXT,
   otp_auth_url TEXT,
-  preferred_2fa_method TEXT CHECK(preferred_2fa_method IN ('sms', 'email', 'authenticator')) DEFAULT NULL,
-  phone_number TEXT DEFAULT NULL
+  otp_option TEXT CHECK(otp_option IN ('sms', 'email', 'authenticator')) DEFAULT NULL,
+  otp_contact TEXT DEFAULT NULL
 );
 
 CREATE TABLE IF NOT EXISTS profiles (

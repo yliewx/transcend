@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { registerUser } from './controllers/user.register';
-import { loginHandler, logoutHandler, verifyOtp, otpPreferenceHandler } from './controllers/auth.controller';
+import { loginHandler, logoutHandler, verifyOtp, otpPreferenceHandler, generateOtp } from './controllers/auth.controller';
 import { profileHandler, updatePasswordHandler, updateProfileDataHandler, updateUserDataHandler } from './controllers/user.profile';
 import fp from 'fastify-plugin';
 import { AuthenticatedRequest } from '../@types/fastify';
@@ -12,8 +12,9 @@ export default fp(async function setupRoutes(server: FastifyInstance) {
   // Authentication routes
   server.post('/api/login', loginHandler);
   server.post('/api/logout', logoutHandler);
-  server.post('/api/otp/preferences', otpPreferenceHandler);
-  server.post('/api/otp/verify', verifyOtp);
+  server.post('/api/otp/preferences', { preHandler: server.preAuthenticate }, otpPreferenceHandler);
+  server.post('/api/otp/generate', { preHandler: server.preAuthenticate }, generateOtp);
+  server.post('/api/otp/verify', { preHandler: server.preAuthenticate }, verifyOtp);
 
   // User routes
   server.get('/api/profile', { preHandler: server.authenticate }, (request, reply) => {
