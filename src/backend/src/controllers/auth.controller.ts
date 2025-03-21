@@ -75,7 +75,7 @@ export async function loginHandler(request: FastifyRequest, reply: FastifyReply)
     reply.setCookie('preAuthToken', preAuthToken, {
       httpOnly: true,
       secure: true,
-      sameSite: 'none',
+      sameSite: 'strict',
       path: '/api/otp/'
     });
     
@@ -258,7 +258,7 @@ export async function verifyOtp(request: FastifyRequest, reply: FastifyReply) {
     reply.setCookie('authToken', authToken, {
       httpOnly: true,
       secure: true,
-      sameSite: 'none'
+      sameSite: 'strict'
     });
 
     return reply.status(200).send({ 

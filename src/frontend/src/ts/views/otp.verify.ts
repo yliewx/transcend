@@ -76,8 +76,14 @@ export class OTPVerificationPage implements Page {
       });
     });
     
-    verifyButton?.addEventListener('click', () => this.handleOTPVerification());
-    resendButton?.addEventListener('click', () => this.resendOTP());
+    verifyButton?.addEventListener('click', (e: Event) => {
+      e.preventDefault();
+      this.handleOTPVerification();
+    });
+    resendButton?.addEventListener('click', (e: Event) => {
+      e.preventDefault();
+      this.resendOTP();
+    });
   }
 
   private async handleOTPVerification(): Promise<void> {
@@ -94,13 +100,6 @@ export class OTPVerificationPage implements Page {
     }
     
     try {
-      // Retrieve user id from session storage
-      const user_id = sessionStorage.getItem('user_id');
-      if (!user_id) {
-        console.error("No user ID found in session storage. Redirecting to login.");
-        this.router.navigateTo('/login');
-      }
-
       const result = await this.controlAccess.verifyOtp(otpCode);
       if (result.success) {
         // Show success message
@@ -121,6 +120,19 @@ export class OTPVerificationPage implements Page {
   }
   
   private async resendOTP(): Promise<void> {
-    console.log('resendOTP placeholder, not implemented yet');
+    try {
+      console.log('Generating new OTP to resend');
+      const result = await this.controlAccess.getAuthService().generateOtp();
+      
+      if (result.success) {
+        console.log('OTP generated successfully');
+      } else {
+        console.error('Failed to generate OTP:', result.message);
+        alert(`Failed to generate OTP: ${result.message || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error generating OTP:', error);
+      alert('An error occurred while generating OTP. Please try again.');
+    }
   }
 }
