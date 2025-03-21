@@ -7,8 +7,6 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    # ports:
-    #   - "3000:3000"
     environment:
       - NODE_ENV=development
       - DB_PATH=/db/database.sqlite
@@ -26,8 +24,6 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    # ports:
-    #   - "8080:8080"
     environment:
       - NODE_ENV=development
     networks:
@@ -45,7 +41,7 @@ services:
       context: ./nginx
       dockerfile: Dockerfile
     ports:
-      - "443:443"
+      - "8080:443"
     networks:
       - ft_transcendence
     volumes:

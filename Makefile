@@ -16,7 +16,7 @@ END = \033[0m
 
 # RULES
 
-all: up
+all: down up
 
 # ensure docker is installed and all required files/directories exist
 # create and start all containers in the docker compose file
@@ -29,6 +29,7 @@ up:
 down:
 	@echo "$(BROWN)[ Stopping and removing containers... ]$(END)"
 	@$(COMPOSE) -f $(COMPOSE_FILE) down
+	@docker volume rm -f src_frontend_data
 
 clean: down
 	@echo "$(BROWN)[ Removing build cache... ]$(END)"
@@ -38,7 +39,7 @@ clean: down
 fclean: clean
 	@echo "$(BROWN)[ Removing volumes... ]$(END)"
 	@docker system prune --volumes -af
-	@docker volume rm src_frontend_data src_sqlite_data
+	@docker volume rm -f src_sqlite_data
 
 re: down up
 
