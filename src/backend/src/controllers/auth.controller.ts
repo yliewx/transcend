@@ -1,4 +1,4 @@
-import { FastifyRequest, FastifyReply } from 'fastify';
+import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import bcrypt from 'bcrypt';
 import User from '../models/user';
 import Profile from '../models/profile';
@@ -132,14 +132,46 @@ export async function otpPreferenceHandler(request: FastifyRequest, reply: Fasti
 /*-------------------------------GENERATE OTP-------------------------------*/
 
 // Handle sending OTP based on preferred otp_option
-async function sendOtp(db: Database, user: any, otpToken: string) {
-  if ((user.otp_option === 'sms' || user.otp_option === 'email') && !user.otp_contact) {
-    throw new Error('Phone number is required for SMS 2FA');
+// async function sendOtp(db: Database, user: any, otpToken: string) {
+//   if ((user.otp_option === 'sms' || user.otp_option === 'email') && !user.otp_contact) {
+//     throw new Error('Phone number is required for SMS 2FA');
+//   }
+//   // if (user.otp_option === 'email' ) {
+//   //   await sendEmailOtp(user.email, otpToken);
+//   // }
+// }
+
+async function sendOtp(request: FastifyRequest, db: Database, user: any, otpToken: string) {
+  if (user.otp_option === 'email' && !user.email) {
+    throw new Error('Email address is required for Email 2FA');
   }
-  // if (user.otp_option === 'email' ) {
-  //   await sendEmailOtp(user.email, otpToken);
-  // }
+  
+  switch (user.otp_option) {
+    case 'email':
+      return await request.server.mailer.sendEmailOtp(user.email, otpToken);
+    // Handle other OTP methods...
+    default:
+      throw new Error(`Unsupported OTP method: ${user.otp_option}`);
+  }
 }
+
+// Update the function signature to accept server
+// async function sendOtp(server: FastifyInstance, db: Database, user: any, otpToken: string) {
+//   if (user.otp_option === 'email' && !user.email) {
+//     throw new Error('Email address is required for Email 2FA');
+//   }
+  
+//   switch (user.otp_option) {
+//     case 'email':
+//       if (!server.mailer) {
+//         console.error("Mailer plugin not found");
+//         throw new Error("Email service not available");
+//       }
+//       return await server.mailer.sendEmailOtp(user.email, otpToken);
+//     default:
+//       throw new Error(`Unsupported OTP method: ${user.otp_option}`);
+//   }
+// }
 
 async function generateOtpToken(db: Database, user_id: number)
 {
@@ -161,6 +193,8 @@ async function generateOtpToken(db: Database, user_id: number)
   return token;
 }
 
+
+
 // Route: /api/otp/generate
 export async function generateOtp(request: FastifyRequest, reply: FastifyReply) {
   try {
@@ -181,7 +215,7 @@ export async function generateOtp(request: FastifyRequest, reply: FastifyReply) 
     const otpToken = await generateOtpToken(db, user.id);
 
     // TO-DO: Send OTP
-    await sendOtp(db, user, otpToken);
+    await sendOtp(request, db, user, otpToken);
 
     return reply.code(202).send({
       success: true,
