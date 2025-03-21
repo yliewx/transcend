@@ -30,6 +30,13 @@ services:
     #   - "8080:8080"
     environment:
       - NODE_ENV=development
+      - SMTP_HOST=smtp.gmail.com
+      - SMTP_PORT=587
+      - SMTP_SECURE=false
+      - SMTP_USER=test2fapong@gmail.com
+      - SMTP_PASS=cwtcmjranmavanxo
+      - EMAIL_FROM_NAME=Admin
+      - EMAIL_FROM_ADDRESS=test2fapong@gmail.com
     networks:
       - ft_transcendence
     volumes:

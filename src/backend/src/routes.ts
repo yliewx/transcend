@@ -13,7 +13,15 @@ export default fp(async function setupRoutes(server: FastifyInstance) {
   server.post('/api/login', loginHandler);
   server.post('/api/logout', logoutHandler);
   server.post('/api/otp/preferences', { preHandler: server.preAuthenticate }, otpPreferenceHandler);
-  server.post('/api/otp/generate', { preHandler: server.preAuthenticate }, generateOtp);
+  server.post('/api/otp/generate', { 
+    preHandler: server.preAuthenticate,
+    handler: (request, reply) => {
+      // Pass the server instance directly
+      return generateOtp(request, reply, server);
+    }
+  });
+  
+  //server.post('/api/otp/generate', { preHandler: server.preAuthenticate }, generateOtp);
   server.post('/api/otp/verify', { preHandler: server.preAuthenticate }, verifyOtp);
 
   // User routes
