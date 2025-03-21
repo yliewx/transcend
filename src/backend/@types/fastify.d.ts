@@ -1,7 +1,7 @@
 // import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 // import "@fastify/jwt";
 
-// // Extend FastifyInstance
+// Extend FastifyInstance
 // declare module "fastify" {
 //   // Add the "authenticate" method
 //   interface FastifyInstance {

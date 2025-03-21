@@ -141,37 +141,37 @@ export async function otpPreferenceHandler(request: FastifyRequest, reply: Fasti
 //   // }
 // }
 
-// async function sendOtp(request: FastifyRequest, db: Database, user: any, otpToken: string) {
-//   if (user.otp_option === 'email' && !user.email) {
-//     throw new Error('Email address is required for Email 2FA');
-//   }
-  
-//   switch (user.otp_option) {
-//     case 'email':
-//       return await request.server.mailer.sendEmailOtp(user.email, otpToken);
-//     // Handle other OTP methods...
-//     default:
-//       throw new Error(`Unsupported OTP method: ${user.otp_option}`);
-//   }
-// }
-
-// Update the function signature to accept server
-async function sendOtp(server: FastifyInstance, db: Database, user: any, otpToken: string) {
+async function sendOtp(request: FastifyRequest, db: Database, user: any, otpToken: string) {
   if (user.otp_option === 'email' && !user.email) {
     throw new Error('Email address is required for Email 2FA');
   }
   
   switch (user.otp_option) {
     case 'email':
-      if (!server.mailer) {
-        console.error("Mailer plugin not found");
-        throw new Error("Email service not available");
-      }
-      return await server.mailer.sendEmailOtp(user.email, otpToken);
+      return await request.server.mailer.sendEmailOtp(user.email, otpToken);
+    // Handle other OTP methods...
     default:
       throw new Error(`Unsupported OTP method: ${user.otp_option}`);
   }
 }
+
+// Update the function signature to accept server
+// async function sendOtp(server: FastifyInstance, db: Database, user: any, otpToken: string) {
+//   if (user.otp_option === 'email' && !user.email) {
+//     throw new Error('Email address is required for Email 2FA');
+//   }
+  
+//   switch (user.otp_option) {
+//     case 'email':
+//       if (!server.mailer) {
+//         console.error("Mailer plugin not found");
+//         throw new Error("Email service not available");
+//       }
+//       return await server.mailer.sendEmailOtp(user.email, otpToken);
+//     default:
+//       throw new Error(`Unsupported OTP method: ${user.otp_option}`);
+//   }
+// }
 
 async function generateOtpToken(db: Database, user_id: number)
 {
@@ -196,104 +196,26 @@ async function generateOtpToken(db: Database, user_id: number)
 
 
 // Route: /api/otp/generate
-// export async function generateOtp(request: FastifyRequest, reply: FastifyReply) {
-//   try {
-//     // Get user data from request
-//     const userData = request.user as JwtPayload;
-//     if (!userData) {
-//       throw new Error('User authentication failed');
-//     }
-//     const db = await getDb();
-//     const user = await User.findById(db, Number(userData.id));
-
-//     // Check if OTP option is set
-//     if (user.otp_option === null) {
-//       throw new Error('Preferred 2FA option not set');
-//     }
-
-//     // Generate OTP
-//     const otpToken = await generateOtpToken(db, user.id);
-
-//     // TO-DO: Send OTP
-//     await sendOtp(request, db, user, otpToken);
-
-//     return reply.code(202).send({
-//       success: true,
-//       message: `OTP will be sent via ${user.otp_option}.`,
-//       user: {
-//         id: user.id,
-//         username: user.username,
-//         email: user.email,
-//         otp_option: user.otp_option,
-//         otp: otpToken,
-//         base32: user.otp_secret,
-//         auth_url: user.otp_auth_url
-//       }
-//     })
-//   }
-//   catch (error) {
-//     reply.status(400).send({
-//       error: error instanceof Error ? error.message : 'Failed to request OTP' 
-//     });
-//   }
-// }
-
-export async function generateOtp(
-  request: FastifyRequest, 
-  reply: FastifyReply,
-  server: FastifyInstance
-) {
-  console.log("=== generateOtp handler started ===");
-  
+export async function generateOtp(request: FastifyRequest, reply: FastifyReply) {
   try {
     // Get user data from request
-    console.log("Getting user data from request...");
     const userData = request.user as JwtPayload;
-    console.log("User data from token:", userData);
-    
     if (!userData) {
-      console.log("No user data in request - authentication failed");
       throw new Error('User authentication failed');
     }
-    
-    console.log("Getting database connection...");
     const db = await getDb();
-    console.log("Database connection obtained");
-    
-    console.log("Finding user by ID:", userData.id);
     const user = await User.findById(db, Number(userData.id));
-    console.log("User found:", user ? `${user.username} (ID: ${user.id})` : "No user found");
 
     // Check if OTP option is set
-    console.log("User OTP option:", user.otp_option);
     if (user.otp_option === null) {
-      console.log("User has no preferred 2FA option set");
       throw new Error('Preferred 2FA option not set');
     }
 
-    // Generate OTP - add try/catch to identify potential issues
-    let otpToken;
-    try {
-      console.log("About to call generateOtpToken...");
-      otpToken = await generateOtpToken(db, user.id);
-      console.log("OTP Token generated successfully:", otpToken);
-    } catch (genError) {
-      console.error("Error generating OTP token:", genError);
-      throw new Error(`Failed to generate OTP token: ${genError instanceof Error ? genError.message : 'Unknown error'}`);
-    }
+    // Generate OTP
+    const otpToken = await generateOtpToken(db, user.id);
 
-    // Send OTP - add try/catch to identify potential issues
-    try {
-      if (!server.mailer) {
-        console.error("Mailer plugin not found on server instance");
-        throw new Error("Email service not available");
-      }
-      await sendOtp(server, db, user, otpToken);
-      console.log("OTP sent successfully via", user.otp_option);
-    } catch (sendError) {
-      console.error("Error sending OTP:", sendError);
-      throw new Error(`Failed to send OTP: ${sendError instanceof Error ? sendError.message : 'Unknown error'}`);
-    }
+    // TO-DO: Send OTP
+    await sendOtp(request, db, user, otpToken);
 
     return reply.code(202).send({
       success: true,
@@ -307,10 +229,9 @@ export async function generateOtp(
         base32: user.otp_secret,
         auth_url: user.otp_auth_url
       }
-    });
+    })
   }
   catch (error) {
-    console.error("Generate OTP error:", error);
     reply.status(400).send({
       error: error instanceof Error ? error.message : 'Failed to request OTP' 
     });
