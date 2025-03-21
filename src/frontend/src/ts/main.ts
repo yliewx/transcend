@@ -10,6 +10,7 @@ import { PageWithHeader } from './views/layout';
 import { AuthService } from './services/auth.service';
 import { ControlAccess } from './services/control.access';
 import { UserService } from './services/user.service';
+import { PlayPage } from './views/play';
 
 document.addEventListener('DOMContentLoaded', () => {
   // Initialize application dependencies
@@ -33,7 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
   router.addRoute('/profile', new PageWithHeader(new ProfilePage(router, userService), router));
 
   // Placeholder routes
-  router.addRoute('/play', new PageWithHeader(new PlaceholderPage('Play Game', 'This feature is coming soon!'), router));
+  router.addRoute('/play', new PageWithHeader(new PlayPage(router), router));
   router.addRoute('/stats', new PageWithHeader(new PlaceholderPage('Game Stats', 'Stats feature is under development.'), router));
   
   // 404 route
