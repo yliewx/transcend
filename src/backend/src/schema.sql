@@ -29,16 +29,35 @@ CREATE TABLE IF NOT EXISTS friendships (
   UNIQUE(user_id, friend_id)
 );
 
+-- CREATE TABLE IF NOT EXISTS match_history (
+--   id INTEGER PRIMARY KEY AUTOINCREMENT,
+--   match_date TEXT NOT NULL,
+--   player1_id INTEGER NOT NULL,
+--   player2_id INTEGER NOT NULL,
+--   winner_id INTEGER NULL,
+--   tournament_id INTEGER NOT NULL,
+--   left_score INTEGER NOT NULL DEFAULT 0,
+--   right_score INTEGER NOT NULL DEFAULT 0,
+--   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+--   FOREIGN KEY (player1_id) REFERENCES users (id) ON DELETE CASCADE,
+--   FOREIGN KEY (player2_id) REFERENCES users (id) ON DELETE CASCADE,
+--   FOREIGN KEY (winner_id) REFERENCES users (id) ON DELETE CASCADE,
+--   CHECK (winner_id IS NULL OR winner_id = player1_id OR winner_id = player2_id)
+-- );
+
 CREATE TABLE IF NOT EXISTS match_history (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   match_date TEXT NOT NULL,
-  player1_id INTEGER NOT NULL,
-  player2_id INTEGER NOT NULL,
+  player1_id INTEGER, -- Remove NOT NULL to allow guest players
+  player2_id INTEGER, -- Remove NOT NULL to allow guest players
   winner_id INTEGER NULL,
-  tournament_id INTEGER NOT NULL,
+  tournament_id INTEGER NOT NULL DEFAULT 0,
+  left_score INTEGER NOT NULL DEFAULT 0,
+  right_score INTEGER NOT NULL DEFAULT 0,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (player1_id) REFERENCES users (id) ON DELETE CASCADE,
-  FOREIGN KEY (player2_id) REFERENCES users (id) ON DELETE CASCADE,
-  FOREIGN KEY (winner_id) REFERENCES users (id) ON DELETE CASCADE,
-  CHECK (winner_id IS NULL OR winner_id = player1_id OR winner_id = player2_id)
+  FOREIGN KEY (player1_id) REFERENCES users (id) ON DELETE SET NULL,
+  FOREIGN KEY (player2_id) REFERENCES users (id) ON DELETE SET NULL,
+  FOREIGN KEY (winner_id) REFERENCES users (id) ON DELETE SET NULL
+  -- Remove the CHECK constraint that requires winner to be one of the players
+  -- since we might have null players now
 );
