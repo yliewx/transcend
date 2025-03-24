@@ -11,6 +11,14 @@ CREATE TABLE IF NOT EXISTS users (
   otp_contact TEXT DEFAULT NULL
 );
 
+CREATE TABLE IF NOT EXISTS refresh_tokens (
+  user_id INTEGER NOT NULL,
+  token_id TEXT UNIQUE NOT NULL,
+  expires_at DATETIME NOT NULL,
+  created_at DATETIME DEFAULT (datetime('now')) NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS profiles (
   user_id INTEGER PRIMARY KEY,
   display_name TEXT,

@@ -2,11 +2,12 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import bcrypt from 'bcrypt';
 import User from '../models/user';
 import Profile from '../models/profile';
+import RefreshToken from '../models/refresh.token';
 import { getDb } from '../db.js';
 import { Database } from 'sqlite';
 import OTPAuth from 'otpauth';
 import nodemailer from 'nodemailer';
-import { JwtPayload } from '../plugins/jwt';
+import { AuthTokenPayload } from '../plugins/jwt';
 
 interface LoginRequest {
   username: string;
@@ -64,12 +65,13 @@ export async function loginHandler(request: FastifyRequest, reply: FastifyReply)
     // 2. Get preferred OTP option. If not set (first time), frontend will prompt user to set a otp_option
     const otp_option = await User.getPreferred2FAMethod(db, user.id);
 
-    // Create JWT pre-auth token with user data
+    // Create JWT pre-auth token with user data (payload)
     const preAuthToken = reply.server.jwt.sign({ 
       id: user.id,
       username: user.username,
-      email: user.email
-    });
+      email: user.email,
+      token_type: 'preAuth'
+    }, { expiresIn: '10m' });
 
     // Set JWT token in cookie
     reply.setCookie('preAuthToken', preAuthToken, {
@@ -111,7 +113,7 @@ export async function otpPreferenceHandler(request: FastifyRequest, reply: Fasti
 
   try {
     // Get user data from request
-    const userData = request.user as JwtPayload;
+    const userData = request.user as AuthTokenPayload;
     if (!userData) {
       throw new Error('User authentication failed');
     }
@@ -148,7 +150,7 @@ async function sendOtp(request: FastifyRequest, db: Database, user: any, otpToke
   
   switch (user.otp_option) {
     case 'email':
-      return await request.server.mailer.sendEmailOtp(user.email, otpToken);
+      return await request.server.mailer.sendEmailOtp(user.otp_contact, otpToken);
     // Handle other OTP methods...
     default:
       throw new Error(`Unsupported OTP method: ${user.otp_option}`);
@@ -199,7 +201,7 @@ async function generateOtpToken(db: Database, user_id: number)
 export async function generateOtp(request: FastifyRequest, reply: FastifyReply) {
   try {
     // Get user data from request
-    const userData = request.user as JwtPayload;
+    const userData = request.user as AuthTokenPayload;
     if (!userData) {
       throw new Error('User authentication failed');
     }
@@ -240,13 +242,41 @@ export async function generateOtp(request: FastifyRequest, reply: FastifyReply) 
 
 /*--------------------------------VERIFY OTP--------------------------------*/
 
+async function createAccessToken(user: any, reply: FastifyReply) {
+  // Create access token with user data
+  const accessToken = reply.server.jwt.sign({ 
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    token_type: 'access'
+  }, { expiresIn: '10m' });
+
+  return accessToken;
+}
+
+async function createRefreshToken(db: Database, user: any, reply: FastifyReply) {
+  await RefreshToken.refresh(db, user.id);
+  const token = await RefreshToken.findByUser(db, user.id);
+
+  // Create refresh token
+  const refreshToken = reply.server.jwt.sign({
+    user_id: user.id,
+    token_id: token.token_id,
+    token_type: 'refresh'
+  }, { expiresIn: '7d' });
+
+  // Store in database
+
+  return refreshToken;
+}
+
 // Route: /api/otp/verify
 export async function verifyOtp(request: FastifyRequest, reply: FastifyReply) {
   const { otp } = request.body as { otp: string };
 
   try {
     // Get user data from request
-    const userData = request.user as JwtPayload;
+    const userData = request.user as AuthTokenPayload;
     if (!userData) {
       throw new Error('User authentication failed');
     }
@@ -280,20 +310,23 @@ export async function verifyOtp(request: FastifyRequest, reply: FastifyReply) {
 
     // Update database
     await User.setOtpVerified(db, user.id, true);
+    const accessToken = await createAccessToken(user, reply);
 
-    // Create JWT token with user data
-    const authToken = reply.server.jwt.sign({ 
-      id: user.id,
-      username: user.username,
-      email: user.email
-    });
-
-    // Set JWT token in cookie
-    reply.setCookie('authToken', authToken, {
+    // Set access token in cookie
+    reply.setCookie('accessToken', accessToken, {
       httpOnly: true,
       secure: true,
-      sameSite: 'strict'
+      sameSite: 'strict',
+      path: '/api/'
     });
+
+    // Set refresh token in cookie
+    // reply.setCookie('refreshToken', createRefreshToken(db, user, reply), {
+    //   httpOnly: true,
+    //   secure: true,
+    //   sameSite: 'strict',
+    //   path: '/api/token/refresh'
+    // });
 
     return reply.status(200).send({ 
         success: true,
