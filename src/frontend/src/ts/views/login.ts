@@ -116,30 +116,30 @@ export class LoginPage implements Page {
         if (loginMessage) {
           loginMessage.classList.remove('hidden');
         }
-        this.controlAccess.setAuthenticated(true);
+        // this.controlAccess.setAuthenticated(true);
         if (result.user.id) {
           sessionStorage.setItem('userId', result.user.id);
         }
-        this.router.navigateTo('/home');
+        // this.router.navigateTo('/home');
         // Check if user's preferred 2FA option is set
-        // if (result.user.otp_option !== null) {
-        //   // Send request to generate OTP before navigating to /otp/verify
-        //   console.log(`Requesting OTP via ${result.user.otp_option}`);
-        //   const res = await this.controlAccess.getAuthService().generateOtp();
-        //   if (res.success) {
-        //     this.router.navigateTo('/otp/verify');
-        //   }
-        //   else {
-        //     console.error('Failed to generate OTP:', res.message);
-        //   alert(`Failed to generate OTP: ${res.message || 'Unknown error'}`);
-        //   }
-        // }
-        // else { // First time login: 2FA setup required
-        //   if (result.user.email) {
-        //     sessionStorage.setItem('userEmail', result.user.email);
-        //   }
-        //   this.router.navigateTo('/otp/setup');
-        // }
+        if (result.user.otp_option !== null) {
+          // Send request to generate OTP before navigating to /otp/verify
+          console.log(`Requesting OTP via ${result.user.otp_option}`);
+          const res = await this.controlAccess.getAuthService().generateOtp();
+          if (res.success) {
+            this.router.navigateTo('/otp/verify');
+          }
+          else {
+            console.error('Failed to generate OTP:', res.message);
+          alert(`Failed to generate OTP: ${res.message || 'Unknown error'}`);
+          }
+        }
+        else { // First time login: 2FA setup required
+          if (result.user.email) {
+            sessionStorage.setItem('userEmail', result.user.email);
+          }
+          this.router.navigateTo('/otp/setup');
+        }
 
         // Hide error message if it was shown
         if (errorMessage) {

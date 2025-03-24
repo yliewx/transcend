@@ -5,11 +5,11 @@ import { loginHandler, logoutHandler, verifyOtp, otpPreferenceHandler, generateO
 import { profileHandler, updatePasswordHandler, updateProfileDataHandler, updateUserDataHandler } from './controllers/user.profile';
 import fp from 'fastify-plugin';
 import { AuthenticatedRequest } from '../@types/fastify';
-import { gameManager } from './game/GameManager';
 import crypto from 'crypto';
 import GameStats from './models/game.stats';
 import { getDb } from './db.js';
-
+// import { createGame, getGames, getGameState, pollGameState, updateGameState, movePaddle, startGame, pauseGame, deleteGame, resetGame,  getMatchHistory,  recordMatch} from './controllers/game.controller';
+import * as GameController from './controllers/game.controller';
 
 // Game route interface types
 interface GameParams {
@@ -23,11 +23,6 @@ interface MoveBody {
 
 interface PollQuery {
   hash?: string;
-}
-
-// Helper function to create state hash for efficient polling
-function createStateHash(state: any): string {
-  return crypto.createHash('md5').update(JSON.stringify(state)).digest('hex');
 }
 
 export default fp(async function setupRoutes(server: FastifyInstance) {
@@ -59,272 +54,46 @@ export default fp(async function setupRoutes(server: FastifyInstance) {
   // GAME ROUTES - Integrated directly
   
   // Create a new game
-  server.post('/api/games', async (request: FastifyRequest, reply: FastifyReply) => {
-    const gameId = gameManager.createGame();
-    return { gameId, success: true };
-  });
+  server.post('/api/games', { preHandler: server.authenticate }, GameController.createGame);
 
   // Get all games
-  server.get('/api/games', async (request: FastifyRequest, reply: FastifyReply) => {
-    const games = gameManager.getAllGames();
-    return { games, success: true };
-  });
+  server.get('/api/games', { preHandler: server.authenticate }, GameController.getGames);
 
   // Get specific game state
-  server.get<{ Params: GameParams }>('/api/games/:id', async (request, reply) => {
-    const { id } = request.params;
-    const game = gameManager.getGame(id);
-    
-    if (!game) {
-      return reply.code(404).send({ error: 'Game not found', success: false });
-    }
-    
-    const state = game.getState();
-    const hash = createStateHash(state);
-    
-    return { state, hash, success: true };
-  });
+  server.get<{ Params: GameParams }>('/api/games/:id', GameController.getGameState);
 
   // Efficient polling endpoint with conditional response
-  server.get<{ Params: GameParams, Querystring: PollQuery }>('/api/games/:id/poll', async (request, reply) => {
-    const { id } = request.params;
-    const { hash } = request.query;
-    
-    const game = gameManager.getGame(id);
-    
-    if (!game) {
-      return reply.code(404).send({ error: 'Game not found', success: false });
-    }
-    
-    const state = game.getState();
-    const currentHash = createStateHash(state);
-    
-    // If client has current state (hashes match), return 304 Not Modified
-    if (hash && hash === currentHash) {
-      return reply.code(304).send();
-    }
-    
-    // Otherwise update the game state and return new state
-    gameManager.updateGameState(id);
-    const updatedState = game.getState();
-    const updatedHash = createStateHash(updatedState);
-    
-    return { state: updatedState, hash: updatedHash, success: true };
-  });
+  server.get<{ Params: GameParams, Querystring: PollQuery }>('/api/games/:id/poll', GameController.pollGameState);
 
   // Update game state (server-side game loop)
-  server.post<{ Params: GameParams }>('/api/games/:id/update', async (request, reply) => {
-    const { id } = request.params;
-    const success = gameManager.updateGameState(id);
-    
-    if (!success) {
-      return reply.code(404).send({ error: 'Game not found', success: false });
-    }
-    
-    const game = gameManager.getGame(id);
-    const state = game?.getState();
-    
-    return { state, success: true };
-  });
+  server.post<{ Params: GameParams }>('/api/games/:id/update', GameController.updateGameState);
 
   // Move paddle
-  server.post<{ Params: GameParams, Body: MoveBody }>('/api/games/:id/move', async (request, reply) => {
-    const { id } = request.params;
-    const { side, direction } = request.body;
-    
-    if (!side || !direction || !['left', 'right'].includes(side) || !['up', 'down'].includes(direction)) {
-      return reply.code(400).send({ error: 'Invalid input parameters', success: false });
-    }
-    
-    const success = gameManager.movePaddle(id, side, direction);
-    
-    if (!success) {
-      return reply.code(404).send({ error: 'Game not found', success: false });
-    }
-    
-    return { success: true };
-  });
+  server.post<{ Params: GameParams, Body: MoveBody }>('/api/games/:id/move', GameController.movePaddle);
 
   // Start game
-  server.post<{ Params: GameParams }>('/api/games/:id/start', async (request, reply) => {
-    const { id } = request.params;
-    const success = gameManager.startGame(id);
-    
-    if (!success) {
-      return reply.code(404).send({ error: 'Game not found', success: false });
-    }
-    
-    return { success: true };
-  });
+  server.post<{ Params: GameParams }>('/api/games/:id/start', { preHandler: server.authenticate }, GameController.startGame);
 
   // Pause/Resume game
-  server.post<{ Params: GameParams }>('/api/games/:id/pause', async (request, reply) => {
-    const { id } = request.params;
-    const success = gameManager.pauseGame(id);
-    
-    if (!success) {
-      return reply.code(404).send({ error: 'Game not found', success: false });
-    }
-    
-    return { success: true };
-  });
+  server.post<{ Params: GameParams }>('/api/games/:id/pause', GameController.pauseGame);
 
   // Reset game
-  server.post<{ Params: GameParams }>('/api/games/:id/reset', async (request, reply) => {
-    const { id } = request.params;
-    const success = gameManager.resetGame(id);
-    
-    if (!success) {
-      return reply.code(404).send({ error: 'Game not found', success: false });
-    }
-    
-    return { success: true };
-  });
+  server.post<{ Params: GameParams }>('/api/games/:id/reset', { preHandler: server.authenticate }, GameController.resetGame);
 
   // Delete game
-  server.delete<{ Params: GameParams }>('/api/games/:id', async (request, reply) => {
-    const { id } = request.params;
-    const success = gameManager.deleteGame(id);
-    
-    if (!success) {
-      return reply.code(404).send({ error: 'Game not found', success: false });
-    }
-    
-    return { success: true };
-  });
+  server.delete<{ Params: GameParams }>('/api/games/:id', { preHandler: server.authenticate }, GameController.deleteGame);
+
+
+  
+  // Add a new route to record a local match
+  server.post('/api/games/record-match', { preHandler: server.authenticate }, GameController.recordMatch);
+
+  server.get('/api/user/match-history', { preHandler: server.authenticate }, GameController.getMatchHistory);
+  
+  server.get('/api/user/game-stats', { preHandler: server.authenticate }, GameController.getGameStats);
 
 
   /*
-  // Add a new route to record a local match
-  server.post('/api/games/record-match', { 
-    preHandler: server.authenticate 
-  }, async (request, reply) => {
-    const { gameId, userId, userSide, leftScore, rightScore, winner } = request.body as {
-      gameId: string;
-      userId: number;
-      userSide: 'left' | 'right';
-      leftScore: number;
-      rightScore: number;
-      winner: 'left' | 'right';
-    };
-    
-    // Cast request to AuthenticatedRequest to access user property
-    const authRequest = request as AuthenticatedRequest;
-    
-    try {
-      // Get database connection
-      const db = await getDb();
-      
-      // Verify that the authenticated user is the one recording the match
-      if (authRequest.user.id !== userId) {
-        return reply.code(403).send({
-          success: false,
-          message: 'You can only record your own matches'
-        });
-      }
-      
-      // Verify the game exists and has ended
-      const game = gameManager.getGame(gameId);
-      if (!game) {
-        return reply.code(404).send({
-          success: false,
-          message: 'Game not found'
-        });
-      }
-      
-      const gameState = game.getState();
-      if (gameState.status !== 'finished') {
-        return reply.code(400).send({
-          success: false,
-          message: 'Cannot record match for a game that has not finished'
-        });
-      }
-      
-      // For local games, use null for the second player
-      const player1Id = userSide === 'left' ? userId : null;
-      const player2Id = userSide === 'left' ? null : userId;
-      
-      // Determine the winner ID
-      const userWon = (userSide === 'left' && winner === 'left') || 
-                      (userSide === 'right' && winner === 'right');
-      const winnerId = userWon ? userId : null;
-      
-      // Record the match using your database connection
-      await GameStats.recordGameResult(
-        db,
-        player1Id,
-        player2Id,
-        winnerId,
-        leftScore,
-        rightScore
-      );
-      
-      return reply.send({
-        success: true,
-        message: 'Match recorded successfully'
-      });
-    } catch (error) {
-      console.error('Error recording match:', error);
-      return reply.status(500).send({
-        success: false,
-        message: 'Error recording match'
-      });
-    }
-  });
-
-  server.get('/api/user/match-history', { 
-    preHandler: server.authenticate 
-  }, async (request, reply) => {
-    try {
-      // Cast request to AuthenticatedRequest to access user property
-      const authRequest = request as AuthenticatedRequest;
-      const userId = authRequest.user.id;
-      
-      // Get database connection
-      const db = await getDb();
-      
-      const matchHistory = await GameStats.getUserMatchHistory(db, userId);
-      
-      return reply.send({
-        success: true,
-        matchHistory
-      });
-    } catch (error) {
-      console.error('Error fetching match history:', error);
-      return reply.status(500).send({
-        success: false,
-        message: 'Failed to fetch match history'
-      });
-    }
-  });
-
-  server.get('/api/user/game-stats', { 
-    preHandler: server.authenticate 
-  }, async (request, reply) => {
-    try {
-      // Cast request to AuthenticatedRequest to access user property
-      const authRequest = request as AuthenticatedRequest;
-      const userId = authRequest.user.id;
-      
-      // Get database connection
-      const db = await getDb();
-      
-      const stats = await GameStats.getUserStats(db, userId);
-      
-      return reply.send({
-        success: true,
-        stats
-      });
-    } catch (error) {
-      console.error('Error fetching game stats:', error);
-      return reply.status(500).send({
-        success: false,
-        message: 'Failed to fetch game statistics'
-      });
-    }
-  });
-  */
-
   server.post('/api/games/record-match', async (request, reply) => {
     const { gameId, userId, userSide, leftScore, rightScore, winner } = request.body as {
       gameId: string;
@@ -464,7 +233,7 @@ export default fp(async function setupRoutes(server: FastifyInstance) {
       });
     }
   });
-
+*/
   
   // Catch-all route for SPA
   server.setNotFoundHandler((request, reply) => {
