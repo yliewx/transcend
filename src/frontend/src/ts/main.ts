@@ -12,12 +12,14 @@ import { UserService } from './services/user.service';
 import { StatsPage } from './views/stats';
 import { PongGamePage } from './views/pong.game';
 import { NotFoundPage } from './views/notfound';
+import { GameStatsService } from './services/game.stats.service';
 
 document.addEventListener('DOMContentLoaded', () => {
   // Initialize application dependencies
   const appContainer = document.getElementById('app') as HTMLElement;
   const controlAccess = new ControlAccess(new AuthService());
   const userService = new UserService();
+  const gameStatsService = new GameStatsService(); 
   
   // Create router
   const router = new Router(appContainer, controlAccess);
@@ -33,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
   router.addRoute('/', new PageWithHeader(new HomePage(router), router));
   router.addRoute('/home', new PageWithHeader(new HomePage(router), router));
   router.addRoute('/play', new PageWithHeader(new PongGamePage(router), router));
-  router.addRoute('/stats', new PageWithHeader(new StatsPage(router), router));
+  router.addRoute('/stats', new PageWithHeader(new StatsPage(router, gameStatsService), router));
   router.addRoute('/profile', new PageWithHeader(new ProfilePage(router, userService), router));
   
   // 404 route

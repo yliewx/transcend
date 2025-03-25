@@ -1,26 +1,11 @@
-import { Page } from '../types';
+import { Page, GameStats, MatchHistoryItem } from '../types';
 import { Router } from '../router';
+import { GameStatsService } from '../services/game.stats.service';
 
-interface GameStats {
-  gamesPlayed: number;
-  gamesWon: number;
-  gamesLost: number;
-  winRate: string | number;
-}
-
-
-interface MatchHistoryItem {
-  id: number;
-  match_date: string;
-  user_name: string;
-  opponent_name: string;
-  user_score: number;
-  opponent_score: number;
-  user_won: number;
-}
 
 export class StatsPage implements Page {
   private router: Router;
+  private gameStatsService: GameStatsService;
   private userId: number | null = null;
   private stats: GameStats | null = null;
   private matchHistory: MatchHistoryItem[] = [];
@@ -28,8 +13,9 @@ export class StatsPage implements Page {
   private itemsPerPage: number = 10;
   private totalPages: number = 1;
   
-  constructor(router: Router) {
+  constructor(router: Router, gameStatsService: GameStatsService) {
     this.router = router;   
+    this.gameStatsService = gameStatsService;
     this.userId = null;
   }
   
@@ -147,23 +133,21 @@ export class StatsPage implements Page {
         throw new Error('User ID not found');
       }
       
-      // Load game stats
-      const statsResponse = await fetch(`/api/user/game-stats?userId=${this.userId}`);
-      if (!statsResponse.ok) {
+      // Load game stats using the service
+      const statsResponse = await this.gameStatsService.getGameStats(this.userId);
+      if (!statsResponse.success) {
         throw new Error('Failed to fetch game stats');
       }
       
-      const statsData = await statsResponse.json();
-      this.stats = statsData.stats;
+      this.stats = statsResponse.stats || null;
       
-      // Load match history
-      const historyResponse = await fetch(`/api/user/match-history?userId=${this.userId}`);
-      if (!historyResponse.ok) {
+      // Load match history using the service
+      const historyResponse = await this.gameStatsService.getMatchHistory(this.userId);
+      if (!historyResponse.success) {
         throw new Error('Failed to fetch match history');
       }
       
-      const historyData = await historyResponse.json();
-      this.matchHistory = historyData.matchHistory || [];
+      this.matchHistory = historyResponse.matchHistory || [];
       
       // Calculate total pages
       this.totalPages = Math.max(1, Math.ceil(this.matchHistory.length / this.itemsPerPage));
@@ -218,6 +202,7 @@ export class StatsPage implements Page {
     `;
     statsBoxesContainer.appendChild(winRateBox);
   }
+  
   private renderMatchHistory(): void {
     const tableBody = document.getElementById('match-history-table-body');
     if (!tableBody) return;
@@ -290,5 +275,5 @@ export class StatsPage implements Page {
     if (nextButton) {
         nextButton.disabled = this.currentPage >= this.totalPages;
     }
-}
+  }
 }
