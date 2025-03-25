@@ -25,74 +25,38 @@ class GameStats {
         );
     }
 
-    // static async getUserMatchHistory(db: Database, userId: number) {
-    //     return db.all(
-    //     `SELECT 
-    //         mh.id, 
-    //         mh.match_date, 
-    //         mh.left_score,
-    //         mh.right_score,
-    //         u1.username as player1_name,
-    //         u2.username as player2_name,
-    //         CASE 
-    //             WHEN mh.winner_id = mh.player1_id THEN u1.username
-    //             WHEN mh.winner_id = mh.player2_id THEN u2.username
-    //             ELSE NULL
-    //         END as winner_name,
-    //         CASE WHEN mh.player1_id = $userId THEN mh.left_score ELSE mh.right_score END as user_score,
-    //         CASE WHEN mh.player1_id = $userId THEN mh.right_score ELSE mh.left_score END as opponent_score,
-    //         (mh.winner_id = $userId) as user_won
-    //     FROM match_history mh
-    //     JOIN users u1 ON mh.player1_id = u1.id
-    //     JOIN users u2 ON mh.player2_id = u2.id
-    //     WHERE mh.player1_id = $userId OR mh.player2_id = $userId
-    //     ORDER BY mh.match_date DESC`,
-    //     { $userId: userId }
-    //     );
-    // }
-
     static async getUserMatchHistory(db: Database, userId: number) {
-        return db.all(`
+        const rows = await db.all(`
           SELECT 
             mh.id, 
-            mh.match_date, 
-            mh.left_score,
-            mh.right_score,
-            'You' as player1_name, /* Always the current user */
-            COALESCE(u2.username, 'Guest Player') as player2_name, /* Right side player */
-            CASE 
-              WHEN mh.winner_id = ? THEN 'You'
-              ELSE 'Opponent'
-            END as winner_name,
-            mh.left_score as user_score, /* Left score is always your score */
-            mh.right_score as opponent_score, /* Right score is always opponent score */
+            mh.match_date,
+            'You' as user_name,
+            CASE
+              WHEN mh.player1_id = ? THEN COALESCE(u2.username, 'Guest Player')
+              WHEN mh.player2_id = ? THEN COALESCE(u1.username, 'Guest Player')
+              ELSE 'Unknown Opponent'
+            END as opponent_name,
+            CASE
+              WHEN mh.player1_id = ? THEN mh.left_score
+              WHEN mh.player2_id = ? THEN mh.right_score
+              ELSE 0
+            END as user_score,
+            CASE
+              WHEN mh.player1_id = ? THEN mh.right_score
+              WHEN mh.player2_id = ? THEN mh.left_score
+              ELSE 0
+            END as opponent_score,
             (mh.winner_id = ?) as user_won
           FROM match_history mh
+          LEFT JOIN users u1 ON mh.player1_id = u1.id
           LEFT JOIN users u2 ON mh.player2_id = u2.id
-          WHERE mh.player1_id = ? /* Only get matches where you're the left player */
+          WHERE mh.player1_id = ? OR mh.player2_id = ?
           ORDER BY mh.match_date DESC
-        `, userId, userId, userId);
-      }
-
-
-    // static async getUserStats(db: Database, userId: number) {
-    //     const stats = await db.get(
-    //     `SELECT 
-    //         COUNT(*) as games_played,
-    //         SUM(CASE WHEN winner_id = ? THEN 1 ELSE 0 END) as games_won,
-    //         SUM(CASE WHEN winner_id IS NOT NULL AND winner_id != ? THEN 1 ELSE 0 END) as games_lost
-    //     FROM match_history
-    //     WHERE player1_id = ? OR player2_id = ?`,
-    //     userId, userId, userId, userId
-    //     );
+        `, userId, userId, userId, userId, userId, userId, userId, userId, userId);
         
-    //     return {
-    //     gamesPlayed: stats.games_played,
-    //     gamesWon: stats.games_won,
-    //     gamesLost: stats.games_lost,
-    //     winRate: stats.games_played > 0 ? (stats.games_won / stats.games_played * 100).toFixed(1) : 0
-    //     };
-    // }
+        return rows;
+    }
+
 
     static async getUserStats(db: Database, userId: number) {
         const stats = await db.get(
