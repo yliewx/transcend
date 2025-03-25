@@ -8,17 +8,15 @@ interface GameStats {
   winRate: string | number;
 }
 
+
 interface MatchHistoryItem {
   id: number;
   match_date: string;
-  player1_name: string;
-  player2_name: string | null;
-  left_score: number;
-  right_score: number;
-  winner_name: string | null;
+  user_name: string;
+  opponent_name: string;
   user_score: number;
   opponent_score: number;
-  user_won: number; // 1 for true, 0 for false
+  user_won: number;
 }
 
 export class StatsPage implements Page {
@@ -142,7 +140,6 @@ export class StatsPage implements Page {
     document.getElementById('stats-error')?.classList.add('hidden');
 
     const userIdStr = sessionStorage.getItem('userId');
-    console.log('userId: ', userIdStr);
     this.userId = userIdStr ? parseInt(userIdStr, 10) : null;
     
     try {
@@ -221,8 +218,7 @@ export class StatsPage implements Page {
     `;
     statsBoxesContainer.appendChild(winRateBox);
   }
-  
-private renderMatchHistory(): void {
+  private renderMatchHistory(): void {
     const tableBody = document.getElementById('match-history-table-body');
     if (!tableBody) return;
     
@@ -235,46 +231,44 @@ private renderMatchHistory(): void {
     const currentItems = this.matchHistory.slice(startIndex, endIndex);
     
     if (currentItems.length === 0) {
-    // No match history
-    const emptyRow = document.createElement('tr');
-    emptyRow.innerHTML = `
-        <td colspan="4" class="px-4 py-6 text-center text-gray-500">
-        No match history found. Play some games to see your stats!
-        </td>
-    `;
-    tableBody.appendChild(emptyRow);
-    } else {
-    currentItems.forEach(match => {
-        const matchDate = new Date(match.match_date).toLocaleDateString();
-        
-        // Since we're always the left player, opponent is always right player
-        const opponentName = match.player2_name || 'Guest Player';
-        
-        const row = document.createElement('tr');
-        row.className = 'border-t border-gray-200 hover:bg-gray-50';
-        
-        row.innerHTML = `
-        <td class="px-4 py-3 text-sm text-gray-600">${matchDate}</td>
-        <td class="px-4 py-3 text-sm text-gray-600">${opponentName}</td>
-        <td class="px-4 py-3 text-center text-sm font-medium">
-            <span class="${match.user_won === 1 ? 'text-green-600' : 'text-gray-600'}">${match.left_score}</span>
-            <span class="text-gray-400 mx-1">-</span>
-            <span class="${match.user_won === 0 ? 'text-red-600' : 'text-gray-600'}">${match.right_score}</span>
-        </td>
-        <td class="px-4 py-3 text-center">
-            <span class="inline-block px-2 py-1 text-xs font-semibold rounded-full ${
-            match.user_won === 1
-                ? 'bg-green-100 text-green-800' 
-                : 'bg-red-100 text-red-800'
-            }">
-            ${match.user_won === 1 ? 'Win' : 'Loss'}
-            </span>
-        </td>
+        // No match history
+        const emptyRow = document.createElement('tr');
+        emptyRow.innerHTML = `
+            <td colspan="4" class="px-4 py-6 text-center text-gray-500">
+            No match history found. Play some games to see your stats!
+            </td>
         `;
-        
-        tableBody.appendChild(row);
-    });
+        tableBody.appendChild(emptyRow);
+    } else {
+        currentItems.forEach(match => {
+            const matchDate = new Date(match.match_date).toLocaleDateString();
+            
+            const row = document.createElement('tr');
+            row.className = 'border-t border-gray-200 hover:bg-gray-50';
+            
+            row.innerHTML = `
+            <td class="px-4 py-3 text-sm text-gray-600">${matchDate}</td>
+            <td class="px-4 py-3 text-sm text-gray-600">${match.opponent_name}</td>
+            <td class="px-4 py-3 text-center text-sm font-medium">
+                <span class="${match.user_won === 1 ? 'text-green-600' : 'text-gray-600'}">${match.user_score}</span>
+                <span class="text-gray-400 mx-1">-</span>
+                <span class="${match.user_won === 0 ? 'text-red-600' : 'text-gray-600'}">${match.opponent_score}</span>
+            </td>
+            <td class="px-4 py-3 text-center">
+                <span class="inline-block px-2 py-1 text-xs font-semibold rounded-full ${
+                match.user_won === 1
+                    ? 'bg-green-100 text-green-800' 
+                    : 'bg-red-100 text-red-800'
+                }">
+                ${match.user_won === 1 ? 'Win' : 'Loss'}
+                </span>
+            </td>
+            `;
+            
+            tableBody.appendChild(row);
+        });
     }
+
     // Update pagination info
     const paginationInfo = document.getElementById('pagination-info');
     if (paginationInfo) {
