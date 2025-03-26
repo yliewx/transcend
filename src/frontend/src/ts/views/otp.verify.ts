@@ -103,7 +103,8 @@ export class OTPVerificationPage implements Page {
       const result = await this.controlAccess.verifyOtp(otpCode);
       if (result.success) {
         // Show success message
-        console.log("OTP verified. Login successful")
+        console.log("OTP verified. Login successful");
+        this.router.navigateTo('/home');
       } else {
         if (errorMessage) {
           errorMessage.textContent = result.error || 'OTP verification failed. Please try again.';

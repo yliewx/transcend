@@ -70,6 +70,44 @@ export class ControlAccess {
   //     return { success: false, error: 'Unable to refresh access token: ' + error };
   //   }
   // }
+  async checkTokenExpiry(token_type: string) {
+    if (!token_type) {
+      console.error("Token type is undefined");
+      return false;
+    }
+    
+    try {
+      const response = await fetch(`/api/auth/${token_type}/expiry`, {
+        method: 'GET',
+        credentials: 'include'
+      });
+
+      const responseData = await response.json();
+      // If refresh token is invalid
+      if (!responseData.valid) {
+        console.log(`Invalid ${token_type} token`);
+        return false;
+      }
+
+      // If valid: check expiry
+      if (responseData.expiresAt) {
+        const expiresAt = new Date(responseData.expiresAt);
+        const now = new Date();
+  
+        if (expiresAt < now) {
+          console.log("Token has expired");
+          return false;
+        } else {
+          console.log(`Token is valid. Expires at: ${expiresAt}`);
+          return true;
+        }
+      }
+    } catch (error) {
+      console.error("Error checking token:", error);
+      return false;
+    }
+  }
+
   async handleTokenRefresh(): Promise<{ success: boolean, message?: string }> {
     try {
       const response = await fetch('/api/auth/refresh', {
