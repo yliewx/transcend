@@ -41,19 +41,46 @@ export class Router {
     if (path === this.currentPath) return; // Prevent re-navigation
 
     console.log(`Attempting to navigate to: ${path}, isAuthenticated: ${this.controlAccess.isLoggedIn()}`);
-    
-    // Redirect to login if trying to access protected routes while not authenticated
-    if (!this.controlAccess.isLoggedIn() && this.isProtectedRoute(path) && path !== '/login') {
-      // Refresh access token if valid refresh token exists
-      const result = await this.controlAccess.handleTokenRefresh();
-      // Redirect to login if token refresh failed
-      if (!result.success) {
-        console.log('Redirecting to login - protected route accessed while not authenticated');
-        window.history.pushState({ path: '/login' }, '', '/login');
-        this.handleRoute('/login');
+    // If trying to access protected route
+    if (this.controlAccess.isLoggedIn() && this.isProtectedRoute(path)) {
+      // Check whether access token has expired
+      const validAccessToken = await this.controlAccess.checkTokenExpiry('access');
+      if (!validAccessToken) {
+        // Check whether refresh token has expired
+        const validRefreshToken = await this.controlAccess.checkTokenExpiry('refresh');
+        if (!validRefreshToken) {
+          // Redirect to login without attempting token refresh
+          console.log('Redirecting to login - protected route accessed while not authenticated');
+          window.history.pushState({ path: '/login' }, '', '/login');
+          this.handleRoute('/login');
+          return ;
+        }
+        else {
+          // Refresh access token if valid refresh token exists
+          console.log('Attempting token refresh');
+          const result = await this.controlAccess.handleTokenRefresh();
+          if (!result.success) {
+            console.log('Redirecting to login - failed to refresh access token');
+            window.history.pushState({ path: '/login' }, '', '/login');
+            this.handleRoute('/login');
+            return ;
+          }
+        }
       }
-      return;
     }
+
+    // // Redirect to login if trying to access protected routes while not authenticated
+    // if (!this.controlAccess.isLoggedIn() && this.isProtectedRoute(path) && path !== '/login') {
+    //   // Refresh access token if valid refresh token exists
+    //   const result = await this.controlAccess.handleTokenRefresh();
+    //   // Redirect to login if token refresh failed
+    //   if (!result.success) {
+    //     console.log('Redirecting to login - protected route accessed while not authenticated');
+    //     window.history.pushState({ path: '/login' }, '', '/login');
+    //     this.handleRoute('/login');
+    //   }
+    //   return;
+    // }
     
     // // Redirect to home if trying to access auth routes while authenticated
     // if (this.controlAccess.isLoggedIn() && this.isAuthRoute(path)) {
