@@ -5,12 +5,29 @@ export class BaseApiService {
     this.baseUrl = baseUrl;
   }
 
+  /*--------------------------REFRESH ACCESS TOKEN--------------------------*/
+
+  protected async refreshAccessToken(): Promise<{ success: boolean; message?: string }> {
+    const response = await this.request<{ success: boolean, message?: string }>(
+      '/auth/refresh',
+      'POST',
+      undefined,
+      true,
+      { omitContentType: true }
+    );
+    
+    return response;
+  }
+
+  /*----------------------------REQUEST HANDLER-----------------------------*/
+
   protected async request<T>(
     endpoint: string, 
     method: 'GET' | 'POST' | 'PUT' | 'DELETE',
     body?: any, 
     requiresAuth: boolean = false,
-    options: { omitContentType?: boolean} = {}
+    options: { omitContentType?: boolean} = {},
+    retry: boolean = true // resend request upon failure
   ): Promise<{success: boolean, error?: string} & T> {
     try {
       const url = `${this.baseUrl}${endpoint}`;
@@ -32,7 +49,25 @@ export class BaseApiService {
       });
 
       console.log(`Response status: ${response.status}`);
-      
+
+      // // Try refreshing access token once if expired
+      // if (response.status === 401 && retry) {
+      //   console.error('Access token expired. Attempting refresh...');
+        
+      //   const refreshResult = await this.refreshAccessToken();
+      //   if (refreshResult.success) {
+      //     console.log('Access token refreshed! Retrying request...');
+      //     return this.request<T>(endpoint, method, body, requiresAuth, options, false);
+      //   } else {
+      //     console.error('Token refresh failed.');
+      //     retry = false;
+      //     return {
+      //       success: false,
+      //       error: 'Unauthorized. Please log in again.'
+      //     } as { success: boolean; error?: string } & T;
+      //   }
+      // }
+
       // Parse response
       const responseData = await response.json();
       

@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 CREATE TABLE IF NOT EXISTS refresh_tokens (
-  user_id INTEGER NOT NULL,
+  user_id INTEGER PRIMARY KEY,
   token_id TEXT UNIQUE NOT NULL,
   expires_at DATETIME NOT NULL,
   created_at DATETIME DEFAULT (datetime('now')) NOT NULL,

@@ -70,6 +70,18 @@ export class AuthService extends BaseApiService {
     };
   }
 
+  public async generateQRCode(): Promise<{ success: boolean; qrCode?: string; secret: string | null }> {
+    const response = await this.request<{ success: boolean; qrCode?: string; secret: string | null }>(
+      '/otp/qrcode',
+      'GET',
+      undefined,
+      true,
+      { omitContentType: true}
+    );
+
+    return response;
+  }
+
   /*-------------------------------VERIFY OTP-------------------------------*/
 
   public async verifyOtp(otp: string): Promise<{ success: boolean; message?: string }> {
@@ -83,6 +95,12 @@ export class AuthService extends BaseApiService {
     return response;
   }
 
+  /*--------------------------REFRESH ACCESS TOKEN--------------------------*/
+
+  public async handleTokenRefresh(): Promise<{ success: boolean; message?: string }> {
+    return this.refreshAccessToken();
+  }
+
   /*---------------------------------LOGOUT---------------------------------*/
 
   public async logout(): Promise<{success: boolean, message?: string, error?: string}> {
@@ -93,12 +111,6 @@ export class AuthService extends BaseApiService {
       true,
       { omitContentType: true}
     );
-    
-    // If logout was successful, clear JWT token from storage
-    if (response.success) {
-      localStorage.removeItem('jwt');
-      sessionStorage.removeItem('jwt');
-    }
     
     return response;
   }

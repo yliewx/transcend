@@ -139,6 +139,24 @@ class User {
         return { id };
     }
 
+    // Get OTP secret
+    static async getOtpSecret(db: Database, id: number) {
+        const row = await db.get('SELECT otp_secret, otp_auth_url FROM users WHERE id = ?', [id]);
+        if (!row || !row.otp_secret) {
+            return null;
+        }
+        return row.otp_secret;
+    }
+
+    // Get OTP url
+    static async getOtpAuthUrl(db: Database, id: number) {
+        const row = await db.get('SELECT otp_secret, otp_auth_url FROM users WHERE id = ?', [id]);
+        if (!row || !row.otp_auth_url) {
+            return null;
+        }
+        return row.otp_auth_url;
+    }
+
     // Set OTP secret
     static async setOtpSecret(db: Database, id: number, otpSecret: string, otpAuthUrl: string) {
         await db.run('UPDATE users SET otp_secret = ?, otp_auth_url = ? WHERE id = ?', [otpSecret, otpAuthUrl, id]);
