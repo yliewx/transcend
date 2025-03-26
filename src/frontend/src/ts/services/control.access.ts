@@ -52,24 +52,8 @@ export class ControlAccess {
   }
 
   /**
-   * Attempts to request access token if valid refresh token exists (bypass OTP verification)
+   * Check if token in HTTP-only cookie has expired
    */
-  // public async handleTokenRefresh(): Promise<{ success: boolean, error?: string }> {
-  //   try {
-  //     const result = await this.authService.handleTokenRefresh();
-
-  //     if (result.success) {
-  //       this.setAuthenticated(true);
-  //     } else {
-  //       this.setAuthenticated(false);
-  //     }
-  //     return result;
-  //   }
-  //   catch (error) {
-  //     this.setAuthenticated(false);
-  //     return { success: false, error: 'Unable to refresh access token: ' + error };
-  //   }
-  // }
   async checkTokenExpiry(token_type: string) {
     if (!token_type) {
       console.error("Token type is undefined");
@@ -108,17 +92,19 @@ export class ControlAccess {
     }
   }
 
+  /**
+   * Attempts to request access token if valid refresh token exists (bypass OTP verification)
+   */
   async handleTokenRefresh(): Promise<{ success: boolean, message?: string }> {
     try {
       const response = await fetch('/api/auth/refresh', {
         method: 'POST',
-        credentials: 'include', // Include cookies if using cookie-based refresh tokens
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json'
         }
       });
       
-      // If we get a 401, immediately return failure without trying to parse the response
       if (response.status === 401) {
         return { success: false, message: 'Refresh token invalid or expired' };
       }
