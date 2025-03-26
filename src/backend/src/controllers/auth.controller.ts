@@ -75,6 +75,8 @@ async function createRefreshToken(db: Database, user: any, reply: FastifyReply) 
   return refreshToken;
 }
 
+/*---------------------------CHECK TOKEN EXPIRY-----------------------------*/
+
 export async function getAccessTokenExpiry(request: FastifyRequest, reply: FastifyReply) {
   const accessToken = request.cookies.accessToken;
   if (!accessToken) return reply.send({ valid: false });
@@ -82,6 +84,7 @@ export async function getAccessTokenExpiry(request: FastifyRequest, reply: Fasti
   try {
     const decoded = await request.server.jwtVerify(accessToken,
       process.env.ACCESS_TOKEN_SECRET as string) as jwt.JwtPayload & AuthTokenPayload;
+      
     return reply.send({
       valid: true,
       expiresAt: decoded.exp ? new Date(decoded.exp * 1000) : null
@@ -98,6 +101,7 @@ export async function getRefreshTokenExpiry(request: FastifyRequest, reply: Fast
   try {
     const decoded = await request.server.jwtVerify(refreshToken,
       process.env.REFRESH_TOKEN_SECRET as string) as jwt.JwtPayload & AuthTokenPayload;
+
     return reply.send({
       valid: true,
       expiresAt: decoded.exp ? new Date(decoded.exp * 1000) : null
