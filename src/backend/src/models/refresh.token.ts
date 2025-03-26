@@ -1,5 +1,6 @@
 import { Database } from 'sqlite';
-import { RefreshTokenPayload } from '../plugins/jwt';
+import { AuthTokenPayload } from '../plugins/jwt';
+import bcrypt from 'bcrypt';
 
 class RefreshToken {
     /*------------------------------SEARCH USER-----------------------------*/
@@ -11,47 +12,65 @@ class RefreshToken {
 
     /*-----------------------------MANAGE TOKEN-----------------------------*/
 
-    // Update refresh token id which expires in 7 days
-    static async refresh(db: Database, user_id: number) {
+    // Create refresh token id which expires in 7 days
+    static async create(db: Database, user_id: number) {
+        // Generate and hash token id
         const token_id = crypto.randomUUID();
+        const hashed_token_id = await bcrypt.hash(token_id, 10); 
+
+        // Replace existing entry if it already exists for that user
         await db.run(
-            'INSERT INTO refresh_tokens (user_id, token_id, expires_at) VALUES (?, ?, ?)',
-            [user_id, token_id, Date.now() + 7 * 24 * 60 * 60 * 1000]
+            'INSERT OR REPLACE INTO refresh_tokens (user_id, token_id, expires_at) VALUES (?, ?, ?)',
+            [user_id, hashed_token_id, Date.now() + 7 * 24 * 60 * 60 * 1000]
         );
+
+        return token_id;
     }
 
     // Check whether decoded token_id matches the user's token_id in database
-    // decoded = await request.jwtVerify<RefreshTokenPayload>();
-    static async verify(db: Database, user_id: number, decoded: RefreshTokenPayload) {
-        const tokenExists = await db.get(
-            'SELECT * FROM refresh_tokens WHERE token_id = ? AND user_id = ?',
-            [decoded.token_id, decoded.user_id]
+    static async verify(db: Database, user_id: number, decoded: AuthTokenPayload) {
+        // Check for invalid/missing field in token payload
+        if (decoded.token_type !== 'refresh' || !decoded.token_id) {
+            throw new Error('Invalid token type or missing token ID');
+        }
+
+        const storedToken = await db.get(
+            'SELECT * FROM refresh_tokens WHERE user_id = ?', decoded.id
         );
 
-        if (!tokenExists) {
-            throw new Error('Invalid or expired refresh token');
+        // Check if token doesn't exist or has expired
+        if (!storedToken) {
+            throw new Error('Invalid or expired refresh token (1)');
+        }
+        
+        if (Date.now() > storedToken.expires_at) {
+            throw new Error('Invalid or expired refresh token (2)');
+        }
+
+        // Validate token_id
+        const match = await bcrypt.compare(decoded.token_id, storedToken.token_id);
+        if (!match) {
+            throw new Error('Invalid or expired refresh token (3)');
         }
     }
 
     // Invalidate refresh token (for security purposes)
     static async deleteByUser(db: Database, user_id: number) {
-        const tokenExists = await db.get(
-            'DELETE * FROM refresh_tokens WHERE user_id = ?',
-            user_id
+        const storedToken = await db.get(
+            'DELETE * FROM refresh_tokens WHERE user_id = ?', user_id
         );
 
-        if (!tokenExists) {
+        if (!storedToken) {
             throw new Error('No valid refresh token found');
         }
     }
 
     static async deleteByToken(db: Database, token_id: string) {
-        const tokenExists = await db.get(
-            'DELETE * FROM refresh_tokens WHERE token_id = ?',
-            token_id
+        const storedToken = await db.get(
+            'DELETE * FROM refresh_tokens WHERE token_id = ?', token_id
         );
 
-        if (!tokenExists) {
+        if (!storedToken) {
             throw new Error('Invalid refresh token ID');
         }
     }

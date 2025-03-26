@@ -13,19 +13,22 @@ export class Router {
 
     // Handle popstate events (browser back/forward buttons)
     window.addEventListener('popstate', (event) => {
-      this.handleRoute(window.location.pathname);
-    });
-    
-    // Listen for authentication state changes
-    this.controlAccess.addAuthStateChangeListener((isAuthenticated: boolean) => {
-      if (isAuthenticated) {
-        // Redirect to home when user logs in
-        this.navigateTo('/home');
-      } else {
-        // Redirect to login when user logs out
-        this.navigateTo('/login');
+      const newPath = window.location.pathname;
+      if (newPath !== this.currentPath) {
+        this.handleRoute(newPath);
       }
     });
+    
+    // // Listen for authentication state changes
+    // this.controlAccess.addAuthStateChangeListener((isAuthenticated: boolean) => {
+    //   if (isAuthenticated) {
+    //     // Redirect to home when user logs in
+    //     this.navigateTo('/home');
+    //   } else {
+    //     // Redirect to login when user logs out
+    //     this.navigateTo('/login');
+    //   }
+    // });
   }
 
   // Register routes
@@ -34,14 +37,21 @@ export class Router {
   }
 
   // Navigate to a specific route
-  navigateTo(path: string): void {
+  async navigateTo(path: string): Promise<void> {
+    if (path === this.currentPath) return; // Prevent re-navigation
+
     console.log(`Attempting to navigate to: ${path}, isAuthenticated: ${this.controlAccess.isLoggedIn()}`);
     
     // Redirect to login if trying to access protected routes while not authenticated
-    if (!this.controlAccess.isLoggedIn() && this.isProtectedRoute(path)) {
-      console.log('Redirecting to login - protected route accessed while not authenticated');
-      window.history.pushState({ path: '/login' }, '', '/login');
-      this.handleRoute('/login');
+    if (!this.controlAccess.isLoggedIn() && this.isProtectedRoute(path) && path !== '/login') {
+      // Refresh access token if valid refresh token exists
+      const result = await this.controlAccess.handleTokenRefresh();
+      // Redirect to login if token refresh failed
+      if (!result.success) {
+        console.log('Redirecting to login - protected route accessed while not authenticated');
+        window.history.pushState({ path: '/login' }, '', '/login');
+        this.handleRoute('/login');
+      }
       return;
     }
     

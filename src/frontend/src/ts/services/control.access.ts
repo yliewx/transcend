@@ -12,6 +12,22 @@ export class ControlAccess {
   /**
    * Checks if the user is authenticated based on JWT token presence
    */
+  /*  private async checkAuthentication(): Promise<void> {
+    try {
+      // Request access token if valid refresh token exists
+      const result = await this.authService.handleTokenRefresh();
+
+      if (result.success) {
+        this.setAuthenticated(true);
+      } else {
+        this.setAuthenticated(false);
+      }
+    }
+    catch (error) {
+      console.error('Unable to refresh access token:', error);
+      this.setAuthenticated(false);
+    }
+  }*/
   private checkAuthentication(): void {
     // Check for JWT token in localStorage instead of cookie
     const token = localStorage.getItem('jwt') || sessionStorage.getItem('jwt');
@@ -32,6 +48,57 @@ export class ControlAccess {
     if (this.isAuthenticated !== status) {
       this.isAuthenticated = status;
       this.notifyListeners();
+    }
+  }
+
+  /**
+   * Attempts to request access token if valid refresh token exists (bypass OTP verification)
+   */
+  // public async handleTokenRefresh(): Promise<{ success: boolean, error?: string }> {
+  //   try {
+  //     const result = await this.authService.handleTokenRefresh();
+
+  //     if (result.success) {
+  //       this.setAuthenticated(true);
+  //     } else {
+  //       this.setAuthenticated(false);
+  //     }
+  //     return result;
+  //   }
+  //   catch (error) {
+  //     this.setAuthenticated(false);
+  //     return { success: false, error: 'Unable to refresh access token: ' + error };
+  //   }
+  // }
+  async handleTokenRefresh(): Promise<{ success: boolean, message?: string }> {
+    try {
+      const response = await fetch('/api/auth/refresh', {
+        method: 'POST',
+        credentials: 'include', // Include cookies if using cookie-based refresh tokens
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      // If we get a 401, immediately return failure without trying to parse the response
+      if (response.status === 401) {
+        return { success: false, message: 'Refresh token invalid or expired' };
+      }
+      
+      if (!response.ok) {
+        return { success: false, message: `Server error: ${response.status}` };
+      }
+      
+      const data = await response.json();
+      
+      if (data.token) {
+        // localStorage.setItem('jwt', data.token);
+        return { success: true };
+      } else {
+        return { success: false, message: 'No token in response' };
+      }
+    } catch (error) {
+      return { success: false, message: String(error) };
     }
   }
   
