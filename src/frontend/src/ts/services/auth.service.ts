@@ -1,5 +1,10 @@
 import { BaseApiService } from "./base.api";
 
+interface TokenStatusResponse {
+  accessTokenExpiry: Date | null;
+  refreshTokenExpiry: Date | null;
+}
+
 // Derived class for handling authentication-related requests
 export class AuthService extends BaseApiService {
 
@@ -97,8 +102,32 @@ export class AuthService extends BaseApiService {
 
   /*--------------------------REFRESH ACCESS TOKEN--------------------------*/
 
-  public async handleTokenRefresh(): Promise<{ success: boolean; message?: string }> {
-    return this.refreshAccessToken();
+  public async checkTokenStatus(): Promise<{ success: boolean, status?: TokenStatusResponse }> {
+    const response = await this.request<{ success: boolean, status?: TokenStatusResponse }>(
+      '/auth/refresh/status', 
+      'GET',
+      undefined,
+      true,
+      { omitContentType: true}
+    );
+
+    if (!response.status) {
+      return { success: response.success };
+    }
+    
+    return response;
+  }
+
+  public async refreshAccessToken(): Promise<{ success: boolean, message?: string, error?: string, accessTokenExpiry: Date | null }> {
+    const response = await this.request<{ success: boolean, message?: string, error?: string, accessTokenExpiry: Date | null }>(
+      '/auth/refresh', 
+      'POST',
+      undefined,
+      true,
+      { omitContentType: true}
+    );
+    
+    return response;
   }
 
   /*---------------------------------LOGOUT---------------------------------*/

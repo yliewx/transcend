@@ -7,17 +7,17 @@ export class BaseApiService {
 
   /*--------------------------REFRESH ACCESS TOKEN--------------------------*/
 
-  protected async refreshAccessToken(): Promise<{ success: boolean; message?: string }> {
-    const response = await this.request<{ success: boolean, message?: string }>(
-      '/auth/refresh',
-      'POST',
-      undefined,
-      true,
-      { omitContentType: true }
-    );
+  // protected async refreshAccessToken(): Promise<{ success: boolean; message?: string }> {
+  //   const response = await this.request<{ success: boolean, message?: string }>(
+  //     '/auth/refresh',
+  //     'POST',
+  //     undefined,
+  //     true,
+  //     { omitContentType: true }
+  //   );
     
-    return response;
-  }
+  //   return response;
+  // }
 
   /*----------------------------REQUEST HANDLER-----------------------------*/
 
@@ -26,8 +26,7 @@ export class BaseApiService {
     method: 'GET' | 'POST' | 'PUT' | 'DELETE',
     body?: any, 
     requiresAuth: boolean = false,
-    options: { omitContentType?: boolean} = {},
-    retry: boolean = true // resend request upon failure
+    options: { omitContentType?: boolean} = {}
   ): Promise<{success: boolean, error?: string} & T> {
     try {
       const url = `${this.baseUrl}${endpoint}`;

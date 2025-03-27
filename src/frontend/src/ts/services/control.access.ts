@@ -4,39 +4,44 @@ import { UserService } from './user.service';
 export class ControlAccess {
   private isAuthenticated: boolean = false;
   private authStateChangeListeners: ((isAuthenticated: boolean) => void)[] = [];
+  private accessTokenExpiry: Date | null = null;
+  private refreshTokenExpiry: Date | null = null;
   
   constructor(private authService: AuthService) {
-    this.checkAuthentication();
+    this.checkAuthStatus();
   }
-  
-  /**
-   * Checks if the user is authenticated based on JWT token presence
-   */
-  /*  private async checkAuthentication(): Promise<void> {
-    try {
-      // Request access token if valid refresh token exists
-      const result = await this.authService.handleTokenRefresh();
 
-      if (result.success) {
-        this.setAuthenticated(true);
-      } else {
+  /* valid access: proceed to handleRoute
+  invalid access + invalid refresh: redirect to login
+  invalid access + valid refresh: refresh access token -> redirect to login on failure */
+  public async checkAuthStatus(): Promise<boolean> {
+    // Update expiry time of existing tokens
+    this.checkTokenStatus();
+    
+    // Check whether access token has expired
+    if (this.isExpiredToken('access')) {
+      // Check whether refresh token has expired
+      if (this.isExpiredToken('refresh')) {
+        console.log('[ControlAccess] No valid refresh token found.');
         this.setAuthenticated(false);
+      } else {
+        // Refresh access token if valid refresh token exists
+        console.log('[ControlAccess] Attempting token refresh...');
+        const result = await this.handleTokenRefresh();
+        if (!result.success) {
+          console.log('[ControlAccess] Failed to refresh access token.');
+          this.setAuthenticated(false);
+        }
       }
+    } else {
+      this.setAuthenticated(true);
     }
-    catch (error) {
-      console.error('Unable to refresh access token:', error);
-      this.setAuthenticated(false);
-    }
-  }*/
-  private checkAuthentication(): void {
-    // Check for JWT token in localStorage instead of cookie
-    const token = localStorage.getItem('jwt') || sessionStorage.getItem('jwt');
-    this.isAuthenticated = !!token;
+    return this.isAuthenticated;
   }
-  
+
   /**
-   * Returns the current authentication status
-   */
+ * Returns the current authentication status
+ */
   public isLoggedIn(): boolean {
     return this.isAuthenticated;
   }
@@ -52,71 +57,66 @@ export class ControlAccess {
   }
 
   /**
-   * Check if token in HTTP-only cookie has expired
+   * Check and update expiry time of JWT token in HTTP-only cookie
    */
-  async checkTokenExpiry(token_type: string) {
-    if (!token_type) {
-      console.error("Token type is undefined");
-      return false;
-    }
-    
+  private async checkTokenStatus(): Promise<void> {
     try {
-      const response = await fetch(`/api/auth/${token_type}/expiry`, {
-        method: 'GET',
-        credentials: 'include'
-      });
+      // Get status of access token and refresh token
+      const result = await this.authService.checkTokenStatus();
 
-      const responseData = await response.json();
-      // If refresh token is invalid
-      if (!responseData.valid) {
-        console.log(`Invalid ${token_type} token`);
+      if (!result.success) {
+        throw new Error('Failed to fetch auth token status');
+      }
+      if (!result.status) {
+        throw new Error('Token status is missing in response');
+      }
+
+      // Set token expiry
+      this.accessTokenExpiry = result.status.accessTokenExpiry ? new Date(result.status.accessTokenExpiry) : null;
+      this.refreshTokenExpiry = result.status.refreshTokenExpiry ? new Date(result.status.refreshTokenExpiry) : null;
+    } catch (error) {
+      console.error("Error checking authentication:", error);
+    }
+  }
+  
+  /**
+   * Check if token has expired
+   */
+  private isExpiredToken(token_type: 'access' | 'refresh'): boolean {
+    const expiry = token_type === 'access' ? this.accessTokenExpiry : this.refreshTokenExpiry;
+    const now = new Date();
+    
+    if (expiry) {
+      if (expiry < now) {
+        console.log(`Token: ${token_type} has expired.`);
+        return true;
+      } else {
+        console.log(`Token: ${token_type} is valid. Expires at: ${expiry}`);
         return false;
       }
-
-      // If valid: check expiry
-      if (responseData.expiresAt) {
-        const expiresAt = new Date(responseData.expiresAt);
-        const now = new Date();
-  
-        if (expiresAt < now) {
-          console.log("Token has expired");
-          return false;
-        } else {
-          console.log(`Token is valid. Expires at: ${expiresAt}`);
-          return true;
-        }
-      }
-    } catch (error) {
-      console.error("Error checking token:", error);
-      return false;
     }
+    return true;
   }
 
   /**
    * Attempts to request access token if valid refresh token exists (bypass OTP verification)
    */
-  async handleTokenRefresh(): Promise<{ success: boolean, message?: string }> {
+  public async handleTokenRefresh(): Promise<{ success: boolean, message?: string }> {
+    // Check if refresh token has expired
+    if (this.isExpiredToken('refresh')) {
+      this.setAuthenticated(false);
+      return { success: false, message: 'Refresh token expired' };
+    }
+
     try {
-      const response = await fetch('/api/auth/refresh', {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
+      const result = await this.authService.refreshAccessToken();
       
-      if (response.status === 401) {
+      if (!result.success) {
         return { success: false, message: 'Refresh token invalid or expired' };
       }
       
-      if (!response.ok) {
-        return { success: false, message: `Server error: ${response.status}` };
-      }
-      
-      const data = await response.json();
-      
-      if (data.token) {
-        // localStorage.setItem('jwt', data.token);
+      if (result.accessTokenExpiry) {
+        this.accessTokenExpiry = new Date(result.accessTokenExpiry);
         return { success: true };
       } else {
         return { success: false, message: 'No token in response' };

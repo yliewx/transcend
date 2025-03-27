@@ -41,7 +41,7 @@ export class Router {
   }
 
   // Redirect to login
-  redirectToLogin(message: string) {
+  redirectToLogin(message?: string) {
     console.log('Redirecting to login page.', message);
     window.history.pushState({ path: '/login' }, '', '/login');
     this.handleRoute('/login');
@@ -53,36 +53,13 @@ export class Router {
 
     console.log(`Attempting to navigate to: ${path}, isAuthenticated: ${this.controlAccess.isLoggedIn()}`);
     
-    // If trying to access protected route after user has logged in
-    if (this.controlAccess.isLoggedIn() && this.isProtectedRoute(path)) {
-      // Check whether access token has expired
-      const validAccessToken = await this.controlAccess.checkTokenExpiry('access');
-      if (!validAccessToken) {
-        // Check whether refresh token has expired
-        const validRefreshToken = await this.controlAccess.checkTokenExpiry('refresh');
-        if (!validRefreshToken) {
-          this.redirectToLogin('No valid refresh token found');
-          return ;
-        }
-        else {
-          // Refresh access token if valid refresh token exists
-          console.log('Attempting token refresh');
-          const result = await this.controlAccess.handleTokenRefresh();
-          if (!result.success) {
-            this.redirectToLogin('Failed to refresh access token');
-            return ;
-          }
-        }
+    if (this.isProtectedRoute(path)) {
+      const isAuthenticated = await this.controlAccess.checkAuthStatus();
+      if (!isAuthenticated) {
+        this.redirectToLogin('');
+        return ;
       }
     }
-
-    // // Redirect to home if trying to access auth routes while authenticated
-    // if (this.controlAccess.isLoggedIn() && this.isAuthRoute(path)) {
-    //   console.log('Redirecting to home - auth route accessed while authenticated');
-    //   window.history.pushState({ path: '/home' }, '', '/home');
-    //   this.handleRoute('/home');
-    //   return;
-    // }
 
     // Update browser history
     window.history.pushState({ path }, '', path);
