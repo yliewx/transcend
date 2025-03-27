@@ -31,6 +31,9 @@ export class ControlAccess {
         if (!result.success) {
           console.log('[ControlAccess] Failed to refresh access token.');
           this.setAuthenticated(false);
+        } else {
+          console.log('[ControlAccess] Successfully refreshed access token.');
+          this.setAuthenticated(true);
         }
       }
     } else {
