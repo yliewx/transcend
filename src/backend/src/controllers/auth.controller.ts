@@ -9,7 +9,6 @@ import OTPAuth from 'otpauth';
 import QRCode from 'qrcode';
 import nodemailer from 'nodemailer';
 import { AuthTokenPayload, jwtSecrets } from '../plugins/jwt';
-import jwt from 'jsonwebtoken';
 
 interface LoginRequest {
   username: string;
@@ -77,39 +76,65 @@ async function createRefreshToken(db: Database, user: any, reply: FastifyReply) 
 
 /*---------------------------CHECK TOKEN EXPIRY-----------------------------*/
 
-export async function getAccessTokenExpiry(request: FastifyRequest, reply: FastifyReply) {
+async function getTokenExpiry(token: any, secret: string, request: FastifyRequest) {
+  if (!token || !secret) return null;
+
+  try {
+    const decoded = await request.server.jwtVerify(token, secret) as AuthTokenPayload;
+
+    return decoded.exp ? new Date(decoded.exp * 1000) : null;
+  } catch (error) {
+    return null;
+  }
+}
+
+// Check validity and expiry of access token and refresh token
+export async function getTokenStatus(request: FastifyRequest, reply: FastifyReply) {
   const accessToken = request.cookies.accessToken;
-  if (!accessToken) return reply.send({ valid: false });
-
-  try {
-    const decoded = await request.server.jwtVerify(accessToken,
-      process.env.ACCESS_TOKEN_SECRET as string) as jwt.JwtPayload & AuthTokenPayload;
-      
-    return reply.send({
-      valid: true,
-      expiresAt: decoded.exp ? new Date(decoded.exp * 1000) : null
-    });
-  } catch (error) {
-    return reply.send({ valid: false });
-  }
-}
-
-export async function getRefreshTokenExpiry(request: FastifyRequest, reply: FastifyReply) {
   const refreshToken = request.cookies.refreshToken;
-  if (!refreshToken) return reply.send({ valid: false });
 
-  try {
-    const decoded = await request.server.jwtVerify(refreshToken,
-      process.env.REFRESH_TOKEN_SECRET as string) as jwt.JwtPayload & AuthTokenPayload;
-
-    return reply.send({
-      valid: true,
-      expiresAt: decoded.exp ? new Date(decoded.exp * 1000) : null
-    });
-  } catch (error) {
-    return reply.send({ valid: false });
-  }
+  return reply.send({
+    success: true,
+    status: {
+      accessTokenExpiry: await getTokenExpiry(accessToken, process.env.ACCESS_TOKEN_SECRET as string, request),
+      refreshTokenExpiry: await getTokenExpiry(refreshToken, process.env.REFRESH_TOKEN_SECRET as string, request)
+    }
+  });
 }
+
+// export async function getAccessTokenExpiry(request: FastifyRequest, reply: FastifyReply) {
+//   const accessToken = request.cookies.accessToken;
+//   if (!accessToken) return reply.send({ valid: false });
+
+//   try {
+//     const decoded = await request.server.jwtVerify(accessToken,
+//       process.env.ACCESS_TOKEN_SECRET as string) as jwt.JwtPayload & AuthTokenPayload;
+
+//     return reply.send({
+//       valid: true,
+//       expiresAt: decoded.exp ? new Date(decoded.exp * 1000) : null
+//     });
+//   } catch (error) {
+//     return reply.send({ valid: false });
+//   }
+// }
+
+// export async function getRefreshTokenExpiry(request: FastifyRequest, reply: FastifyReply) {
+//   const refreshToken = request.cookies.refreshToken;
+//   if (!refreshToken) return reply.send({ valid: false });
+
+//   try {
+//     const decoded = await request.server.jwtVerify(refreshToken,
+//       process.env.REFRESH_TOKEN_SECRET as string) as jwt.JwtPayload & AuthTokenPayload;
+
+//     return reply.send({
+//       valid: true,
+//       expiresAt: decoded.exp ? new Date(decoded.exp * 1000) : null
+//     });
+//   } catch (error) {
+//     return reply.send({ valid: false });
+//   }
+// }
 
 /*-------------------------------LOGIN HANDLER------------------------------*/
 
@@ -424,7 +449,7 @@ export async function verifyOtp(request: FastifyRequest, reply: FastifyReply) {
 
     // Set access token in cookie
     reply.setCookie('accessToken', await createAccessToken(user, reply), {
-      maxAge: 30, // expires after 1min FOR TESTING
+      maxAge: 15 * 60, // expires after 15min
       httpOnly: true,
       secure: true,
       sameSite: 'strict',
@@ -433,7 +458,7 @@ export async function verifyOtp(request: FastifyRequest, reply: FastifyReply) {
 
     // Set refresh token in cookie
     reply.setCookie('refreshToken', await createRefreshToken(db, user, reply), {
-      maxAge: 1 * 60, // expires after 5min FOR TESTING
+      maxAge: 7 * 24 * 60 * 60, // expires after 7 days
       httpOnly: true,
       secure: true,
       sameSite: 'strict',
@@ -477,9 +502,10 @@ export async function refreshAccessHandler(request: FastifyRequest, reply: Fasti
     // Verify refresh token with the database token_id
     await RefreshToken.verify(db, Number(userData.id), userData);
 
-    // Set new access token in cookie
-    reply.setCookie('accessToken', await createAccessToken(user, reply), {
-      maxAge: 30, // expires after 1min FOR TESTING
+    // Create new access token and set it in cookie
+    const accessToken = await createAccessToken(user, reply);
+    reply.setCookie('accessToken', accessToken, {
+      maxAge: 15 * 60, // expires after 15min
       httpOnly: true,
       secure: true,
       sameSite: 'strict',
@@ -489,6 +515,7 @@ export async function refreshAccessHandler(request: FastifyRequest, reply: Fasti
     return reply.status(200).send({ 
       success: true,
       message: 'Access token refreshed successfully',
+      accessTokenExpiry: await getTokenExpiry(accessToken, process.env.ACCESS_TOKEN_SECRET as string, request)
     });
   }
   catch (error) {

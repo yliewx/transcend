@@ -1,6 +1,6 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import fastifyJwt from '@fastify/jwt';
-import jwt from 'jsonwebtoken';
+import jwt, { JwtPayload } from 'jsonwebtoken';
 import fp from 'fastify-plugin';
 
 export const jwtSecrets = new Map<string, string>([
@@ -9,7 +9,7 @@ export const jwtSecrets = new Map<string, string>([
   ['refresh', process.env.REFRESH_TOKEN_SECRET as string]
 ]);
 
-export interface AuthTokenPayload {
+export interface AuthTokenPayload extends JwtPayload {
   id: number; // user id
   username?: string;
   email?: string;
