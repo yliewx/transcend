@@ -102,40 +102,6 @@ export async function getTokenStatus(request: FastifyRequest, reply: FastifyRepl
   });
 }
 
-// export async function getAccessTokenExpiry(request: FastifyRequest, reply: FastifyReply) {
-//   const accessToken = request.cookies.accessToken;
-//   if (!accessToken) return reply.send({ valid: false });
-
-//   try {
-//     const decoded = await request.server.jwtVerify(accessToken,
-//       process.env.ACCESS_TOKEN_SECRET as string) as jwt.JwtPayload & AuthTokenPayload;
-
-//     return reply.send({
-//       valid: true,
-//       expiresAt: decoded.exp ? new Date(decoded.exp * 1000) : null
-//     });
-//   } catch (error) {
-//     return reply.send({ valid: false });
-//   }
-// }
-
-// export async function getRefreshTokenExpiry(request: FastifyRequest, reply: FastifyReply) {
-//   const refreshToken = request.cookies.refreshToken;
-//   if (!refreshToken) return reply.send({ valid: false });
-
-//   try {
-//     const decoded = await request.server.jwtVerify(refreshToken,
-//       process.env.REFRESH_TOKEN_SECRET as string) as jwt.JwtPayload & AuthTokenPayload;
-
-//     return reply.send({
-//       valid: true,
-//       expiresAt: decoded.exp ? new Date(decoded.exp * 1000) : null
-//     });
-//   } catch (error) {
-//     return reply.send({ valid: false });
-//   }
-// }
-
 /*-------------------------------LOGIN HANDLER------------------------------*/
 
 async function validateUserCredentials(db: Database, username: string, password: string) {
@@ -436,7 +402,7 @@ export async function verifyOtp(request: FastifyRequest, reply: FastifyReply) {
     });
 
     // Validate OTP token
-    const delta = totp.validate({ token: otp });
+    const delta = totp.validate({ token: otp, window: 1 });
     if (delta === null) {
       return reply.status(401).send({
         success: false,
