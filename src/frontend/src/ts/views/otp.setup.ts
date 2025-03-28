@@ -168,6 +168,10 @@ export class OTPSetupPage implements Page {
     const smsSetup = document.getElementById('sms-setup');
     const emailSetup = document.getElementById('email-setup');
     const appSetup = document.getElementById('app-setup');
+
+    // QR code elements in appSetup section
+    const qrPlaceholder = document.getElementById('qr-placeholder');
+    const secretKey = document.getElementById('secret-key');
     
     // SMS radio button click handler
     smsRadio?.addEventListener('change', () => {
@@ -184,10 +188,27 @@ export class OTPSetupPage implements Page {
     });
     
     // App radio button click handler
-    appRadio?.addEventListener('change', () => {
+    appRadio?.addEventListener('change', async () => {
       this.hideSection(smsSetup);
       this.hideSection(emailSetup);
       this.showSection(appSetup);
+
+      // Display QR code
+      try {
+        console.log('Generating QR code...');
+        const response = await this.authService.generateQRCode();
+
+        // Update placeholders
+        if (response.success && response.qrCode && qrPlaceholder && secretKey) {
+          qrPlaceholder.innerHTML = `<img src="${response.qrCode}" alt="QR Code" class="w-48 h-48" />`;
+          secretKey.textContent = response.secret;
+        } else {
+          alert("Failed to generate QR code. Please try again.");
+        }
+      } catch (error) {
+        console.error("Error generating QR code:", error);
+        alert("An error occurred while generating the QR code.");
+      }
     });
     
     // Action buttons

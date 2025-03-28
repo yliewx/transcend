@@ -6,8 +6,9 @@ import RefreshToken from '../models/refresh.token';
 import { getDb } from '../db.js';
 import { Database } from 'sqlite';
 import OTPAuth from 'otpauth';
+import QRCode from 'qrcode';
 import nodemailer from 'nodemailer';
-import { AuthTokenPayload } from '../plugins/jwt';
+import { AuthTokenPayload, jwtSecrets } from '../plugins/jwt';
 
 interface LoginRequest {
   username: string;
@@ -32,6 +33,74 @@ interface LoginRequest {
   - Verify pre-auth token to get user
   - Verify OTP
   - Issue JWT token if 2FA is successful */
+
+/*-------------------------------CREATE TOKENS------------------------------*/
+
+async function createPreAuthToken(user: any, reply: FastifyReply) {
+  // Create JWT pre-auth token with user data
+  const preAuthToken = reply.server.jwtSign({ 
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    token_type: 'preAuth'
+  }, process.env.PREAUTH_TOKEN_SECRET as string, { expiresIn: '5m' });
+
+  return preAuthToken;
+}
+
+async function createAccessToken(user: any, reply: FastifyReply) {
+  // Create access token with user data
+  const accessToken = reply.server.jwtSign({ 
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    token_type: 'access'
+  }, process.env.ACCESS_TOKEN_SECRET as string, { expiresIn: '15m' });
+
+  return accessToken;
+}
+
+async function createRefreshToken(db: Database, user: any, reply: FastifyReply) {
+  // Generate token_id and store in database
+  const token = await RefreshToken.create(db, user.id);
+
+  // Sign JWT refresh token using the token_id
+  const refreshToken = reply.server.jwtSign({
+    id: user.id,
+    token_id: token,
+    token_type: 'refresh'
+  }, process.env.REFRESH_TOKEN_SECRET as string, { expiresIn: '7d' });
+
+  return refreshToken;
+}
+
+/*---------------------------CHECK TOKEN EXPIRY-----------------------------*/
+
+async function getTokenExpiry(token: any, secret: string, request: FastifyRequest) {
+  if (!token || !secret) return null;
+
+  try {
+    const decoded = await request.server.jwtVerify(token, secret) as AuthTokenPayload;
+
+    return decoded.exp ? new Date(decoded.exp * 1000) : null;
+  } catch (error) {
+    return null;
+  }
+}
+
+// Check validity and expiry of access token and refresh token
+export async function getTokenStatus(request: FastifyRequest, reply: FastifyReply) {
+  const accessToken = request.cookies.accessToken;
+  const refreshToken = request.cookies.refreshToken;
+
+  return reply.send({
+    success: true,
+    status: {
+      accessTokenExpiry: await getTokenExpiry(accessToken, process.env.ACCESS_TOKEN_SECRET as string, request),
+      refreshTokenExpiry: await getTokenExpiry(refreshToken, process.env.REFRESH_TOKEN_SECRET as string, request)
+    }
+  });
+}
 
 /*-------------------------------LOGIN HANDLER------------------------------*/
 
@@ -62,19 +131,48 @@ export async function loginHandler(request: FastifyRequest, reply: FastifyReply)
       });
     }
 
-    // 2. Get preferred OTP option. If not set (first time), frontend will prompt user to set a otp_option
+    // 2. Check if valid refresh token exists
+    // HAS REFRESH TOKEN: issue access token without going through OTP
+    // const refreshToken = request.cookies.refreshToken;
+    // if (refreshToken) {
+    //   try {
+    //     // Decode refresh token
+    //     const decoded = await reply.server.jwtVerify(refreshToken, process.env.REFRESH_TOKEN_SECRET as string) as AuthTokenPayload;
+
+    //     // Validate refresh token
+    //     await RefreshToken.verify(db, user.id, decoded);
+
+    //     // Valid refresh token: skip OTP verification and issue new access token
+    //     reply.setCookie('accessToken', await createAccessToken(user, reply), {
+    //       maxAge: 1 * 60, // expires after 1min FOR TESTING
+    //       httpOnly: true,
+    //       secure: true,
+    //       sameSite: 'strict',
+    //       path: '/api/'
+    //     });
+
+    //     return reply.status(200).send({
+    //       success: true,
+    //       message: 'Login successful (refresh token used)',
+    //       user: {
+    //         id: user.id,
+    //         username: user.username,
+    //         email: user.email
+    //       }
+    //     });
+    //   } catch (error) {
+    //     // Continue with OTP verification
+    //     console.log('Invalid refresh token:', error.message);
+    //   }
+    // }
+
+    // NO REFRESH TOKEN: require OTP verification
+    // 3. Get preferred OTP option. If not set (first time), frontend will prompt user to set a otp_option
     const otp_option = await User.getPreferred2FAMethod(db, user.id);
 
-    // Create JWT pre-auth token with user data (payload)
-    const preAuthToken = reply.server.jwt.sign({ 
-      id: user.id,
-      username: user.username,
-      email: user.email,
-      token_type: 'preAuth'
-    }, { expiresIn: '10m' });
-
-    // Set JWT token in cookie
-    reply.setCookie('preAuthToken', preAuthToken, {
+    // Set pre-auth token in cookie
+    reply.setCookie('preAuthToken', await createPreAuthToken(user, reply), {
+      maxAge: 5 * 60, // expires after 5min
       httpOnly: true,
       secure: true,
       sameSite: 'strict',
@@ -133,6 +231,33 @@ export async function otpPreferenceHandler(request: FastifyRequest, reply: Fasti
 
 /*-------------------------------GENERATE OTP-------------------------------*/
 
+export async function generateQRCode(request: FastifyRequest, reply: FastifyReply) {
+  try {
+    // Get user data from request
+    const userData = request.user as AuthTokenPayload;
+    if (!userData) {
+      throw new Error('User authentication failed');
+    }
+    const db = await getDb();
+    await generateOtpToken(db, Number(userData.id));
+
+    const secret = await User.getOtpSecret(db, Number(userData.id));
+    const otpAuthUrl = await User.getOtpAuthUrl(db, Number(userData.id));
+    const qrCodeDataUrl = await QRCode.toDataURL(otpAuthUrl);
+
+    // Store secret and auth url in database
+    await User.setOtpSecret(db, userData.id, secret.base32, otpAuthUrl);
+
+    return reply.status(202).send({
+      success: true,
+      qrCode: qrCodeDataUrl,
+      secret: secret.base32
+    });
+  } catch (error) {
+    return reply.status(400).send({ success: false });
+  }
+}
+
 // Handle sending OTP based on preferred otp_option
 // async function sendOtp(db: Database, user: any, otpToken: string) {
 //   if ((user.otp_option === 'sms' || user.otp_option === 'email') && !user.otp_contact) {
@@ -144,6 +269,8 @@ export async function otpPreferenceHandler(request: FastifyRequest, reply: Fasti
 // }
 
 async function sendOtp(request: FastifyRequest, db: Database, user: any, otpToken: string) {
+  if (user.otp_option === 'app') return;
+
   if (user.otp_option === 'email' && !user.email) {
     throw new Error('Email address is required for Email 2FA');
   }
@@ -177,13 +304,18 @@ async function sendOtp(request: FastifyRequest, db: Database, user: any, otpToke
 
 async function generateOtpToken(db: Database, user_id: number)
 {
+  // Generate user secret if it doesn't exist (first time login)
+  let userSecret = await User.getOtpSecret(db, user_id);
+  if (!userSecret)
+    userSecret = new OTPAuth.Secret();
+
   // Instantiate TOTP object
   const totp = new OTPAuth.TOTP({
     issuer: 'ft_transcendence',
     algorithm: 'SHA256',
     digits: 6,
     period: 90,
-    secret: new OTPAuth.Secret()
+    secret: userSecret
   });
 
   // Generate OTP as string
@@ -194,8 +326,6 @@ async function generateOtpToken(db: Database, user_id: number)
 
   return token;
 }
-
-
 
 // Route: /api/otp/generate
 export async function generateOtp(request: FastifyRequest, reply: FastifyReply) {
@@ -242,34 +372,6 @@ export async function generateOtp(request: FastifyRequest, reply: FastifyReply) 
 
 /*--------------------------------VERIFY OTP--------------------------------*/
 
-async function createAccessToken(user: any, reply: FastifyReply) {
-  // Create access token with user data
-  const accessToken = reply.server.jwt.sign({ 
-    id: user.id,
-    username: user.username,
-    email: user.email,
-    token_type: 'access'
-  }, { expiresIn: '10m' });
-
-  return accessToken;
-}
-
-async function createRefreshToken(db: Database, user: any, reply: FastifyReply) {
-  await RefreshToken.refresh(db, user.id);
-  const token = await RefreshToken.findByUser(db, user.id);
-
-  // Create refresh token
-  const refreshToken = reply.server.jwt.sign({
-    user_id: user.id,
-    token_id: token.token_id,
-    token_type: 'refresh'
-  }, { expiresIn: '7d' });
-
-  // Store in database
-
-  return refreshToken;
-}
-
 // Route: /api/otp/verify
 export async function verifyOtp(request: FastifyRequest, reply: FastifyReply) {
   const { otp } = request.body as { otp: string };
@@ -300,7 +402,7 @@ export async function verifyOtp(request: FastifyRequest, reply: FastifyReply) {
     });
 
     // Validate OTP token
-    const delta = totp.validate({ token: otp });
+    const delta = totp.validate({ token: otp, window: 1 });
     if (delta === null) {
       return reply.status(401).send({
         success: false,
@@ -310,10 +412,10 @@ export async function verifyOtp(request: FastifyRequest, reply: FastifyReply) {
 
     // Update database
     await User.setOtpVerified(db, user.id, true);
-    const accessToken = await createAccessToken(user, reply);
 
     // Set access token in cookie
-    reply.setCookie('accessToken', accessToken, {
+    reply.setCookie('accessToken', await createAccessToken(user, reply), {
+      maxAge: 15 * 60, // expires after 15min
       httpOnly: true,
       secure: true,
       sameSite: 'strict',
@@ -321,12 +423,14 @@ export async function verifyOtp(request: FastifyRequest, reply: FastifyReply) {
     });
 
     // Set refresh token in cookie
-    // reply.setCookie('refreshToken', createRefreshToken(db, user, reply), {
-    //   httpOnly: true,
-    //   secure: true,
-    //   sameSite: 'strict',
-    //   path: '/api/token/refresh'
-    // });
+    reply.setCookie('refreshToken', await createRefreshToken(db, user, reply), {
+      maxAge: 7 * 24 * 60 * 60, // expires after 7 days (in seconds)
+      expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days (in milliseconds)
+      httpOnly: true,
+      secure: true,
+      sameSite: 'strict',
+      path: '/api/auth/refresh'
+    });
 
     return reply.status(200).send({ 
         success: true,
@@ -346,6 +450,49 @@ export async function verifyOtp(request: FastifyRequest, reply: FastifyReply) {
   }
 }
 
+/*---------------------------REFRESH ACCESS TOKEN---------------------------*/
+
+// Route: /api/auth/refresh
+export async function refreshAccessHandler(request: FastifyRequest, reply: FastifyReply) {
+  try {
+    // Get refresh token data from request
+    const userData = request.user as AuthTokenPayload;
+    if (!userData) {
+      throw new Error('User authentication failed');
+    }
+    const db = await getDb();
+    const user = await User.findById(db, Number(userData.id));
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // Verify refresh token with the database token_id
+    await RefreshToken.verify(db, Number(userData.id), userData);
+
+    // Create new access token and set it in cookie
+    const accessToken = await createAccessToken(user, reply);
+    reply.setCookie('accessToken', accessToken, {
+      maxAge: 15 * 60, // expires after 15min
+      httpOnly: true,
+      secure: true,
+      sameSite: 'strict',
+      path: '/api/'
+    });
+
+    return reply.status(200).send({ 
+      success: true,
+      message: 'Access token refreshed successfully',
+      accessTokenExpiry: await getTokenExpiry(accessToken, process.env.ACCESS_TOKEN_SECRET as string, request)
+    });
+  }
+  catch (error) {
+    return reply.status(500).send({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    });
+  }
+}
+
 /*------------------------------LOGOUT HANDLER------------------------------*/
 
 // Route: /api/logout
@@ -353,11 +500,9 @@ export async function logoutHandler(request: FastifyRequest, reply: FastifyReply
   try {
     reply.header('Access-Control-Allow-Credentials', 'true');
     
-    // Remove stored JWT cookie
-    reply.clearCookie('token', {
-      path: '/',
-      httpOnly: true
-    });
+    // Remove stored JWT cookies
+    reply.clearCookie('preAuthToken', { path: '/api/otp/' });
+    reply.clearCookie('accessToken', { path: '/api/' });
 
     return reply.send({ message: 'Logged out' });
   } catch (error) {

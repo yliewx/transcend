@@ -1,7 +1,7 @@
 // routes.ts
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { registerUser } from './controllers/user.register';
-import { loginHandler, logoutHandler, verifyOtp, otpPreferenceHandler, generateOtp } from './controllers/auth.controller';
+import { loginHandler, logoutHandler, verifyOtp, otpPreferenceHandler, generateOtp, refreshAccessHandler, generateQRCode, getTokenStatus } from './controllers/auth.controller';
 import { profileHandler, updatePasswordHandler, updateProfileDataHandler, updateUserDataHandler } from './controllers/user.profile';
 import fp from 'fastify-plugin';
 import { AuthenticatedRequest } from '../@types/fastify';
@@ -31,6 +31,11 @@ export default fp(async function setupRoutes(server: FastifyInstance) {
   server.post('/api/otp/preferences', { preHandler: server.preAuthenticate }, otpPreferenceHandler);
   server.post('/api/otp/generate', { preHandler: server.preAuthenticate }, generateOtp);
   server.post('/api/otp/verify', { preHandler: server.preAuthenticate }, verifyOtp);
+  server.post('/api/auth/refresh', { preHandler: server.reAuthenticate }, refreshAccessHandler);
+  server.get('/api/auth/refresh/status', getTokenStatus);
+
+  // Generate QR code
+  server.get('/api/otp/qrcode', { preHandler: server.preAuthenticate }, generateQRCode);
 
   // User routes
   server.get('/api/profile', { preHandler: server.authenticate }, (request, reply) => {

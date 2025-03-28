@@ -1,5 +1,10 @@
 import { BaseApiService } from "./base.api";
 
+interface TokenStatusResponse {
+  accessTokenExpiry: Date | null;
+  refreshTokenExpiry: Date | null;
+}
+
 // Derived class for handling authentication-related requests
 export class AuthService extends BaseApiService {
 
@@ -70,6 +75,18 @@ export class AuthService extends BaseApiService {
     };
   }
 
+  public async generateQRCode(): Promise<{ success: boolean; qrCode?: string; secret: string | null }> {
+    const response = await this.request<{ success: boolean; qrCode?: string; secret: string | null }>(
+      '/otp/qrcode',
+      'GET',
+      undefined,
+      true,
+      { omitContentType: true}
+    );
+
+    return response;
+  }
+
   /*-------------------------------VERIFY OTP-------------------------------*/
 
   public async verifyOtp(otp: string): Promise<{ success: boolean; message?: string }> {
@@ -78,6 +95,36 @@ export class AuthService extends BaseApiService {
       'POST',
       { otp },
       true
+    );
+    
+    return response;
+  }
+
+  /*--------------------------REFRESH ACCESS TOKEN--------------------------*/
+
+  public async checkTokenStatus(): Promise<{ success: boolean, status?: TokenStatusResponse }> {
+    const response = await this.request<{ success: boolean, status?: TokenStatusResponse }>(
+      '/auth/refresh/status', 
+      'GET',
+      undefined,
+      true,
+      { omitContentType: true}
+    );
+
+    if (!response.status) {
+      return { success: response.success };
+    }
+    
+    return response;
+  }
+
+  public async refreshAccessToken(): Promise<{ success: boolean, message?: string, error?: string, accessTokenExpiry: Date | null }> {
+    const response = await this.request<{ success: boolean, message?: string, error?: string, accessTokenExpiry: Date | null }>(
+      '/auth/refresh', 
+      'POST',
+      undefined,
+      true,
+      { omitContentType: true}
     );
     
     return response;
@@ -93,12 +140,6 @@ export class AuthService extends BaseApiService {
       true,
       { omitContentType: true}
     );
-    
-    // If logout was successful, clear JWT token from storage
-    if (response.success) {
-      localStorage.removeItem('jwt');
-      sessionStorage.removeItem('jwt');
-    }
     
     return response;
   }
