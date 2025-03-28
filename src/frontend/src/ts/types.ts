@@ -18,3 +18,19 @@ export interface MatchHistoryItem {
     opponent_score: number;
     user_won: number;
   }
+
+export interface FriendResponse {
+    id: number;
+    username: string;
+    displayName: string;
+    status?: string;
+  }
+  
+export interface RequestResponse {
+    id: number;
+    username: string;
+    displayName: string;
+    requestType: 'incoming' | 'outgoing';
+    status: string;
+    requestDate: string;
+  }
