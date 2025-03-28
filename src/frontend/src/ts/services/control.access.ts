@@ -15,29 +15,35 @@ export class ControlAccess {
   invalid access + invalid refresh: redirect to login
   invalid access + valid refresh: refresh access token -> redirect to login on failure */
   public async checkAuthStatus(): Promise<boolean> {
+    console.log('[ControlAccess] Checking authentication status...', this.accessTokenExpiry, this.refreshTokenExpiry);
     // Update expiry time of existing tokens
-    this.checkTokenStatus();
-    
-    // Check whether access token has expired
-    if (this.isExpiredToken('access')) {
-      // Check whether refresh token has expired
-      if (this.isExpiredToken('refresh')) {
-        console.log('[ControlAccess] No valid refresh token found.');
+    await this.checkTokenStatus();
+
+    // If access token hasn't expired: no need to check refresh token
+    if (!this.isExpiredToken('access')) {
+      console.log('[ControlAccess] Access token is valid.');
+      this.setAuthenticated(true);
+      return this.isAuthenticated;
+    }
+
+    console.log('[ControlAccess] Access token expired or invalid.');
+
+    // If access token has expired: check refresh token
+    if (!this.isExpiredToken('refresh')) {
+      // Refresh access token if valid refresh token exists
+      console.log('[ControlAccess] Attempting token refresh...');
+      const result = await this.handleTokenRefresh();
+      
+      if (!result.success) {
+        console.log('[ControlAccess] Failed to refresh access token.', result.message);
         this.setAuthenticated(false);
       } else {
-        // Refresh access token if valid refresh token exists
-        console.log('[ControlAccess] Attempting token refresh...');
-        const result = await this.handleTokenRefresh();
-        if (!result.success) {
-          console.log('[ControlAccess] Failed to refresh access token.');
-          this.setAuthenticated(false);
-        } else {
-          console.log('[ControlAccess] Successfully refreshed access token.');
-          this.setAuthenticated(true);
-        }
+        console.log('[ControlAccess] Successfully refreshed access token.');
+        this.setAuthenticated(true);
       }
     } else {
-      this.setAuthenticated(true);
+      console.log('[ControlAccess] Refresh token expired or invalid.');
+      this.setAuthenticated(false);
     }
     return this.isAuthenticated;
   }

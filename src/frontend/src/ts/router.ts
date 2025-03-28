@@ -30,6 +30,9 @@ export class Router {
         // Redirect to login when user logs out
         this.navigateTo('/login');
       }
+      // if (!isAuthenticated) {
+      //   this.navigateTo('/login');
+      // }
     });
   }
 
