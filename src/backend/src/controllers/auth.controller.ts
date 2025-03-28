@@ -503,6 +503,7 @@ export async function logoutHandler(request: FastifyRequest, reply: FastifyReply
     // Remove stored JWT cookies
     reply.clearCookie('preAuthToken', { path: '/api/otp/' });
     reply.clearCookie('accessToken', { path: '/api/' });
+    reply.clearCookie('refreshToken', { path: '/api/auth/refresh' });
 
     return reply.send({ message: 'Logged out' });
   } catch (error) {
