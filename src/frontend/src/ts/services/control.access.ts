@@ -8,7 +8,7 @@ export class ControlAccess {
   private refreshTokenExpiry: Date | null = null;
   
   constructor(private authService: AuthService) {
-    this.checkAuthStatus();
+    // this.checkAuthStatus();
   }
 
   /* valid access: proceed to handleRoute

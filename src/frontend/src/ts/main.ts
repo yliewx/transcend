@@ -16,10 +16,11 @@ import { GameStatsService } from './services/game.stats.service';
 import { FriendsPage } from './views/friends';
 import { FriendService } from './services/friend.service';
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   // Initialize application dependencies
   const appContainer = document.getElementById('app') as HTMLElement;
   const controlAccess = new ControlAccess(new AuthService());
+  await controlAccess.checkAuthStatus();
   const userService = new UserService();
   const gameStatsService = new GameStatsService(); 
   const friendService = new FriendService();
