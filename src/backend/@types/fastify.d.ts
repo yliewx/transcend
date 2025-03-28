@@ -1,11 +1,41 @@
+// import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+// import "@fastify/jwt";
+
+// Extend FastifyInstance
+// declare module "fastify" {
+//   // Add the "authenticate" method
+//   interface FastifyInstance {
+//     authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
+//     preAuthenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
+//   }
+//   // interface FastifyRequest {
+//   //   user?: {
+//   //     userId: number;
+//   //     username: string;
+//   //     email: string;
+//   //     iat: number;
+//   //   };
+//   // }
+// }
+
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { SignOptions, VerifyOptions } from 'jsonwebtoken';
 import "@fastify/jwt";
 
 // Extend FastifyInstance
 declare module "fastify" {
-  // Add the "authenticate" method
   interface FastifyInstance {
+    // Add authentication methods
     authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
+    preAuthenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
+    reAuthenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
+    jwtSign: (payload: string | object | Buffer, secretOrPrivateKey: string, options?: SignOptions) => string;
+    jwtVerify: (token: string, secretOrPublicKey: string, options?: VerifyOptions) => any;
+    
+    // Add mailer property
+    mailer: {
+      sendEmailOtp: (email: string, otpToken: string) => Promise<boolean>;
+    };
   }
 }
 

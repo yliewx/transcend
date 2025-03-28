@@ -7,13 +7,18 @@ export class Router {
   private container: HTMLElement;
   private currentPath: string = '';
 
+  /*------------------------------CONSTRUCTOR-------------------------------*/
+
   constructor(container: HTMLElement, private controlAccess: ControlAccess) {
     this.routes = new Map();
     this.container = container;
 
     // Handle popstate events (browser back/forward buttons)
     window.addEventListener('popstate', (event) => {
-      this.handleRoute(window.location.pathname);
+      const newPath = window.location.pathname;
+      if (newPath !== this.currentPath) {
+        this.handleRoute(newPath);
+      }
     });
     
     // Listen for authentication state changes
@@ -25,33 +30,39 @@ export class Router {
         // Redirect to login when user logs out
         this.navigateTo('/login');
       }
+      // if (!isAuthenticated) {
+      //   this.navigateTo('/login');
+      // }
     });
   }
+
+  /*---------------------------NAVIGATION HANDLER---------------------------*/
 
   // Register routes
   addRoute(path: string, page: Page): void {
     this.routes.set(path, page);
   }
 
+  // Redirect to login
+  redirectToLogin(message?: string) {
+    console.log('Redirecting to login page.', message);
+    window.history.pushState({ path: '/login' }, '', '/login');
+    this.handleRoute('/login');
+  }
+
   // Navigate to a specific route
-  navigateTo(path: string): void {
+  async navigateTo(path: string): Promise<void> {
+    if (path === this.currentPath) return; // Prevent re-navigation
+
     console.log(`Attempting to navigate to: ${path}, isAuthenticated: ${this.controlAccess.isLoggedIn()}`);
     
-    // Redirect to login if trying to access protected routes while not authenticated
-    if (!this.controlAccess.isLoggedIn() && this.isProtectedRoute(path)) {
-      console.log('Redirecting to login - protected route accessed while not authenticated');
-      window.history.pushState({ path: '/login' }, '', '/login');
-      this.handleRoute('/login');
-      return;
+    if (this.isProtectedRoute(path)) {
+      const isAuthenticated = await this.controlAccess.checkAuthStatus();
+      if (!isAuthenticated) {
+        this.redirectToLogin('');
+        return ;
+      }
     }
-    
-    // // Redirect to home if trying to access auth routes while authenticated
-    // if (this.controlAccess.isLoggedIn() && this.isAuthRoute(path)) {
-    //   console.log('Redirecting to home - auth route accessed while authenticated');
-    //   window.history.pushState({ path: '/home' }, '', '/home');
-    //   this.handleRoute('/home');
-    //   return;
-    // }
 
     // Update browser history
     window.history.pushState({ path }, '', path);
@@ -59,6 +70,12 @@ export class Router {
   }
 
   async handleRoute(path: string): Promise<void> {
+    // If trying to access protected route
+    if (!this.controlAccess.isLoggedIn() && this.isProtectedRoute(path)) {
+      this.redirectToLogin('Protected route accessed while not authenticated');
+      return;
+    }
+
     if (path === this.currentPath) {
       console.log(`Already on route: ${path}, not rendering again`);
       return;
@@ -91,6 +108,8 @@ export class Router {
     }
   }
 
+  /*-------------------------------INIT ROUTER------------------------------*/
+
   // Initialize the router
   init(defaultPath: string = '/'): void {
     // Listen for clicks on navigation links
@@ -106,6 +125,7 @@ export class Router {
 
     // Handle initial route
     const initialPath = window.location.pathname;
+
     if (this.routes.has(initialPath)) {
       this.handleRoute(initialPath);
     } else {
@@ -113,6 +133,8 @@ export class Router {
       this.handleRoute(defaultPath);
     }
   }
+
+  /*--------------------------------ACCESSORS-------------------------------*/
 
   private isProtectedRoute(path: string): boolean {
     // Routes that require authentication

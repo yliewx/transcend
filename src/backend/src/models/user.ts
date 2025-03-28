@@ -52,14 +52,14 @@ class User {
 
     // Get preferred 2FA method
     static async getPreferred2FAMethod(db: Database, id: number) {
-        const result = await db.get('SELECT preferred_2fa_method FROM users WHERE id = ?', [id]);
-        if (!result.preferred_2fa_method)
+        const result = await db.get('SELECT otp_option FROM users WHERE id = ?', [id]);
+        if (!result.otp_option)
             return null;
-        return result.preferred_2fa_method;
+        return result.otp_option;
     }
 
     // Update preferred 2FA method
-    static async updatePreferred2FAMethod(db: Database, id: number, method: string, phoneNumber?: string) {
+    static async updateOtpOption(db: Database, id: number, otp_option: string, otp_contact?: string | null) {
         // Ensure that user id is valid
         const user = await this.findById(db, id);
         if (!user) {
@@ -67,21 +67,21 @@ class User {
         }
         
         // Ensure the method is valid
-        const validMethods = ['sms', 'email', 'authenticator'];
-        if (!validMethods.includes(method)) {
+        const validMethods = ['sms', 'email', 'app'];
+        if (!validMethods.includes(otp_option)) {
             throw new Error('Invalid 2FA method');
         }
 
-        // If `sms` is chosen, a phone number must be provided
-        if (method === 'sms' && !phoneNumber) {
-            throw new Error('Phone number is required for SMS 2FA');
+        // If either sms or email is chosen, otp_contact must be provided
+        if ((otp_option === 'sms' || otp_option === 'email') && !otp_contact) {
+            throw new Error('Contact information required for SMS and email 2FA');
         }
 
         // Update the database
         return db.run(
-            'UPDATE users SET preferred_2fa_method = ?, phone_number = ? WHERE id = ?',
-            method,
-            method === 'sms' ? phoneNumber : null, // Store phone number only if SMS is selected
+            'UPDATE users SET otp_option = ?, otp_contact = ? WHERE id = ?',
+            otp_option,
+            otp_option === 'sms' || otp_option === 'email' ? otp_contact : null, // Store otp_contact only for sms/email
             id
         );
     }
@@ -137,6 +137,24 @@ class User {
     static async updatePassword(db: Database, id: number, password: string) {
         await db.run('UPDATE users SET password = ? WHERE id = ?', [password, id]);
         return { id };
+    }
+
+    // Get OTP secret
+    static async getOtpSecret(db: Database, id: number) {
+        const row = await db.get('SELECT otp_secret, otp_auth_url FROM users WHERE id = ?', [id]);
+        if (!row || !row.otp_secret) {
+            return null;
+        }
+        return row.otp_secret;
+    }
+
+    // Get OTP url
+    static async getOtpAuthUrl(db: Database, id: number) {
+        const row = await db.get('SELECT otp_secret, otp_auth_url FROM users WHERE id = ?', [id]);
+        if (!row || !row.otp_auth_url) {
+            return null;
+        }
+        return row.otp_auth_url;
     }
 
     // Set OTP secret

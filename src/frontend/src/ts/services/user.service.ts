@@ -10,8 +10,7 @@ export class UserService extends BaseApiService {
       '/profile', 
       'GET', 
       undefined, 
-      true,
-      false
+      true
     );
     
     if (response.success) {
@@ -24,7 +23,7 @@ export class UserService extends BaseApiService {
     
     return response as any;
   }
-  
+    
   /**
    * Update profile data (display name, etc.)
    */
@@ -35,8 +34,7 @@ export class UserService extends BaseApiService {
       '/profile/update', 
       'PUT', 
       profileData, 
-      true,
-      false
+      true
     );
     
     if (response.success) {
@@ -59,8 +57,7 @@ export class UserService extends BaseApiService {
       '/user/update', 
       'PUT', 
       userData, 
-      true,
-      false
+      true
     );
     
     if (response.success) {
@@ -83,8 +80,7 @@ export class UserService extends BaseApiService {
       '/user/password', 
       'PUT', 
       passwordData, 
-      true,
-      false
+      true
     );
   }
 }
