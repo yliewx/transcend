@@ -113,6 +113,22 @@ export class PongGamePage implements Page {
     document.getElementById('pause-game-btn')?.addEventListener('click', this.pauseGame.bind(this));
   }
   
+
+  private handleKeyDown(event: KeyboardEvent): void {
+    this.keyState[event.key] = true;
+    
+    // Prevent default behavior for the game control keys
+    if (['w', 'W', 's', 'S', 'ArrowUp', 'ArrowDown'].includes(event.key)) {
+      event.preventDefault();
+    }
+  }
+  
+  private handleKeyUp(event: KeyboardEvent): void {
+    this.keyState[event.key] = false;
+  }
+
+
+
   private async createGame(): Promise<void> {
     try {
       const response = await fetch('/api/games', {
@@ -171,60 +187,23 @@ export class PongGamePage implements Page {
     }
   }
 
-  private async recordMatchResult(): Promise<void> {
-    if (!this.gameId || !this.currentState) return;
-    
-    try {
-      // Get user ID from session storage
-      const userId = this.getCurrentUserId();
-      
-      if (!userId) {
-        console.log('User not logged in, not recording match');
-        return;
-      }
-      
-      // Determine which side won
-      const winner = this.currentState.winner || 
-                    (this.currentState.scoreLeft >= 5 ? 'left' : 'right');
-      
-      // Call the API to record the match
-      const response = await fetch('/api/games/record-match', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          gameId: this.gameId,
-          userId: userId,
-          // For simplicity, we'll assume the logged-in user is always the left player
-          // You could add a player side selection UI in the future
-          userSide: 'left',
-          leftScore: this.currentState.scoreLeft,
-          rightScore: this.currentState.scoreRight,
-          winner: winner
-        })
-      });
-      
-      if (!response.ok) {
-        console.error('Failed to record match:', response.statusText);
-        return;
-      }
-      
-      const data = await response.json();
-      console.log('Match recorded successfully:', data);
-      
-    } catch (error) {
-      console.error('Error recording match:', error);
+  private startGameLoop(): void {
+    if (this.updateInterval) {
+      clearInterval(this.updateInterval);
     }
+    
+    // Separate input handling and state polling
+    // Process inputs on key events, not in the game loop
+    
+    // Poll for game state updates at a reasonable rate (20fps)
+    this.updateInterval = window.setInterval(() => {
+      this.pollGameState();
+    }, 50); // 50ms = 20 updates per second
+    
+    // Start continuous input checking separate from state updates
+    this.checkInputs();
   }
 
-  // Helper method to get user ID from session storage
-  private getCurrentUserId(): number | null {
-    const userId = sessionStorage.getItem('userId');
-    return userId ? parseInt(userId, 10) : null;
-  }
-
-  // Update your pollGameState method to call recordMatchResult when the game ends
   private async pollGameState(): Promise<void> {
     if (!this.gameId) return;
     
@@ -286,6 +265,34 @@ export class PongGamePage implements Page {
     }
   }
 
+  private checkInputs(): void {
+    // Use requestAnimationFrame for smooth input checking
+    // This separates input handling from network polling
+    const processInputs = () => {
+      if (this.currentState?.status === 'playing') {
+        // Player 1 controls (W/S keys)
+        if (this.keyState['w'] || this.keyState['W']) {
+          this.movePaddle('left', 'up');
+        } else if (this.keyState['s'] || this.keyState['S']) {
+          this.movePaddle('left', 'down');
+        }
+        
+        // Player 2 controls (Arrow Up/Down keys)
+        if (this.keyState['ArrowUp']) {
+          this.movePaddle('right', 'up');
+        } else if (this.keyState['ArrowDown']) {
+          this.movePaddle('right', 'down');
+        }
+      }
+      
+      // Continue the loop
+      requestAnimationFrame(processInputs);
+    };
+    
+    // Start the input processing loop
+    requestAnimationFrame(processInputs);
+  }
+
 
   private async movePaddle(side: 'left' | 'right', direction: 'up' | 'down'): Promise<void> {
     if (!this.gameId || this.currentState?.status !== 'playing') {
@@ -323,6 +330,9 @@ export class PongGamePage implements Page {
       console.error('Error moving paddle:', error);
     }
   }
+
+
+ 
   
   // Fix for the startGame method in pong.game.ts
   private async startGame(): Promise<void> {
@@ -371,6 +381,10 @@ export class PongGamePage implements Page {
       console.error('Error starting game:', error);
     }
   }
+
+ 
+
+
     
   private async pauseGame(): Promise<void> {
     if (!this.gameId) return;
@@ -407,22 +421,7 @@ export class PongGamePage implements Page {
     }
   }
   
-  private startGameLoop(): void {
-    if (this.updateInterval) {
-      clearInterval(this.updateInterval);
-    }
-    
-    // Separate input handling and state polling
-    // Process inputs on key events, not in the game loop
-    
-    // Poll for game state updates at a reasonable rate (20fps)
-    this.updateInterval = window.setInterval(() => {
-      this.pollGameState();
-    }, 50); // 50ms = 20 updates per second
-    
-    // Start continuous input checking separate from state updates
-    this.checkInputs();
-  }
+  
 
   private stopGameLoop(): void {
     if (this.updateInterval) {
@@ -431,46 +430,9 @@ export class PongGamePage implements Page {
     }
   }
   
-  private checkInputs(): void {
-    // Use requestAnimationFrame for smooth input checking
-    // This separates input handling from network polling
-    const processInputs = () => {
-      if (this.currentState?.status === 'playing') {
-        // Player 1 controls (W/S keys)
-        if (this.keyState['w'] || this.keyState['W']) {
-          this.movePaddle('left', 'up');
-        } else if (this.keyState['s'] || this.keyState['S']) {
-          this.movePaddle('left', 'down');
-        }
-        
-        // Player 2 controls (Arrow Up/Down keys)
-        if (this.keyState['ArrowUp']) {
-          this.movePaddle('right', 'up');
-        } else if (this.keyState['ArrowDown']) {
-          this.movePaddle('right', 'down');
-        }
-      }
-      
-      // Continue the loop
-      requestAnimationFrame(processInputs);
-    };
-    
-    // Start the input processing loop
-    requestAnimationFrame(processInputs);
-  }
+
   
-  private handleKeyDown(event: KeyboardEvent): void {
-    this.keyState[event.key] = true;
-    
-    // Prevent default behavior for the game control keys
-    if (['w', 'W', 's', 'S', 'ArrowUp', 'ArrowDown'].includes(event.key)) {
-      event.preventDefault();
-    }
-  }
-  
-  private handleKeyUp(event: KeyboardEvent): void {
-    this.keyState[event.key] = false;
-  }
+
   
   private drawGame(): void {
     if (!this.currentState || !this.ctx || !this.canvas) return;
@@ -574,9 +536,65 @@ export class PongGamePage implements Page {
       statusElement.textContent = message;
     }
   }
+
+
+  private async recordMatchResult(): Promise<void> {
+    if (!this.gameId || !this.currentState) return;
+    
+    try {
+      // Get user ID from session storage
+      const userId = this.getCurrentUserId();
+      
+      if (!userId) {
+        console.log('User not logged in, not recording match');
+        return;
+      }
+      
+      // Determine which side won
+      const winner = this.currentState.winner || 
+                    (this.currentState.scoreLeft >= 5 ? 'left' : 'right');
+      
+      // Call the API to record the match
+      const response = await fetch('/api/games/record-match', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          gameId: this.gameId,
+          userId: userId,
+          // For simplicity, we'll assume the logged-in user is always the left player
+          // You could add a player side selection UI in the future
+          userSide: 'left',
+          leftScore: this.currentState.scoreLeft,
+          rightScore: this.currentState.scoreRight,
+          winner: winner
+        })
+      });
+      
+      if (!response.ok) {
+        console.error('Failed to record match:', response.statusText);
+        return;
+      }
+      
+      const data = await response.json();
+      console.log('Match recorded successfully:', data);
+      
+    } catch (error) {
+      console.error('Error recording match:', error);
+    }
+  }
+
+  // Helper method to get user ID from session storage
+  private getCurrentUserId(): number | null {
+    const userId = sessionStorage.getItem('userId');
+    return userId ? parseInt(userId, 10) : null;
+  }
+
   
   // Clean up resources when component is destroyed
   public destroy(): void {
+    console.log("Destroy method called")
     if (this.updateInterval) {
       clearInterval(this.updateInterval);
       this.updateInterval = null;
