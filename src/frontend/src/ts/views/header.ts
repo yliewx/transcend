@@ -33,6 +33,9 @@ export class HeaderPage implements Page {
               <a href="/profile" class="nav-link border-transparent text-gray-500 hover:border-indigo-500 hover:text-indigo-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                 Profile
               </a>
+              <a href="/friends" class="nav-link border-transparent text-gray-500 hover:border-indigo-500 hover:text-indigo-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                Friends
+              </a>
             </div>
           </div>
           <div class="ml-6 flex items-center">
