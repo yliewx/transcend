@@ -7,12 +7,19 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    ports:
-      - "3000:3000"
     environment:
       - NODE_ENV=development
       - DB_PATH=/db/database.sqlite
-      - JWT_SECRET=test-secret-key
+      - PREAUTH_TOKEN_SECRET=preauth-secret-key
+      - ACCESS_TOKEN_SECRET=access-secret-key
+      - REFRESH_TOKEN_SECRET=refresh-secret-key
+      - SMTP_HOST=smtp.gmail.com
+      - SMTP_PORT=587
+      - SMTP_SECURE=false
+      - SMTP_USER=test2fapong@gmail.com
+      - SMTP_PASS=cwtcmjranmavanxo
+      - EMAIL_FROM_NAME=Admin
+      - EMAIL_FROM_ADDRESS=test2fapong@gmail.com
     networks:
       - ft_transcendence
     volumes:
@@ -26,24 +33,45 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    ports:
-      - "8080:8080"
     environment:
       - NODE_ENV=development
+      # - SMTP_HOST=smtp.gmail.com
+      # - SMTP_PORT=587
+      # - SMTP_SECURE=false
+      # - SMTP_USER=test2fapong@gmail.com
+      # - SMTP_PASS=cwtcmjranmavanxo
+      # - EMAIL_FROM_NAME=Admin
+      # - EMAIL_FROM_ADDRESS=test2fapong@gmail.com
     networks:
       - ft_transcendence
+    volumes:
+      - frontend_data:/usr/src/app/public
     depends_on:
       - backend
+
+#---------------------------------NGINX----------------------------------
+
+  nginx:
+    container_name: nginx
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    ports:
+      - "8080:443"
+    networks:
+      - ft_transcendence
+    volumes:
+      - frontend_data:/usr/share/nginx/html
+    depends_on:
+      - frontend
     restart: always
-
-#--------------------------------DATABASE--------------------------------
-
-
-
+    
 #--------------------------------VOLUMES---------------------------------
 
 volumes:
   sqlite_data:
+    driver: local
+  frontend_data:
     driver: local
 
 #--------------------------------NETWORKS--------------------------------

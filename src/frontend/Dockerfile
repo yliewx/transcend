@@ -21,4 +21,4 @@ EXPOSE 8080
 # use nginx later for secure https connection
 # serve -s: always return index.html for client-side routing
 # CMD [ "npx", "serve", "-s", "public", "-l", "8080" ]
-CMD [ "npm", "start" ]
+# CMD [ "npm", "start" ]

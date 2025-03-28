@@ -1,14 +1,15 @@
 import { Page } from '../types';
 import { Router } from '../router';
 import { AuthService } from '../services/auth.service';
+import { ControlAccess } from '../services/control.access';
 
 export class OTPVerificationPage implements Page {
   private router: Router;
-  private authService: AuthService;
+  private controlAccess: ControlAccess;
 
   constructor(router: Router) {
     this.router = router;
-    this.authService = router.getControlAccess().getAuthService();
+    this.controlAccess = router.getControlAccess();
   }
 
   render(): HTMLElement {
@@ -52,7 +53,7 @@ export class OTPVerificationPage implements Page {
       </div>
     `;
     
-    this.attachEventListeners();
+    setTimeout(() => this.attachEventListeners(), 0);
 
     return container;
   }
@@ -75,8 +76,14 @@ export class OTPVerificationPage implements Page {
       });
     });
     
-    verifyButton?.addEventListener('click', () => this.handleOTPVerification());
-    resendButton?.addEventListener('click', () => this.resendOTP());
+    verifyButton?.addEventListener('click', (e: Event) => {
+      e.preventDefault();
+      this.handleOTPVerification();
+    });
+    resendButton?.addEventListener('click', (e: Event) => {
+      e.preventDefault();
+      this.resendOTP();
+    });
   }
 
   private async handleOTPVerification(): Promise<void> {
@@ -93,20 +100,14 @@ export class OTPVerificationPage implements Page {
     }
     
     try {
-      // Retrieve user id from session storage
-      const user_id = sessionStorage.getItem('user_id');
-      if (!user_id) {
-        console.error("No user ID found in session storage. Redirecting to login.");
-        this.router.navigateTo('/login');
-      }
-
-      const result = await this.authService.verifyOtp(Number(user_id), otpCode);
+      const result = await this.controlAccess.verifyOtp(otpCode);
       if (result.success) {
         // Show success message
-        console.log("OTP verified. Login successful")
+        console.log("OTP verified. Login successful");
+        this.router.navigateTo('/home');
       } else {
         if (errorMessage) {
-          errorMessage.textContent = result.message || 'OTP verification failed. Please try again.';
+          errorMessage.textContent = result.error || 'OTP verification failed. Please try again.';
           errorMessage.classList.remove('hidden');
         }
       }
@@ -120,6 +121,19 @@ export class OTPVerificationPage implements Page {
   }
   
   private async resendOTP(): Promise<void> {
-    console.log('resendOTP placeholder, not implemented yet');
+    try {
+      console.log('Generating new OTP to resend');
+      const result = await this.controlAccess.getAuthService().generateOtp();
+      
+      if (result.success) {
+        console.log('OTP generated successfully');
+      } else {
+        console.error('Failed to generate OTP:', result.message);
+        alert(`Failed to generate OTP: ${result.message || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error generating OTP:', error);
+      alert('An error occurred while generating OTP. Please try again.');
+    }
   }
 }

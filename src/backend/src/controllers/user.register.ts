@@ -3,7 +3,6 @@ import bcrypt from 'bcrypt';
 import User from '../models/user';
 import Profile from '../models/profile';
 import { getDb } from '../db.js';
-import { AuthenticatedRequest } from '../../@types/fastify';
 
 interface RegistrationRequest {
   username: string;
