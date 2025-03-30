@@ -6,6 +6,8 @@ export class Router {
   private routes: Map<string, Page>;
   private container: HTMLElement;
   private currentPath: string = '';
+  private currentPageInstance: Page | null = null; // Add this line
+
 
   /*------------------------------CONSTRUCTOR-------------------------------*/
 
@@ -18,7 +20,7 @@ export class Router {
       const newPath = window.location.pathname;
       if (newPath !== this.currentPath) {
         this.handleRoute(newPath);
-      }
+      }``
     });
     
     // Listen for authentication state changes
@@ -80,6 +82,11 @@ export class Router {
       console.log(`Already on route: ${path}, not rendering again`);
       return;
     }
+
+    // Call destroy on the current page instance if it exists
+    if (this.currentPageInstance && typeof this.currentPageInstance.destroy === 'function') {
+      await Promise.resolve(this.currentPageInstance.destroy());
+    }
   
     this.currentPath = path;
     
@@ -102,9 +109,13 @@ export class Router {
     const page = this.routes.get(path) || this.routes.get('/404');
     
     if (page) {
+      // Store the current page instance
+      this.currentPageInstance = page;
       // Handle both synchronous and asynchronous rendering
       const element = await Promise.resolve(page.render());
       this.container.appendChild(element);
+    } else {
+      this.currentPageInstance = null;
     }
   }
 
