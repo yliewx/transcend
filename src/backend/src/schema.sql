@@ -83,6 +83,25 @@ LEFT JOIN
 WHERE 
   fr.status = 'pending';
 
+-- Create a view for outgoing friend requests with user info
+CREATE VIEW IF NOT EXISTS pending_outgoing_requests_view AS
+SELECT 
+  fr.id,
+  fr.sender_id,
+  fr.recipient_id,
+  u_recipient.username AS recipient_username,
+  p_recipient.display_name AS recipient_display_name,
+  fr.created_at,
+  fr.status
+FROM 
+  friend_requests fr
+JOIN 
+  users u_recipient ON fr.recipient_id = u_recipient.id
+LEFT JOIN 
+  profiles p_recipient ON fr.recipient_id = p_recipient.user_id
+WHERE 
+  fr.status = 'pending';
+
 
 CREATE TABLE IF NOT EXISTS friendships (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
