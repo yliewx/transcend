@@ -6,6 +6,16 @@ import { profileHandler, updatePasswordHandler, updateProfileDataHandler, update
 import fp from 'fastify-plugin';
 import { AuthenticatedRequest } from '../@types/fastify';
 import * as GameController from './controllers/game.controller';
+import { 
+  getFriends, 
+  getPendingRequests, 
+  searchUsers, 
+  sendFriendRequest, 
+  acceptFriendRequest, 
+  declineFriendRequest, 
+  cancelFriendRequest, 
+  removeFriend 
+} from './controllers/friend.controller'
 
 // Game route interface types
 interface GameParams {
@@ -19,6 +29,10 @@ interface MoveBody {
 
 interface PollQuery {
   hash?: string;
+}
+
+interface FriendRequestParams {
+  id: string;
 }
 
 export default fp(async function setupRoutes(server: FastifyInstance) {
@@ -51,6 +65,66 @@ export default fp(async function setupRoutes(server: FastifyInstance) {
     console.log('Password update route hit');
     return updatePasswordHandler(request as AuthenticatedRequest, reply);
   });
+
+   // FRIEND ROUTES
+  server.get('/api/friends', { preHandler: server.authenticate }, (request, reply) => {
+    return getFriends(request as AuthenticatedRequest, reply);
+  });
+  
+  server.get('/api/friends/pending', { preHandler: server.authenticate }, (request, reply) => {
+    return getPendingRequests(request as AuthenticatedRequest, reply);
+  });
+  
+  // server.get('/api/users/search', { preHandler: server.authenticate }, (request, reply) => {
+  //   return searchUsers(request as AuthenticatedRequest, reply);
+  // });
+
+  server.get('/api/users/search', { 
+    preHandler: server.authenticate,
+    schema: {
+      querystring: {
+        type: 'object',
+        required: ['q'],
+        properties: {
+          q: { type: 'string' }
+        }
+      }
+    } 
+  }, (request, reply) => {
+    return searchUsers(request as AuthenticatedRequest, reply);
+  });
+  
+  server.post('/api/friends/request', { preHandler: server.authenticate }, (request, reply) => {
+    return sendFriendRequest(request as AuthenticatedRequest, reply);
+  });
+  
+  server.post<{ Params: FriendRequestParams }>('/api/friends/request/:id/accept', 
+    { preHandler: server.authenticate }, 
+    (request, reply) => {
+      return acceptFriendRequest(request as AuthenticatedRequest, reply);
+    }
+  );
+  
+  server.post<{ Params: FriendRequestParams }>('/api/friends/request/:id/decline', 
+    { preHandler: server.authenticate }, 
+    (request, reply) => {
+      return declineFriendRequest(request as AuthenticatedRequest, reply);
+    }
+  );
+  
+  server.post<{ Params: FriendRequestParams }>('/api/friends/request/:id/cancel', 
+    { preHandler: server.authenticate }, 
+    (request, reply) => {
+      return cancelFriendRequest(request as AuthenticatedRequest, reply);
+    }
+  );
+  
+  server.delete<{ Params: FriendRequestParams }>('/api/friends/:id', 
+    { preHandler: server.authenticate }, 
+    (request, reply) => {
+      return removeFriend(request as AuthenticatedRequest, reply);
+    }
+  );
 
   // GAME ROUTES
   // Create a new game
