@@ -60,6 +60,7 @@ export class ControlAccess {
    */
   public setAuthenticated(status: boolean): void {
     if (this.isAuthenticated !== status) {
+      console.log(`[ControlAccess] Setting authentication status to: ${status}`);
       this.isAuthenticated = status;
       this.notifyListeners();
     }

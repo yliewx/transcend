@@ -39,11 +39,28 @@ declare module "fastify" {
   }
 }
 
+// export interface AuthenticatedRequest extends FastifyRequest {
+//   user: {
+//     id: number;
+//     username: string;
+//     email: string;
+//   }
+//   body: any;
+// }
+
 export interface AuthenticatedRequest extends FastifyRequest {
   user: {
     id: number;
     username: string;
     email: string;
-  }
+  };
   body: any;
+  query: {
+    q: string;
+    [key: string]: any;
+  };
+  params: {
+    id?: string;
+    [key: string]: string | undefined;
+  };
 }
