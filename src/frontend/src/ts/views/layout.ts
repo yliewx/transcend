@@ -36,4 +36,11 @@ export class PageWithHeader implements Page {
     
     return container;
   }
+
+  async destroy(): Promise<void> {
+    // Call destroy on the content page if it exists
+    if (this.contentPage && typeof this.contentPage.destroy === 'function') {
+      await Promise.resolve(this.contentPage.destroy());
+    }
+  }
 }

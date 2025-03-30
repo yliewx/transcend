@@ -1,5 +1,6 @@
 export interface Page {
     render(): HTMLElement | Promise<HTMLElement>;
+    destroy?(): void | Promise<void>;
   }
 
 export interface GameStats {
