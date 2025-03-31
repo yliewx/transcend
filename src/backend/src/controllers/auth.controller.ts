@@ -1,13 +1,11 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import bcrypt from 'bcrypt';
 import User from '../models/user';
-import Profile from '../models/profile';
 import RefreshToken from '../models/refresh.token';
 import { getDb } from '../db.js';
 import { Database } from 'sqlite';
 import OTPAuth from 'otpauth';
 import QRCode from 'qrcode';
-import nodemailer from 'nodemailer';
 import { AuthTokenPayload, jwtSecrets } from '../plugins/jwt';
 
 interface LoginRequest {
@@ -241,81 +239,57 @@ export async function generateQRCode(request: FastifyRequest, reply: FastifyRepl
     const db = await getDb();
     await generateOtpToken(db, Number(userData.id));
 
-    const secret = await User.getOtpSecret(db, Number(userData.id));
+    const secret_base32 = await User.getOtpSecret(db, Number(userData.id));
     const otpAuthUrl = await User.getOtpAuthUrl(db, Number(userData.id));
     const qrCodeDataUrl = await QRCode.toDataURL(otpAuthUrl);
-
-    // Store secret and auth url in database
-    await User.setOtpSecret(db, userData.id, secret.base32, otpAuthUrl);
 
     return reply.status(202).send({
       success: true,
       qrCode: qrCodeDataUrl,
-      secret: secret.base32
+      secret: secret_base32
     });
   } catch (error) {
-    return reply.status(400).send({ success: false });
+    return reply.status(400).send({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to generate QR code' 
+    });
   }
 }
 
 // Handle sending OTP based on preferred otp_option
-// async function sendOtp(db: Database, user: any, otpToken: string) {
-//   if ((user.otp_option === 'sms' || user.otp_option === 'email') && !user.otp_contact) {
-//     throw new Error('Phone number is required for SMS 2FA');
-//   }
-//   // if (user.otp_option === 'email' ) {
-//   //   await sendEmailOtp(user.email, otpToken);
-//   // }
-// }
-
 async function sendOtp(request: FastifyRequest, db: Database, user: any, otpToken: string) {
   if (user.otp_option === 'app') return;
 
-  if (user.otp_option === 'email' && !user.email) {
-    throw new Error('Email address is required for Email 2FA');
+  if (!user.otp_contact) {
+    if (user.otp_option === 'email') {
+      throw new Error('Email address is required for Email 2FA');
+    } else if (user.otp_option === 'sms') {
+      throw new Error('Phone number is required for SMS 2FA');
+    }
   }
-  
+
   switch (user.otp_option) {
     case 'email':
       return await request.server.mailer.sendEmailOtp(user.otp_contact, otpToken);
-    // Handle other OTP methods...
+    case 'sms':
+      return await request.server.mailer.sendSmsOtp(user.otp_contact, otpToken);
     default:
       throw new Error(`Unsupported OTP method: ${user.otp_option}`);
   }
 }
 
-// Update the function signature to accept server
-// async function sendOtp(server: FastifyInstance, db: Database, user: any, otpToken: string) {
-//   if (user.otp_option === 'email' && !user.email) {
-//     throw new Error('Email address is required for Email 2FA');
-//   }
-  
-//   switch (user.otp_option) {
-//     case 'email':
-//       if (!server.mailer) {
-//         console.error("Mailer plugin not found");
-//         throw new Error("Email service not available");
-//       }
-//       return await server.mailer.sendEmailOtp(user.email, otpToken);
-//     default:
-//       throw new Error(`Unsupported OTP method: ${user.otp_option}`);
-//   }
-// }
-
 async function generateOtpToken(db: Database, user_id: number)
 {
-  // Generate user secret if it doesn't exist (first time login)
-  let userSecret = await User.getOtpSecret(db, user_id);
-  if (!userSecret)
-    userSecret = new OTPAuth.Secret();
+  // Fetch user secret if it exists in database
+  const secret_base32 = await User.getOtpSecret(db, user_id);
 
-  // Instantiate TOTP object
+  // Instantiate TOTP object; generate user secret if it doesn't exist (first time login)
   const totp = new OTPAuth.TOTP({
     issuer: 'ft_transcendence',
     algorithm: 'SHA256',
     digits: 6,
     period: 90,
-    secret: userSecret
+    secret: secret_base32 ? new OTPAuth.Secret(secret_base32) : new OTPAuth.Secret(),
   });
 
   // Generate OTP as string
@@ -346,8 +320,15 @@ export async function generateOtp(request: FastifyRequest, reply: FastifyReply) 
     // Generate OTP
     const otpToken = await generateOtpToken(db, user.id);
 
-    // TO-DO: Send OTP
-    await sendOtp(request, db, user, otpToken);
+    // Send OTP
+    try {
+      await sendOtp(request, db, user, otpToken);
+    } catch (error) {
+      return reply.code(500).send({
+        success: false,
+        error: `Failed to send OTP via ${user.otp_option}.`
+      })
+    }
 
     return reply.code(202).send({
       success: true,
