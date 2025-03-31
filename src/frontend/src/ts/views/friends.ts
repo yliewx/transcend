@@ -12,15 +12,23 @@ export class FriendsPage implements Page {
   private currentFriends: any[] = [];
   private pendingRequests: any[] = [];
   private isLoading: boolean = false;
+  private hasError: boolean = false;
   private boundEventHandlers: {[key: string]: EventListener} = {};
-
   
+  // Element caching
+  private element: HTMLElement | null = null;
+
   constructor(router: Router, friendService: FriendService) {
     this.router = router;
     this.friendService = friendService;
   }
   
-  async render(): Promise<HTMLElement> {
+  render(): HTMLElement {
+    // Return cached element if it exists
+    if (this.element) {
+      return this.element;
+    }
+    
     const container = document.createElement('div');
     container.className = 'max-w-7xl mx-auto py-6 sm:px-6 lg:px-8';
     
@@ -113,36 +121,70 @@ export class FriendsPage implements Page {
       </div>
     `;
     
-    // Set up event handlers after adding to DOM
-    setTimeout(() => this.setupEventHandlers(), 0);
-    setTimeout(() => this.setupDataEventListeners(), 0);
-
+    // Cache the element
+    this.element = container;
+    
+    // Set up event handlers
+    this.setupEventHandlers();
+    this.setupDataEventListeners();
     
     // Load initial data
-    this.loadInitialData();
+    setTimeout(() => this.loadInitialData(), 0);
     
     return container;
   }
+
+  update(): void {
+    if (this.element) {
+      // Refresh data when page is revisited
+      this.loadInitialData();
+    }
+  }
   
   private setupEventHandlers(): void {
+    if (!this.element) return;
+    
     // Tab navigation
-    document.getElementById('tab-friends')?.addEventListener('click', () => this.switchTab('friends'));
-    document.getElementById('tab-pending')?.addEventListener('click', () => this.switchTab('pending'));
-    document.getElementById('tab-search')?.addEventListener('click', () => this.switchTab('search'));
+    const tabFriends = this.element.querySelector('#tab-friends');
+    const tabPending = this.element.querySelector('#tab-pending');
+    const tabSearch = this.element.querySelector('#tab-search');
+    
+    if (tabFriends) {
+      tabFriends.addEventListener('click', () => this.switchTab('friends'));
+    }
+    if (tabPending) {
+      tabPending.addEventListener('click', () => this.switchTab('pending'));
+    }
+    if (tabSearch) {
+      tabSearch.addEventListener('click', () => this.switchTab('search'));
+    }
     
     // Search functionality
-    document.getElementById('search-btn')?.addEventListener('click', () => this.performSearch());
-    document.getElementById('search-input')?.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
-        this.performSearch();
-      }
-    });
+    const searchBtn = this.element.querySelector('#search-btn');
+    const searchInput = this.element.querySelector('#search-input');
+    
+    if (searchBtn) {
+      searchBtn.addEventListener('click', () => this.performSearch());
+    }
+    if (searchInput) {
+      searchInput.addEventListener('keypress', ((e: KeyboardEvent) => {
+        if (e.key === 'Enter') {
+          this.performSearch();
+        }
+      }) as EventListener);
+    }
     
     // Find friends button
-    document.getElementById('find-friends-btn')?.addEventListener('click', () => this.switchTab('search'));
+    const findFriendsBtn = this.element.querySelector('#find-friends-btn');
+    if (findFriendsBtn) {
+      findFriendsBtn.addEventListener('click', () => this.switchTab('search'));
+    }
     
     // Retry button
-    document.getElementById('retry-btn')?.addEventListener('click', () => this.loadInitialData());
+    const retryBtn = this.element.querySelector('#retry-btn');
+    if (retryBtn) {
+      retryBtn.addEventListener('click', () => this.loadInitialData());
+    }
   }
   
   private async loadInitialData(): Promise<void> {
@@ -155,6 +197,7 @@ export class FriendsPage implements Page {
     }
     
     this.isLoading = true;
+    this.hasError = false;
     this.updateUI();
     
     try {
@@ -185,7 +228,9 @@ export class FriendsPage implements Page {
   }
   
   private async performSearch(): Promise<void> {
-    const searchInput = document.getElementById('search-input') as HTMLInputElement;
+    if (!this.element) return;
+    
+    const searchInput = this.element.querySelector('#search-input') as HTMLInputElement;
     this.searchQuery = searchInput?.value.trim() || '';
     
     if (!this.searchQuery) {
@@ -193,6 +238,7 @@ export class FriendsPage implements Page {
     }
     
     this.isLoading = true;
+    this.hasError = false;
     this.updateUI();
     
     try {
@@ -216,12 +262,15 @@ export class FriendsPage implements Page {
   
   private switchTab(tab: 'friends' | 'pending' | 'search'): void {
     this.currentTab = tab;
+    this.hasError = false;
     this.updateUI();
   }
   
   private updateUI(): void {
+    if (!this.element) return;
+    
     // Update loading state
-    const loadingIndicator = document.getElementById('loading-indicator');
+    const loadingIndicator = this.element.querySelector('#loading-indicator');
     if (loadingIndicator) {
       if (this.isLoading) {
         loadingIndicator.classList.remove('hidden');
@@ -229,11 +278,21 @@ export class FriendsPage implements Page {
         loadingIndicator.classList.add('hidden');
       }
     }
+
+    // Handle error container visibility based on error state flag
+    const errorContainer = this.element.querySelector('#error-container');
+    if (errorContainer) {
+      if (this.hasError && !this.isLoading) {
+        errorContainer.classList.remove('hidden');
+      } else {
+        errorContainer.classList.add('hidden');
+      }
+    }
     
     // Update tab visibility
     ['friends', 'pending', 'search'].forEach(tab => {
-      const container = document.getElementById(`${tab}-container`);
-      const tabButton = document.getElementById(`tab-${tab}`);
+      const container = this.element?.querySelector(`#${tab}-container`);
+      const tabButton = this.element?.querySelector(`#tab-${tab}`);
       
       if (container) {
         if (this.currentTab === tab && !this.isLoading) {
@@ -270,7 +329,9 @@ export class FriendsPage implements Page {
   }
 
   private updatePendingBadge(): void {
-    const pendingBadge = document.getElementById('pending-badge');
+    if (!this.element) return;
+    
+    const pendingBadge = this.element.querySelector('#pending-badge');
     if (pendingBadge) {
       if (this.pendingRequests.length > 0) {
         pendingBadge.textContent = this.pendingRequests.length.toString();
@@ -282,8 +343,10 @@ export class FriendsPage implements Page {
   }
   
   private renderFriendsList(): void {
-    const friendsList = document.getElementById('friends-list');
-    const noFriends = document.getElementById('no-friends');
+    if (!this.element) return;
+    
+    const friendsList = this.element.querySelector('#friends-list');
+    const noFriends = this.element.querySelector('#no-friends');
     
     if (!friendsList || !noFriends) return;
     
@@ -340,8 +403,10 @@ export class FriendsPage implements Page {
   }
   
   private renderPendingRequests(): void {
-    const pendingList = document.getElementById('pending-requests-list');
-    const noPending = document.getElementById('no-pending');
+    if (!this.element) return;
+    
+    const pendingList = this.element.querySelector('#pending-requests-list');
+    const noPending = this.element.querySelector('#no-pending');
     
     if (!pendingList || !noPending) return;
     
@@ -416,8 +481,10 @@ export class FriendsPage implements Page {
   }
   
   private renderSearchResults(): void {
-    const searchResults = document.getElementById('search-results');
-    const noResults = document.getElementById('no-results');
+    if (!this.element) return;
+    
+    const searchResults = this.element.querySelector('#search-results');
+    const noResults = this.element.querySelector('#no-results');
     
     if (!searchResults || !noResults) return;
     
@@ -495,14 +562,19 @@ export class FriendsPage implements Page {
   }
 
   private showError(message: string): void {
+    if (!this.element) return;
+    
     this.isLoading = false;
+    this.hasError = true;
     
-    const errorContainer = document.getElementById('error-container');
-    const errorMessage = document.getElementById('error-message');
-    const loadingIndicator = document.getElementById('loading-indicator');
+    const errorContainer = this.element.querySelector('#error-container');
+    const errorMessage = errorContainer?.querySelector('p');
+    const loadingIndicator = this.element.querySelector('#loading-indicator');
     
-    if (errorContainer && errorMessage) {
-      errorMessage.textContent = message;
+    if (errorContainer) {
+      if (errorMessage) {
+        errorMessage.textContent = message;
+      }
       errorContainer.classList.remove('hidden');
     }
     
@@ -541,8 +613,8 @@ export class FriendsPage implements Page {
         this.removeRequestCard(requestId);
         
         if (this.pendingRequests.length === 0) {
-          const pendingList = document.getElementById('pending-requests-list');
-          const noPending = document.getElementById('no-pending');
+          const pendingList = this.element?.querySelector('#pending-requests-list');
+          const noPending = this.element?.querySelector('#no-pending');
           
           if (pendingList && noPending) {
             pendingList.classList.add('hidden');
@@ -569,8 +641,8 @@ export class FriendsPage implements Page {
         this.removeRequestCard(requestId);
         
         if (this.pendingRequests.length === 0) {
-          const pendingList = document.getElementById('pending-requests-list');
-          const noPending = document.getElementById('no-pending');
+          const pendingList = this.element?.querySelector('#pending-requests-list');
+          const noPending = this.element?.querySelector('#no-pending');
           
           if (pendingList && noPending) {
             pendingList.classList.add('hidden');
@@ -597,8 +669,8 @@ export class FriendsPage implements Page {
         this.removeRequestCard(requestId);
         
         if (this.pendingRequests.length === 0) {
-          const pendingList = document.getElementById('pending-requests-list');
-          const noPending = document.getElementById('no-pending');
+          const pendingList = this.element?.querySelector('#pending-requests-list');
+          const noPending = this.element?.querySelector('#no-pending');
           
           if (pendingList && noPending) {
             pendingList.classList.add('hidden');
@@ -621,8 +693,8 @@ export class FriendsPage implements Page {
         this.removeFriendCard(friendId);
         
         if (this.currentFriends.length === 0) {
-          const friendsList = document.getElementById('friends-list');
-          const noFriends = document.getElementById('no-friends');
+          const friendsList = this.element?.querySelector('#friends-list');
+          const noFriends = this.element?.querySelector('#no-friends');
           
           if (friendsList && noFriends) {
             friendsList.classList.add('hidden');
@@ -651,7 +723,9 @@ export class FriendsPage implements Page {
   
   // Helper method to remove a friend card from the DOM
   private removeFriendCard(friendId: number): void {
-    const friendCard = document.querySelector(`button[data-friend-id="${friendId}"]`)?.closest('.bg-gray-50');
+    if (!this.element) return;
+    
+    const friendCard = this.element.querySelector(`button[data-friend-id="${friendId}"]`)?.closest('.bg-gray-50');
     
     if (friendCard) {
       // Add a fade-out animation
@@ -666,7 +740,9 @@ export class FriendsPage implements Page {
   
   // Helper method to remove a request card from the DOM
   private removeRequestCard(requestId: number): void {
-    const requestCard = document.querySelector(`button[data-request-id="${requestId}"]`)?.closest('.bg-gray-50');
+    if (!this.element) return;
+    
+    const requestCard = this.element.querySelector(`button[data-request-id="${requestId}"]`)?.closest('.bg-gray-50');
     
     if (requestCard) {
       // Add a fade-out animation
@@ -720,7 +796,7 @@ export class FriendsPage implements Page {
     notification.className = `fixed bottom-4 right-4 p-4 rounded-md shadow-lg transition-opacity duration-500 opacity-0 max-w-md ${
       type === 'success' ? 'bg-green-100 text-green-800' :
       type === 'error' ? 'bg-red-100 text-red-800' :
-      'bg-blue-100 text-blue-800'
+      'bg-blue-100 text-bluce-800'
     }`;
     
     notification.innerHTML = `
