@@ -123,6 +123,10 @@ export class LoginPage implements Page {
         // this.router.navigateTo('/home');
         // Check if user's preferred 2FA option is set
         if (result.user.otp_option !== null) {
+          if (result.user.otp_option === 'app') {
+            console.log('Check authenticator app for the OTP');
+            this.router.navigateTo('/otp/verify');
+          }
           // Send request to generate OTP before navigating to /otp/verify
           console.log(`Requesting OTP via ${result.user.otp_option}`);
           const res = await this.controlAccess.getAuthService().generateOtp();

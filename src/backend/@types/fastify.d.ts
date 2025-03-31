@@ -34,7 +34,9 @@ declare module "fastify" {
     
     // Add mailer property
     mailer: {
+      transporter?: any;
       sendEmailOtp: (email: string, otpToken: string) => Promise<boolean>;
+      sendSmsOtp: (phoneNumber: string, otpToken: string) => Promise<boolean>;
     };
   }
 }

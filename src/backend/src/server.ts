@@ -9,7 +9,7 @@ import { setupDbConnection } from './db';
 // import { registerRoutes } from './routes';
 import setupRoutes from './routes';
 import setupMailer from './plugins/mailer';
-
+import setupTwilio from './plugins/twilio';
 
 // Initialize database
 setupDbConnection();
@@ -33,6 +33,7 @@ server.addHook("onRequest", async (req, reply) => {
 server.register(setupJwt);
 server.register(fastifyCookie);
 server.register(setupMailer);
+server.register(setupTwilio);
 
 // Register routes
 server.register(setupCors);
