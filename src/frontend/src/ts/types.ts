@@ -1,5 +1,6 @@
 export interface Page {
     render(): HTMLElement | Promise<HTMLElement>;
+    update?(): void | Promise<void>;
     destroy?(): void | Promise<void>;
   }
 

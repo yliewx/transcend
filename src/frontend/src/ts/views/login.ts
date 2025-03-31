@@ -5,6 +5,7 @@ import { ControlAccess } from '../services/control.access';
 export class LoginPage implements Page {
   private router: Router;
   private controlAccess: ControlAccess;
+  private element: HTMLElement | null = null;
   
   constructor(router: Router) {
     this.router = router;
@@ -12,6 +13,11 @@ export class LoginPage implements Page {
   }
   
   render(): HTMLElement {
+    // Return cached element if it exists
+    if (this.element) {
+      return this.element;
+    }
+    
     const container = document.createElement('div');
     container.className = 'py-10';
     
@@ -63,35 +69,51 @@ export class LoginPage implements Page {
       </main>
     `;
     
-    // Add event listeners after rendering
-    setTimeout(() => this.attachEventListeners(), 0);
+    this.setupEventHandlers(container);
+    
+    // Cache the element for future use
+    this.element = container;
     
     return container;
   }
   
-  private attachEventListeners(): void {
-    const loginButton = document.getElementById('login-button');
-    const loginForm = document.getElementById('login-form');
+  update(): void {
+    // Reset form and error messages if the page is revisited
+    if (this.element) {
+      const loginForm = this.element.querySelector('#login-form') as HTMLFormElement;
+      const errorMessage = this.element.querySelector('#error-message');
+      const loginMessage = this.element.querySelector('#login-message');
+      
+      if (loginForm) loginForm.reset();
+      if (errorMessage) errorMessage.classList.add('hidden');
+      if (loginMessage) loginMessage.classList.add('hidden');
+    }
+  }
+  
+  private setupEventHandlers(container: HTMLElement): void {
+    const loginButton = container.querySelector('#login-button');
+    const loginForm = container.querySelector('#login-form');
     
     if (loginButton) {
       loginButton.addEventListener('click', () => this.handleLogin());
     }
     
     if (loginForm) {
-      loginForm.addEventListener('keypress', (e) => {
+      loginForm.addEventListener('keypress', ((e: KeyboardEvent) => {
         if (e.key === 'Enter') {
           e.preventDefault();
           this.handleLogin();
         }
-      });
+      }) as EventListener);
     }
   }
-  
   private async handleLogin(): Promise<void> {
-    const usernameInput = document.getElementById('username') as HTMLInputElement;
-    const passwordInput = document.getElementById('password') as HTMLInputElement;
-    const errorMessage = document.getElementById('error-message');
-    const loginMessage = document.getElementById('login-message');
+    if (!this.element) return;
+    
+    const usernameInput = this.element.querySelector('#username') as HTMLInputElement;
+    const passwordInput = this.element.querySelector('#password') as HTMLInputElement;
+    const errorMessage = this.element.querySelector('#error-message');
+    const loginMessage = this.element.querySelector('#login-message');
     
     if (!usernameInput || !passwordInput) return;
     

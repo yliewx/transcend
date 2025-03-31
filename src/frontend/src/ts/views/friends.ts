@@ -11,7 +11,6 @@ export class FriendsPage implements Page {
   private searchResults: any[] = [];
   private currentFriends: any[] = [];
   private pendingRequests: any[] = [];
-  private isLoading: boolean = false;
   private hasError: boolean = false;
   private boundEventHandlers: {[key: string]: EventListener} = {};
   
@@ -54,11 +53,6 @@ export class FriendsPage implements Page {
             </button>
           </div>
           
-          <!-- Loading State -->
-          <div id="loading-indicator" class="text-center py-10 ${this.isLoading ? '' : 'hidden'}">
-            <p class="text-lg text-gray-600">Loading...</p>
-          </div>
-          
           <!-- Error State -->
           <div id="error-container" class="hidden text-center py-10">
             <p class="text-lg text-red-600">Something went wrong. Please try again.</p>
@@ -68,7 +62,7 @@ export class FriendsPage implements Page {
           </div>
           
           <!-- Friends Tab Content -->
-          <div id="friends-container" class="${this.currentTab === 'friends' && !this.isLoading ? '' : 'hidden'}">
+          <div id="friends-container" class="${this.currentTab === 'friends' ? '' : 'hidden'}">
             <div id="friends-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <!-- Friends will be dynamically inserted here -->
             </div>
@@ -81,7 +75,7 @@ export class FriendsPage implements Page {
           </div>
           
           <!-- Pending Requests Tab Content -->
-          <div id="pending-container" class="${this.currentTab === 'pending' && !this.isLoading ? '' : 'hidden'}">
+          <div id="pending-container" class="${this.currentTab === 'pending' ? '' : 'hidden'}">
             <div id="pending-requests-list" class="space-y-4">
               <!-- Pending requests will be dynamically inserted here -->
             </div>
@@ -91,7 +85,7 @@ export class FriendsPage implements Page {
           </div>
           
           <!-- Search Tab Content -->
-          <div id="search-container" class="${this.currentTab === 'search' && !this.isLoading ? '' : 'hidden'}">
+          <div id="search-container" class="${this.currentTab === 'search' ? '' : 'hidden'}">
             <div class="mb-6">
               <div class="flex items-center">
                 <input 
@@ -196,7 +190,6 @@ export class FriendsPage implements Page {
       return;
     }
     
-    this.isLoading = true;
     this.hasError = false;
     this.updateUI();
     
@@ -216,13 +209,11 @@ export class FriendsPage implements Page {
       } else {
         throw new Error(pendingResponse.error || 'Failed to load pending requests');
       }
-      
-      this.isLoading = false;
+
       this.updateUI();
       
     } catch (error) {
       console.error('Error loading friends data:', error);
-      this.isLoading = false;
       this.showError(error instanceof Error ? error.message : 'Unknown error');
     }
   }
@@ -237,7 +228,6 @@ export class FriendsPage implements Page {
       return;
     }
     
-    this.isLoading = true;
     this.hasError = false;
     this.updateUI();
     
@@ -250,12 +240,10 @@ export class FriendsPage implements Page {
         throw new Error(response.error || 'Search failed');
       }
       
-      this.isLoading = false;
       this.updateUI();
       
     } catch (error) {
       console.error('Search error:', error);
-      this.isLoading = false;
       this.showError(error instanceof Error ? error.message : 'Search failed');
     }
   }
@@ -265,59 +253,50 @@ export class FriendsPage implements Page {
     this.hasError = false;
     this.updateUI();
   }
-  
+
   private updateUI(): void {
     if (!this.element) return;
     
-    // Update loading state
-    const loadingIndicator = this.element.querySelector('#loading-indicator');
-    if (loadingIndicator) {
-      if (this.isLoading) {
-        loadingIndicator.classList.remove('hidden');
-      } else {
-        loadingIndicator.classList.add('hidden');
-      }
-    }
-
-    // Handle error container visibility based on error state flag
+    // Handle error container visibility
     const errorContainer = this.element.querySelector('#error-container');
     if (errorContainer) {
-      if (this.hasError && !this.isLoading) {
+      if (this.hasError) {
         errorContainer.classList.remove('hidden');
       } else {
         errorContainer.classList.add('hidden');
       }
     }
     
-    // Update tab visibility
-    ['friends', 'pending', 'search'].forEach(tab => {
-      const container = this.element?.querySelector(`#${tab}-container`);
-      const tabButton = this.element?.querySelector(`#tab-${tab}`);
-      
-      if (container) {
-        if (this.currentTab === tab && !this.isLoading) {
-          container.classList.remove('hidden');
-        } else {
-          container.classList.add('hidden');
+    // Only update tab content if no error is present
+    if (!this.hasError) {
+      // Update tab visibility
+      ['friends', 'pending', 'search'].forEach(tab => {
+        const container = this.element?.querySelector(`#${tab}-container`);
+        const tabButton = this.element?.querySelector(`#tab-${tab}`);
+        
+        if (container) {
+          if (this.currentTab === tab) {
+            container.classList.remove('hidden');
+          } else {
+            container.classList.add('hidden');
+          }
         }
-      }
-      
-      if (tabButton) {
-        if (this.currentTab === tab) {
-          tabButton.classList.add('text-indigo-600', 'border-b-2', 'border-indigo-600');
-          tabButton.classList.remove('text-gray-500', 'hover:text-gray-700');
-        } else {
-          tabButton.classList.remove('text-indigo-600', 'border-b-2', 'border-indigo-600');
-          tabButton.classList.add('text-gray-500', 'hover:text-gray-700');
+        
+        if (tabButton) {
+          if (this.currentTab === tab) {
+            tabButton.classList.add('text-indigo-600', 'border-b-2', 'border-indigo-600');
+            tabButton.classList.remove('text-gray-500', 'hover:text-gray-700');
+          } else {
+            tabButton.classList.remove('text-indigo-600', 'border-b-2', 'border-indigo-600');
+            tabButton.classList.add('text-gray-500', 'hover:text-gray-700');
+          }
         }
-      }
-    });
-    
-    // Update the pending badge count
-    this.updatePendingBadge();
-    
-    // Update content based on current tab
-    if (!this.isLoading) {
+      });
+      
+      // Update the pending badge count
+      this.updatePendingBadge();
+      
+      // Update content based on current tab
       if (this.currentTab === 'friends') {
         this.renderFriendsList();
       } else if (this.currentTab === 'pending') {
@@ -564,22 +543,16 @@ export class FriendsPage implements Page {
   private showError(message: string): void {
     if (!this.element) return;
     
-    this.isLoading = false;
     this.hasError = true;
     
     const errorContainer = this.element.querySelector('#error-container');
     const errorMessage = errorContainer?.querySelector('p');
-    const loadingIndicator = this.element.querySelector('#loading-indicator');
     
     if (errorContainer) {
       if (errorMessage) {
         errorMessage.textContent = message;
       }
       errorContainer.classList.remove('hidden');
-    }
-    
-    if (loadingIndicator) {
-      loadingIndicator.classList.add('hidden');
     }
   }
 

@@ -1,9 +1,16 @@
 import { Page } from '../types';
 
 export class NotFoundPage implements Page {
+    private element: HTMLElement | null = null;
+    
     constructor() {}
 
     render(): HTMLElement {
+        // Return cached element if it exists
+        if (this.element) {
+            return this.element;
+        }
+        
         const container = document.createElement('div');
         container.innerHTML = `
             <div class="flex items-center justify-center h-screen">
@@ -16,8 +23,15 @@ export class NotFoundPage implements Page {
                 </button>
                 </div>
             </div>
-            `;
+        `;
+        
+        // Cache the element for future use
+        this.element = container;
         
         return container;
+    }
+    
+    update(): void {
+        // NotFoundPage is static, no updates needed
     }
 }
