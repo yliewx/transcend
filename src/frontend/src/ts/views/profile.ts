@@ -6,13 +6,19 @@ export class ProfilePage implements Page {
   private router: Router;
   private userService: UserService;
   private userProfile: any = null;
+  private element: HTMLElement | null = null;
   
   constructor(router: Router, userService: UserService) {
     this.router = router;
     this.userService = userService;
   }
   
-  async render(): Promise<HTMLElement> {
+  render(): HTMLElement {
+    // Return cached element if it exists
+    if (this.element) {
+      return this.element;
+    }
+    
     const container = document.createElement('div');
     
     // Set initial HTML content first (non-blocking)
@@ -167,15 +173,28 @@ export class ProfilePage implements Page {
       </div>
     `;
     
-    // Attach event listeners immediately
-    setTimeout(() => this.attachEventListeners(), 0);
+    // Cache the element
+    this.element = container;
+    
+    // Attach event listeners
+    this.setupEventHandlers();
     
     // Fetch profile data separately (non-blocking)
-    this.fetchProfileData().then(() => {
-      this.updateUIWithProfileData();
-    });
+    setTimeout(() => {
+      this.fetchProfileData().then(() => {
+        this.updateUIWithProfileData();
+      });
+    }, 0);
     
     return container;
+  }
+  
+  async update(): Promise<void> {
+    // Refresh profile data when the page is revisited
+    if (this.element) {
+      await this.fetchProfileData();
+      this.updateUIWithProfileData();
+    }
   }
   
   private async fetchProfileData(): Promise<void> {
@@ -193,65 +212,64 @@ export class ProfilePage implements Page {
     }
   }
   
-  // New method to update UI with profile data
   private updateUIWithProfileData(): void {
-    if (!this.userProfile) return;
+    if (!this.element || !this.userProfile) return;
     
     // Update avatar
-    const avatarImg = document.getElementById('current-avatar') as HTMLImageElement;
+    const avatarImg = this.element.querySelector('#current-avatar') as HTMLImageElement;
     if (avatarImg) {
       avatarImg.src = this.userProfile?.profileData?.avatarPath || '/assets/default-avatar.png';
     }
     
     // Update form fields
-    const usernameInput = document.getElementById('username') as HTMLInputElement;
+    const usernameInput = this.element.querySelector('#username') as HTMLInputElement;
     if (usernameInput) {
       usernameInput.value = this.userProfile?.userData?.username || '';
     }
     
-    const displayNameInput = document.getElementById('displayName') as HTMLInputElement;
+    const displayNameInput = this.element.querySelector('#displayName') as HTMLInputElement;
     if (displayNameInput) {
       displayNameInput.value = this.userProfile?.profileData?.displayName || '';
     }
     
-    const emailInput = document.getElementById('email') as HTMLInputElement;
+    const emailInput = this.element.querySelector('#email') as HTMLInputElement;
     if (emailInput) {
       emailInput.value = this.userProfile?.userData?.email || '';
     }
   }
  
-  private attachEventListeners(): void {
+  private setupEventHandlers(): void {
+    if (!this.element) return;
+    
     // Avatar upload
-    const avatarUpload = document.getElementById('avatar-upload') as HTMLInputElement;
+    const avatarUpload = this.element.querySelector('#avatar-upload') as HTMLInputElement;
     if (avatarUpload) {
-      avatarUpload.addEventListener('change', this.handleAvatarUpload.bind(this));
+      avatarUpload.addEventListener('change', e => this.handleAvatarUpload(e));
     }
     
     // Form submission
-    const profileForm = document.getElementById('profile-form') as HTMLFormElement;
+    const profileForm = this.element.querySelector('#profile-form') as HTMLFormElement;
     if (profileForm) {
-      profileForm.addEventListener('submit', this.handleFormSubmit.bind(this));
+      profileForm.addEventListener('submit', e => this.handleFormSubmit(e));
     }
     
     // Cancel button
-    const cancelButton = document.getElementById('cancel-button');
+    const cancelButton = this.element.querySelector('#cancel-button');
     if (cancelButton) {
       cancelButton.addEventListener('click', () => {
         this.router.navigateTo('/home');
       });
     }
-    
-    // Make sure header's logout button works - debug logging
-    const logoutButton = document.getElementById('logout-button');
-    console.log('Logout button found in profile page:', !!logoutButton);
   }
   
   private async handleAvatarUpload(event: Event): Promise<void> {
-    //empty for now
+    // Implementation will go here
   }
   
   private async handleFormSubmit(event: Event): Promise<void> {
-    event.preventDefault(); // Re-adding this to prevent form submission
+    event.preventDefault();
+    
+    if (!this.element) return;
     
     const form = event.target as HTMLFormElement;
     const formData = new FormData(form);
@@ -313,9 +331,9 @@ export class ProfilePage implements Page {
           hasError = true;
           
           // Clear password fields on error
-          const newPasswordField = document.getElementById('newPassword') as HTMLInputElement;
-          const confirmPasswordField = document.getElementById('confirmPassword') as HTMLInputElement;
-          const currentPasswordField = document.getElementById('currentPassword') as HTMLInputElement;
+          const newPasswordField = this.element.querySelector('#newPassword') as HTMLInputElement;
+          const confirmPasswordField = this.element.querySelector('#confirmPassword') as HTMLInputElement;
+          const currentPasswordField = this.element.querySelector('#currentPassword') as HTMLInputElement;
           
           if (newPasswordField) newPasswordField.value = '';
           if (confirmPasswordField) confirmPasswordField.value = '';
@@ -331,11 +349,8 @@ export class ProfilePage implements Page {
         this.showNotification('Profile updated successfully', 'success');
         
         // Refresh the profile data
-        const profileData = await this.userService.getProfile();
-        if (profileData.success) {
-          this.userProfile = profileData;
-          this.updateUIWithProfileData(); // Update UI with refreshed data
-        }
+        await this.fetchProfileData();
+        this.updateUIWithProfileData(); // Update UI with refreshed data
       }
     } catch (error) {
       console.error('Failed to update profile:', error);
@@ -344,8 +359,10 @@ export class ProfilePage implements Page {
   }
   
   private showNotification(message: string, type: 'success' | 'error'): void {
-    const notification = document.getElementById('notification');
-    const notificationMessage = document.getElementById('notification-message');
+    if (!this.element) return;
+    
+    const notification = this.element.querySelector('#notification');
+    const notificationMessage = this.element.querySelector('#notification-message');
     
     if (notification && notificationMessage) {
       // Set message

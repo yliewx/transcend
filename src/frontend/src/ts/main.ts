@@ -45,7 +45,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // 404 route
   router.addRoute('/404', new PageWithHeader(new NotFoundPage(), router));
   
-  // Start the router
-  router.init(controlAccess.isLoggedIn() ? '/home' : '/login');
+  // Start the router (init is now async)
+  router.init(controlAccess.isLoggedIn() ? '/home' : '/login').catch(error => {
+    console.error('Failed to initialize router:', error);
+  });
 });
 

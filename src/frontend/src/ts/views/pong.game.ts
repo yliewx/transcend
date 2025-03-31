@@ -1,4 +1,3 @@
-// views/play/pong.game.ts
 import { Page } from '../types';
 import { Router } from '../router';
 
@@ -20,7 +19,7 @@ interface GameState {
   ballSize: number;
   status: 'waiting' | 'playing' | 'paused' | 'finished';
   lastUpdateTime: number;
-  winner?: 'left' | 'right'; // Add this optional property
+  winner?: 'left' | 'right';
 }
 
 export class PongGamePage implements Page {
@@ -35,11 +34,19 @@ export class PongGamePage implements Page {
   private lastInputTime: { [key: string]: number } = {}; // For throttling input
   private inputThrottleMs = 50; // Send input at most every 50ms
   
+  // Element caching
+  private element: HTMLElement | null = null;
+  
   constructor(router: Router) {
     this.router = router;
   }
   
   render(): HTMLElement {
+    // Return cached element if it exists
+    if (this.element) {
+      return this.element;
+    }
+    
     const container = document.createElement('div');
     container.className = 'max-w-7xl mx-auto py-6 sm:px-6 lg:px-8';
     
@@ -84,36 +91,101 @@ export class PongGamePage implements Page {
       </div>
     `;
     
-    // Setup event handlers after rendering
-    setTimeout(() => this.setupEventHandlers(), 0);
+    // Cache the element
+    this.element = container;
+    
+    // Setup event handlers
+    this.setupEventHandlers();
     
     return container;
   }
   
-  private setupEventHandlers(): void {
-    // Set up the canvas
-    this.canvas = document.getElementById('pong-canvas') as HTMLCanvasElement;
-    if (this.canvas) {
-      this.ctx = this.canvas.getContext('2d');
+  update(): void {
+    // Reset the game state when revisiting the page
+    this.resetGame();
+  }
+  
+  private resetGame(): void {
+    // Clear any existing game state and intervals
+    if (this.updateInterval) {
+      clearInterval(this.updateInterval);
+      this.updateInterval = null;
     }
     
-    // Set up keyboard listeners
+    // Reset game state
+    this.gameId = null;
+    this.currentState = null;
+    this.stateHash = null;
+    this.keyState = {};
+    this.lastInputTime = {};
+    
+    // Reset UI elements
+    if (this.element) {
+      const gameIdElement = this.element.querySelector('#game-id');
+      const gameControlsElement = this.element.querySelector('#game-controls');
+      const gameStatusElement = this.element.querySelector('#game-status');
+      
+      if (gameIdElement) gameIdElement.textContent = '-';
+      if (gameControlsElement) gameControlsElement.classList.add('hidden');
+      if (gameStatusElement) gameStatusElement.textContent = '';
+      
+      // Re-setup canvas
+      this.setupCanvas();
+    }
+  }
+  
+  private setupEventHandlers(): void {
+    if (!this.element) return;
+    
+    // Set up the canvas
+    this.setupCanvas();
+    
+    // Set up keyboard listeners for game controls
     window.addEventListener('keydown', this.handleKeyDown.bind(this));
     window.addEventListener('keyup', this.handleKeyUp.bind(this));
     
     // Set up UI button listeners
-    document.getElementById('create-game-btn')?.addEventListener('click', () => {
-      console.log('Create button clicked');
-      this.createGame();
-    });
-    document.getElementById('start-game-btn')?.addEventListener('click', () => {
-      console.log('Start button clicked');
-      this.startGame();
-    })
-    document.getElementById('pause-game-btn')?.addEventListener('click', this.pauseGame.bind(this));
+    const createButton = this.element.querySelector('#create-game-btn');
+    const startButton = this.element.querySelector('#start-game-btn');
+    const pauseButton = this.element.querySelector('#pause-game-btn');
+    
+    if (createButton) {
+      createButton.addEventListener('click', () => {
+        console.log('Create button clicked');
+        this.createGame();
+      });
+    }
+    
+    if (startButton) {
+      startButton.addEventListener('click', () => {
+        console.log('Start button clicked');
+        this.startGame();
+      });
+    }
+    
+    if (pauseButton) {
+      pauseButton.addEventListener('click', () => {
+        console.log('Pause button clicked');
+        this.pauseGame();
+      });
+    }
   }
   
-
+  private setupCanvas(): void {
+    if (!this.element) return;
+    
+    this.canvas = this.element.querySelector('#pong-canvas') as HTMLCanvasElement;
+    if (this.canvas) {
+      this.ctx = this.canvas.getContext('2d');
+      
+      // Draw initial blank canvas
+      if (this.ctx) {
+        this.ctx.fillStyle = '#000000';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+      }
+    }
+  }
+  
   private handleKeyDown(event: KeyboardEvent): void {
     this.keyState[event.key] = true;
     
@@ -126,9 +198,7 @@ export class PongGamePage implements Page {
   private handleKeyUp(event: KeyboardEvent): void {
     this.keyState[event.key] = false;
   }
-
-
-
+  
   private async createGame(): Promise<void> {
     try {
       const response = await fetch('/api/games', {
@@ -158,11 +228,14 @@ export class PongGamePage implements Page {
         
         // Update UI
         this.updateGameStatus('Game created! Press Start to begin.');
-        const gameIdElement = document.getElementById('game-id');
-        if (gameIdElement) gameIdElement.textContent = this.gameId;
         
-        const gameControlsElement = document.getElementById('game-controls');
-        if (gameControlsElement) gameControlsElement.classList.remove('hidden');
+        if (this.element) {
+          const gameIdElement = this.element.querySelector('#game-id');
+          if (gameIdElement) gameIdElement.textContent = this.gameId;
+          
+          const gameControlsElement = this.element.querySelector('#game-controls');
+          if (gameControlsElement) gameControlsElement.classList.remove('hidden');
+        }
       }
     } catch (error) {
       console.error('Error creating game:', error);
@@ -285,8 +358,10 @@ export class PongGamePage implements Page {
         }
       }
       
-      // Continue the loop
-      requestAnimationFrame(processInputs);
+      // Continue the loop if game is still active
+      if (this.gameId && this.currentState && this.currentState.status !== 'finished') {
+        requestAnimationFrame(processInputs);
+      }
     };
     
     // Start the input processing loop
@@ -296,7 +371,6 @@ export class PongGamePage implements Page {
 
   private async movePaddle(side: 'left' | 'right', direction: 'up' | 'down'): Promise<void> {
     if (!this.gameId || this.currentState?.status !== 'playing') {
-      console.log(`Move cancelled: gameId=${!!this.gameId}, status=${this.currentState?.status}`);
       return;
     }
     
@@ -309,7 +383,6 @@ export class PongGamePage implements Page {
     }
     
     this.lastInputTime[inputKey] = now;
-    console.log(`Moving ${side} paddle ${direction} for game ${this.gameId}`);
     
     try {
       const response = await fetch(`/api/games/${this.gameId}/move`, {
@@ -331,10 +404,6 @@ export class PongGamePage implements Page {
     }
   }
 
-
- 
-  
-  // Fix for the startGame method in pong.game.ts
   private async startGame(): Promise<void> {
     if (!this.gameId) {
       console.log("Cannot start game: gameId is null");
@@ -353,8 +422,7 @@ export class PongGamePage implements Page {
         method: 'POST',
         headers: {
           //'Content-Type': 'application/json'
-        },
-        //body: JSON.stringify({}) // Send an empty object as the body
+        }
       });
 
       console.log('startGame response received:', response.status);
@@ -381,10 +449,6 @@ export class PongGamePage implements Page {
       console.error('Error starting game:', error);
     }
   }
-
- 
-
-
     
   private async pauseGame(): Promise<void> {
     if (!this.gameId) return;
@@ -407,12 +471,10 @@ export class PongGamePage implements Page {
       
       if (data.success) {
         if (this.currentState?.status === 'playing') {
-          // Game is being paused, stop polling
-          this.stopGameLoop();
+          // Game is being paused
           this.updateGameStatus('Game paused');
         } else {
-          // Game is being unpaused, resume polling
-          this.startGameLoop();
+          // Game is being unpaused
           this.updateGameStatus('Game resumed');
         }
       }
@@ -421,18 +483,12 @@ export class PongGamePage implements Page {
     }
   }
   
-  
-
   private stopGameLoop(): void {
     if (this.updateInterval) {
       clearInterval(this.updateInterval);
       this.updateInterval = null;
     }
   }
-  
-
-  
-
   
   private drawGame(): void {
     if (!this.currentState || !this.ctx || !this.canvas) return;
@@ -531,12 +587,13 @@ export class PongGamePage implements Page {
   }
   
   private updateGameStatus(message: string): void {
-    const statusElement = document.getElementById('game-status');
+    if (!this.element) return;
+    
+    const statusElement = this.element.querySelector('#game-status');
     if (statusElement) {
       statusElement.textContent = message;
     }
   }
-
 
   private async recordMatchResult(): Promise<void> {
     if (!this.gameId || !this.currentState) return;
@@ -591,19 +648,21 @@ export class PongGamePage implements Page {
     return userId ? parseInt(userId, 10) : null;
   }
 
-  
   // Clean up resources when component is destroyed
   public destroy(): void {
-    console.log("Destroy method called")
+    console.log("Destroy method called");
+    
+    // Clear game intervals
     if (this.updateInterval) {
       clearInterval(this.updateInterval);
       this.updateInterval = null;
     }
     
+    // Remove event listeners
     window.removeEventListener('keydown', this.handleKeyDown.bind(this));
     window.removeEventListener('keyup', this.handleKeyUp.bind(this));
     
-    // Also clean up the game on the server if needed
+    // Clean up the game on the server if needed
     if (this.gameId) {
       fetch(`/api/games/${this.gameId}`, {
         method: 'DELETE'
@@ -611,5 +670,11 @@ export class PongGamePage implements Page {
         console.error('Error cleaning up game:', error);
       });
     }
+    
+    // Reset state
+    this.gameId = null;
+    this.currentState = null;
+    this.stateHash = null;
+    this.keyState = {};
   }
 }

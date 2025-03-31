@@ -5,13 +5,19 @@ import { ControlAccess } from '../services/control.access';
 export class HeaderPage implements Page {
   private router: Router;
   private controlAccess: ControlAccess;
+  private element: HTMLElement | null = null;
 
   constructor(router: Router) {
     this.router = router;
     this.controlAccess = this.router.getControlAccess();
   }
 
-  render(): HTMLElement {  
+  render(): HTMLElement {
+    // Return cached element if it exists
+    if (this.element) {
+      return this.element;
+    }
+  
     const header = document.createElement('header');
     header.className = 'bg-white shadow';
     
@@ -47,15 +53,27 @@ export class HeaderPage implements Page {
       </div>
     `;
     
-    // Add logout handler
-    setTimeout(() => {
-      const logoutButton = document.getElementById('logout-button');
-      if (logoutButton) {
-        logoutButton.addEventListener('click', () => this.performLogout());
-      }
-    }, 0);
+    this.setupEventHandlers(header);
+    
+    // Cache the element for future use
+    this.element = header;
     
     return header;
+  }
+
+  update(): void {
+    // Update active navigation link based on current path
+    if (this.element) {
+      const currentPath = this.router.getCurrentPath();
+      this.updateActiveNavItem(currentPath);
+    }
+  }
+
+  private setupEventHandlers(element: HTMLElement): void {
+    const logoutButton = element.querySelector('#logout-button');
+    if (logoutButton) {
+      logoutButton.addEventListener('click', () => this.performLogout());
+    }
   }
 
   private async performLogout(): Promise<void> {
@@ -68,6 +86,28 @@ export class HeaderPage implements Page {
       // No need to navigate or set authentication state - ControlAccess handles that
     } catch (error) {
       console.error('Logout error:', error);
+    }
+  }
+  
+  // Method to update active navigation item based on current route
+  private updateActiveNavItem(path: string): void {
+    if (!this.element) return;
+    
+    // Remove active state from all nav links
+    const navLinks = this.element.querySelectorAll('.nav-link');
+    navLinks.forEach(link => {
+      const href = (link as HTMLAnchorElement).getAttribute('href');
+      if (href && href !== '/home') { // Skip the logo link
+        link.classList.remove('text-indigo-700', 'border-indigo-500');
+        link.classList.add('text-gray-500', 'border-transparent');
+      }
+    });
+    
+    // Add active state to current path
+    const activeLink = this.element.querySelector(`.nav-link[href="${path}"]`);
+    if (activeLink) {
+      activeLink.classList.remove('text-gray-500', 'border-transparent');
+      activeLink.classList.add('text-indigo-700', 'border-indigo-500');
     }
   }
 }

@@ -2,7 +2,6 @@ import { Page, GameStats, MatchHistoryItem } from '../types';
 import { Router } from '../router';
 import { GameStatsService } from '../services/game.stats.service';
 
-
 export class StatsPage implements Page {
   private router: Router;
   private gameStatsService: GameStatsService;
@@ -13,13 +12,27 @@ export class StatsPage implements Page {
   private itemsPerPage: number = 10;
   private totalPages: number = 1;
   
+  // Element caching
+  private element: HTMLElement | null = null;
+  
   constructor(router: Router, gameStatsService: GameStatsService) {
     this.router = router;   
     this.gameStatsService = gameStatsService;
     this.userId = null;
   }
   
-  async render(): Promise<HTMLElement> {
+  async update(): Promise<void> {
+    if (this.element) {
+      await this.loadData();
+    }
+  }
+  
+  render(): HTMLElement {
+    // Return cached element if it exists
+    if (this.element) {
+      return this.element;
+    }
+    
     const container = document.createElement('div');
     container.className = 'max-w-7xl mx-auto py-6 sm:px-6 lg:px-8';
     
@@ -88,42 +101,61 @@ export class StatsPage implements Page {
       </div>
     `;
     
-    // Set up event handlers after adding to DOM
-    setTimeout(() => this.setupEventHandlers(), 0);
+    // Cache the element
+    this.element = container;
     
-    // Load data
-    this.loadData();
+    // Set up event handlers
+    this.setupEventHandlers();
+    
+    // Load data (defer to not block rendering)
+    setTimeout(() => this.loadData(), 0);
     
     return container;
   }
   
   private setupEventHandlers(): void {
+    if (!this.element) return;
+    
     // Set up retry button
-    document.getElementById('retry-btn')?.addEventListener('click', () => {
-      this.loadData();
-    });
+    const retryBtn = this.element.querySelector('#retry-btn');
+    if (retryBtn) {
+      retryBtn.addEventListener('click', () => this.loadData());
+    }
     
     // Set up pagination buttons
-    document.getElementById('prev-page-btn')?.addEventListener('click', () => {
-      if (this.currentPage > 1) {
-        this.currentPage--;
-        this.renderMatchHistory();
-      }
-    });
+    const prevBtn = this.element.querySelector('#prev-page-btn');
+    if (prevBtn) {
+      prevBtn.addEventListener('click', () => {
+        if (this.currentPage > 1) {
+          this.currentPage--;
+          this.renderMatchHistory();
+        }
+      });
+    }
     
-    document.getElementById('next-page-btn')?.addEventListener('click', () => {
-      if (this.currentPage < this.totalPages) {
-        this.currentPage++;
-        this.renderMatchHistory();
-      }
-    });
+    const nextBtn = this.element.querySelector('#next-page-btn');
+    if (nextBtn) {
+      nextBtn.addEventListener('click', () => {
+        if (this.currentPage < this.totalPages) {
+          this.currentPage++;
+          this.renderMatchHistory();
+        }
+      });
+    }
   }
   
   private async loadData(): Promise<void> {
+    if (!this.element) return;
+    
+    // Get DOM elements
+    const loadingElement = this.element.querySelector('#stats-loading');
+    const contentElement = this.element.querySelector('#stats-content');
+    const errorElement = this.element.querySelector('#stats-error');
+    
     // Show loading state
-    document.getElementById('stats-loading')?.classList.remove('hidden');
-    document.getElementById('stats-content')?.classList.add('hidden');
-    document.getElementById('stats-error')?.classList.add('hidden');
+    if (loadingElement) loadingElement.classList.remove('hidden');
+    if (contentElement) contentElement.classList.add('hidden');
+    if (errorElement) errorElement.classList.add('hidden');
 
     const userIdStr = sessionStorage.getItem('userId');
     this.userId = userIdStr ? parseInt(userIdStr, 10) : null;
@@ -157,22 +189,22 @@ export class StatsPage implements Page {
       this.renderMatchHistory();
       
       // Hide loading, show content
-      document.getElementById('stats-loading')?.classList.add('hidden');
-      document.getElementById('stats-content')?.classList.remove('hidden');
+      if (loadingElement) loadingElement.classList.add('hidden');
+      if (contentElement) contentElement.classList.remove('hidden');
       
     } catch (error) {
       console.error('Error loading stats:', error);
       
       // Show error state
-      document.getElementById('stats-loading')?.classList.add('hidden');
-      document.getElementById('stats-error')?.classList.remove('hidden');
+      if (loadingElement) loadingElement.classList.add('hidden');
+      if (errorElement) errorElement.classList.remove('hidden');
     }
   }
   
   private renderStats(): void {
-    if (!this.stats) return;
+    if (!this.element || !this.stats) return;
     
-    const statsBoxesContainer = document.getElementById('stats-boxes');
+    const statsBoxesContainer = this.element.querySelector('#stats-boxes');
     if (!statsBoxesContainer) return;
     
     // Clear existing content
@@ -204,7 +236,9 @@ export class StatsPage implements Page {
   }
   
   private renderMatchHistory(): void {
-    const tableBody = document.getElementById('match-history-table-body');
+    if (!this.element) return;
+    
+    const tableBody = this.element.querySelector('#match-history-table-body');
     if (!tableBody) return;
     
     // Clear existing content
@@ -255,7 +289,7 @@ export class StatsPage implements Page {
     }
 
     // Update pagination info
-    const paginationInfo = document.getElementById('pagination-info');
+    const paginationInfo = this.element.querySelector('#pagination-info');
     if (paginationInfo) {
         if (this.matchHistory.length === 0) {
             paginationInfo.textContent = 'No results found';
@@ -265,8 +299,8 @@ export class StatsPage implements Page {
     }
     
     // Update pagination button states
-    const prevButton = document.getElementById('prev-page-btn') as HTMLButtonElement;
-    const nextButton = document.getElementById('next-page-btn') as HTMLButtonElement;
+    const prevButton = this.element.querySelector('#prev-page-btn') as HTMLButtonElement;
+    const nextButton = this.element.querySelector('#next-page-btn') as HTMLButtonElement;
     
     if (prevButton) {
         prevButton.disabled = this.currentPage <= 1;
