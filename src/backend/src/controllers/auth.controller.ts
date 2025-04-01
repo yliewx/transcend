@@ -8,10 +8,32 @@ import OTPAuth from 'otpauth';
 import QRCode from 'qrcode';
 import { AuthTokenPayload, jwtSecrets } from '../plugins/jwt';
 
-interface LoginRequest {
-  username: string;
-  password: string;
+interface CookieOptions {
+  maxAge: number;
+  expires?: Date;
+  httpOnly: boolean;
+  secure: boolean;
+  sameSite: 'strict' | 'lax' | 'none';
+  path: string;  
 }
+
+const accessCookieOptions: CookieOptions = {
+  maxAge: 15 * 60, // expires after 15min (in seconds)
+  expires: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes (in milliseconds)
+  httpOnly: true,
+  secure: true,
+  sameSite: 'strict',
+  path: '/api/'
+};
+
+const refreshCookieOptions: CookieOptions = {
+  maxAge: 7 * 24 * 60 * 60, // expires after 7 days (in seconds)
+  expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days (in milliseconds)
+  httpOnly: true,
+  secure: true,
+  sameSite: 'strict',
+  path: '/api/auth/refresh'
+};
 
 /* Login process
 
@@ -115,7 +137,7 @@ async function validateUserCredentials(db: Database, username: string, password:
 }
 
 export async function loginHandler(request: FastifyRequest, reply: FastifyReply) {
-  const { username, password } = request.body as LoginRequest;
+  const { username, password } = request.body as { username: string, password: string };
   
   try {
     const db = await getDb();
@@ -394,24 +416,13 @@ export async function verifyOtp(request: FastifyRequest, reply: FastifyReply) {
     // Update database
     await User.setOtpVerified(db, user.id, true);
 
-    // Set access token in cookie
-    reply.setCookie('accessToken', await createAccessToken(user, reply), {
-      maxAge: 15 * 60, // expires after 15min
-      httpOnly: true,
-      secure: true,
-      sameSite: 'strict',
-      path: '/api/'
-    });
+    // Create new access and refresh tokens
+    const accessToken = await createAccessToken(user, reply);
+    const refreshToken = await createRefreshToken(db, user, reply);
 
-    // Set refresh token in cookie
-    reply.setCookie('refreshToken', await createRefreshToken(db, user, reply), {
-      maxAge: 7 * 24 * 60 * 60, // expires after 7 days (in seconds)
-      expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days (in milliseconds)
-      httpOnly: true,
-      secure: true,
-      sameSite: 'strict',
-      path: '/api/auth/refresh'
-    });
+    // Set access and refresh tokens in cookie
+    reply.setCookie('accessToken', accessToken, accessCookieOptions);
+    reply.setCookie('refreshToken', refreshToken, refreshCookieOptions);
 
     return reply.status(200).send({ 
         success: true,
@@ -452,13 +463,7 @@ export async function refreshAccessHandler(request: FastifyRequest, reply: Fasti
 
     // Create new access token and set it in cookie
     const accessToken = await createAccessToken(user, reply);
-    reply.setCookie('accessToken', accessToken, {
-      maxAge: 15 * 60, // expires after 15min
-      httpOnly: true,
-      secure: true,
-      sameSite: 'strict',
-      path: '/api/'
-    });
+    reply.setCookie('accessToken', accessToken, accessCookieOptions);
 
     return reply.status(200).send({ 
       success: true,
@@ -493,5 +498,66 @@ export async function logoutHandler(request: FastifyRequest, reply: FastifyReply
       message: 'Logout failed', 
       error: error instanceof Error ? error.message : 'Unknown error' 
     });
+  }
+}
+
+/*------------------------------GOOGLE SIGN-IN------------------------------*/
+
+// Route: /api/auth/google
+// export async function googleAuthHandler(request: FastifyRequest, reply: FastifyReply)  {
+//   // Redirect request to Google OAuth server
+//   const auth_uri = request.server.googleOAuth2.generateAuthorizationUri({
+//     scope: ['profile', 'email'],
+//   });
+//   reply.redirect(auth_uri);
+// }
+
+// Route: /api/auth/google/callback -> handle response from Google
+export async function googleAuthCallbackHandler(request: FastifyRequest, reply: FastifyReply) {
+  try {
+    // Get Google access token
+    const token = await request.server.googleOAuth2.getAccessTokenFromAuthorizationCodeFlow(request);
+    
+    // Retrieve user info from access token
+    const userInfo = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: {
+        Authorization: `Bearer ${token.token.access_token}`
+      },
+    }).then(res => res.json());
+    const { id, email, name } = userInfo;
+
+    // Check if user exists in database -> create or update user
+    const db = await getDb();
+    let user = await User.findByEmail(db, email);
+    if (!user) // create new user
+    {
+      const username = name || email.split('@')[0];
+      const password = '';
+      request.server.log.info(`Creating new user from Google user info: ${username}, ${email}`);
+      await User.create(db, { username, email, password });
+      user = await User.findByEmail(db, email);
+    } else {
+      request.server.log.info(`Google user exists in database: ${user.username}, ${user.email}`);
+    }
+    
+    // Create new access and refresh tokens
+    const accessToken = await createAccessToken(user, reply);
+    const refreshToken = await createRefreshToken(db, user, reply);
+    
+    // Set access and refresh tokens in cookie
+    reply.setCookie('accessToken', accessToken, accessCookieOptions);
+    reply.setCookie('refreshToken', refreshToken, refreshCookieOptions);
+
+    return reply.status(200).send({ 
+      success: true,
+      message: 'Google sign-in successful',
+      user: {
+          id: user.id,
+          username: user.username,
+          email: user.email
+      }
+    });
+  } catch (err) {
+    reply.code(500).send({ error: 'Google Authentication failed' });
   }
 }

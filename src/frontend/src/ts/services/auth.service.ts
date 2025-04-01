@@ -130,6 +130,20 @@ export class AuthService extends BaseApiService {
     return response;
   }
 
+  /*--------------------------FETCH GOOGLE CLIENT ID------------------------*/
+
+  public async getGoogleClientId(): Promise<{ success: boolean, message?: string, error?: string, googleClientId?: string | null }> {
+    const response = await this.request<{ success: boolean, message?: string, error?: string, googleClientId?: string | null }>(
+      '/auth/google/client', 
+      'GET',
+      undefined,
+      false,
+      { omitContentType: true}
+    );
+
+    return response;
+  }
+
   /*---------------------------------LOGOUT---------------------------------*/
 
   public async logout(): Promise<{success: boolean, message?: string, error?: string}> {

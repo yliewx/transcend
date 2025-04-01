@@ -10,6 +10,7 @@ import { setupDbConnection } from './db';
 import setupRoutes from './routes';
 import setupMailer from './plugins/mailer';
 import setupTwilio from './plugins/twilio';
+import setupGoogleAuth from './plugins/oauth2';
 
 // Initialize database
 setupDbConnection();
@@ -34,6 +35,7 @@ server.register(setupJwt);
 server.register(fastifyCookie);
 server.register(setupMailer);
 server.register(setupTwilio);
+server.register(setupGoogleAuth);
 
 // Register routes
 server.register(setupCors);
@@ -44,9 +46,6 @@ const start = async () => {
   try {
     await server.listen({ port: 3000, host: '0.0.0.0' });
     console.log('Server listening at http://0.0.0.0:3000');
-
-    // Check if your environment variables are loaded at startup
-   
   } catch (err) {
     server.log.error(err);
     process.exit(1);
