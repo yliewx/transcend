@@ -57,6 +57,12 @@ export class LoginPage implements Page {
                   Log in
                 </button>
               </div>
+              <div class="mt-6">
+                <button id="google-signin-button"
+                        class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                  Sign in with Google
+                </button>
+              </div>
             </form>
           </div>
         </div>
@@ -72,6 +78,7 @@ export class LoginPage implements Page {
   private attachEventListeners(): void {
     const loginButton = document.getElementById('login-button');
     const loginForm = document.getElementById('login-form');
+    const googleSignInButton = document.getElementById('google-signin-button');
     
     if (loginButton) {
       loginButton.addEventListener('click', () => this.handleLogin());
@@ -85,6 +92,39 @@ export class LoginPage implements Page {
         }
       });
     }
+
+    if (googleSignInButton) {
+      googleSignInButton.addEventListener('click', (e) => {
+        // e.preventDefault();
+        this.handleGoogleSignIn();
+      })
+    }
+  }
+
+  private async handleGoogleSignIn(): Promise<void> {
+    console.log('inside handleGoogleSignIn()');
+    // const auth2 = gapi.auth2.getAuthInstance();
+    // auth2.signIn().then((googleUser) => {
+    //   const token = googleUser.getAuthResponse().id_token;
+      
+    //   // Send the token to the backend for verification
+    //   this.verifyGoogleToken(token)
+    //     .then((result) => {
+    //       if (result.success) {
+    //         // User successfully logged in with Google
+    //         sessionStorage.setItem('userId', result.user.id);
+    //         this.router.navigateTo('/home');
+    //       } else {
+    //         // Handle error
+    //         console.error('Google sign-in failed:', result.error);
+    //       }
+    //     })
+    //     .catch((error) => {
+    //       console.error('Error during Google login:', error);
+    //     });
+    // }).catch((error) => {
+    //   console.error('Error signing in with Google:', error);
+    // });
   }
   
   private async handleLogin(): Promise<void> {

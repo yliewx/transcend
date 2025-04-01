@@ -21,6 +21,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { SignOptions, VerifyOptions } from 'jsonwebtoken';
 import "@fastify/jwt";
+import { OAuth2Namespace } from '@fastify/oauth2';
 
 // Extend FastifyInstance
 declare module "fastify" {
@@ -31,6 +32,7 @@ declare module "fastify" {
     reAuthenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
     jwtSign: (payload: string | object | Buffer, secretOrPrivateKey: string, options?: SignOptions) => string;
     jwtVerify: (token: string, secretOrPublicKey: string, options?: VerifyOptions) => any;
+    googleOAuth2: OAuth2Namespace;
     
     // Add mailer property
     mailer: {

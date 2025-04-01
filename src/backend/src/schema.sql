@@ -8,7 +8,8 @@ CREATE TABLE IF NOT EXISTS users (
   otp_secret TEXT,
   otp_auth_url TEXT,
   otp_option TEXT CHECK(otp_option IN ('sms', 'email', 'app')) DEFAULT NULL,
-  otp_contact TEXT DEFAULT NULL
+  otp_contact TEXT DEFAULT NULL,
+  google_id TEXT UNIQUE DEFAULT NULL
 );
 
 CREATE TABLE IF NOT EXISTS refresh_tokens (

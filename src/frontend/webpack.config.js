@@ -1,6 +1,8 @@
 const path = require('path');
+const webpack = require('webpack');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const TerserPlugin = require('terser-webpack-plugin');
+const Dotenv = require('dotenv-webpack');
 
 module.exports = {
   mode: process.env.NODE_ENV === 'production' ? 'production' : 'development',
@@ -40,6 +42,10 @@ module.exports = {
         // Add any other static assets like images, favicon, etc.
       ],
     }),
+    // new Dotenv(),
+    new webpack.DefinePlugin({
+      'process.env.GOOGLE_CLIENT_ID': JSON.stringify(process.env.GOOGLE_CLIENT_ID),
+    })
   ],
   optimization: {
     minimize: process.env.NODE_ENV === 'production',
