@@ -164,9 +164,29 @@ export class ControlAccess {
       return { success: false, error: 'Login failed: ' + error };
     }
   }
-  
+
   /**
    * Attempts to log in the user with provided credentials
+   */
+  public async loginWithGoogle(idToken: string): Promise<{ success: boolean, message?: string, error?: string, user?: any }> {
+    try {
+      const result = await this.authService.loginWithGoogle(idToken);
+
+      if (result.success) {
+        this.setAuthenticated(true);
+      }
+      else {
+        throw new Error(result.message);
+      }
+      
+      return result;
+    } catch (error) {
+      return { success: false, error: 'Google sign-in failed: ' + error };
+    }
+  }
+  
+  /**
+   * Set authenticated upon successful OTP verification
    */
   public async verifyOtp(otp: string): Promise<{ success: boolean, error?: string, user?: any }> {
     try {

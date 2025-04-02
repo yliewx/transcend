@@ -503,15 +503,6 @@ export async function logoutHandler(request: FastifyRequest, reply: FastifyReply
 
 /*------------------------------GOOGLE SIGN-IN------------------------------*/
 
-// Route: /api/auth/google
-// export async function googleAuthHandler(request: FastifyRequest, reply: FastifyReply)  {
-//   // Redirect request to Google OAuth server
-//   const auth_uri = request.server.googleOAuth2.generateAuthorizationUri({
-//     scope: ['profile', 'email'],
-//   });
-//   reply.redirect(auth_uri);
-// }
-
 // Route: /api/auth/google/callback -> handle response from Google
 export async function googleAuthCallbackHandler(request: FastifyRequest<{ Body: { idToken: string }}>, reply: FastifyReply) {
   // Get ID token from request
@@ -524,56 +515,68 @@ export async function googleAuthCallbackHandler(request: FastifyRequest<{ Body: 
   }
 
   // Verify ID token
-  try {
-    const userData = await request.server.verifyGoogleToken(idToken);
-    request.server.log.info("Google Token Payload:", userData);
-    return reply.status(200).send({ success: true, message: 'Google token verified successfully' });
-  } catch (error) {
+  const userData = await request.server.verifyGoogleToken(idToken);
+  request.server.log.info("Google Token Payload:", userData);
+  // return reply.status(200).send({ success: true, message: 'Google token verified successfully' });
+  if (!userData) {
       return reply.status(401).send({ success: false, error: 'Invalid token' });
   }
-    // // Get Google access token
-    // const token = await request.server.googleOAuth2.getAccessTokenFromAuthorizationCodeFlow(request);
-    
-    // // Retrieve user info from access token
-    // const userInfo = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-    //   headers: {
-    //     Authorization: `Bearer ${token.token.access_token}`
-    //   },
-    // }).then(res => res.json());
-    // const { id, email, name } = userInfo;
 
-  //   // Check if user exists in database -> create or update user
-  //   const db = await getDb();
-  //   let user = await User.findByEmail(db, email);
-  //   if (!user) // create new user
-  //   {
-  //     const username = name || email.split('@')[0];
-  //     const password = '';
-  //     request.server.log.info(`Creating new user from Google user info: ${username}, ${email}`);
-  //     await User.create(db, { username, email, password });
-  //     user = await User.findByEmail(db, email);
-  //   } else {
-  //     request.server.log.info(`Google user exists in database: ${user.username}, ${user.email}`);
-  //   }
-    
-  //   // Create new access and refresh tokens
-  //   const accessToken = await createAccessToken(user, reply);
-  //   const refreshToken = await createRefreshToken(db, user, reply);
-    
-  //   // Set access and refresh tokens in cookie
-  //   reply.setCookie('accessToken', accessToken, accessCookieOptions);
-  //   reply.setCookie('refreshToken', refreshToken, refreshCookieOptions);
+  try {
+    const { sub: google_id, name, email, picture } = userData;
+    if (!email) {
+      throw new Error("Email is required for user registration");
+    }
+    const db = await getDb();
 
-  //   return reply.status(200).send({ 
-  //     success: true,
-  //     message: 'Google sign-in successful',
-  //     user: {
-  //         id: user.id,
-  //         username: user.username,
-  //         email: user.email
-  //     }
-  //   });
-  // } catch (err) {
-  //   reply.code(500).send({ error: 'Google Authentication failed' });
-  // }
+    /* Check if user exists in database
+    - If user registered by email but logged in with google: update database with google ID */
+    let user = await User.findByGoogleId(db, google_id);
+    if (!user)
+    {
+      // Check if user with that email exists
+      user = await User.findByEmail(db, email);
+      if (!user) // No user with that google ID or email -> create new user
+      {
+        const username = name || email.split('@')[0];
+        const password = 'placeholder_for_google_user';
+        request.server.log.info(`Creating new user from Google user info: ${username}, ${email}; Google ID: ${google_id}`);
+        await User.create(db, {
+          username,
+          email,
+          password,
+          google_id
+        });
+        user = await User.findByGoogleId(db, google_id);
+        request.server.log.info(`User created: ${user.username}, ${user.email}; user ID: ${user.id}; Google ID: ${user.google_id}`);
+      } else { // User exists but no google ID in database
+        await User.updateGoogleId(db, user.id, google_id);
+        user = await User.findByGoogleId(db, google_id);
+        request.server.log.info(`User exists in database: ${user.username}, ${user.email}. Updating with Google ID: ${user.google_id}`);
+      }
+    } else { // User exists with that google ID
+      request.server.log.info(`Google user exists in database: ${user.username}, ${user.email}; Google ID: ${user.google_id}`);
+    }
+
+    // Create new access and refresh tokens
+    const accessToken = await createAccessToken(user, reply);
+    const refreshToken = await createRefreshToken(db, user, reply);
+    
+    // Set access and refresh tokens in cookie
+    reply.setCookie('accessToken', accessToken, accessCookieOptions);
+    reply.setCookie('refreshToken', refreshToken, refreshCookieOptions);
+
+    return reply.status(200).send({ 
+      success: true,
+      message: 'Google sign-in successful',
+      user: {
+          id: user.id,
+          username: user.username,
+          email: user.email
+      }
+    });
+  } catch (err) {
+    request.server.log.info(`CAUGHT ERROR: ${err}`);
+    reply.code(500).send({ error: 'Google Authentication failed' });
+  }
 }
