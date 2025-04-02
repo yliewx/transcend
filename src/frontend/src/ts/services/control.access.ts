@@ -6,9 +6,26 @@ export class ControlAccess {
   private authStateChangeListeners: ((isAuthenticated: boolean) => void)[] = [];
   private accessTokenExpiry: Date | null = null;
   private refreshTokenExpiry: Date | null = null;
+  private googleClientId: string | null = null;
   
   constructor(private authService: AuthService) {
     // this.checkAuthStatus();
+  }
+
+  public async setGoogleClientId(): Promise<void> {
+    const result = await this.authService.getGoogleClientId();
+
+    if (result.success && result.googleClientId) {
+      console.log("Google Client ID:", result.googleClientId);
+      this.googleClientId = result.googleClientId;
+    } else {
+      console.error("Error fetching Google Client ID:", result.error);
+      throw new Error('Error getting Google Client ID');
+    }
+  }
+
+  public getGoogleClientId(): string | null {
+    return this.googleClientId;
   }
 
   /* valid access: proceed to handleRoute

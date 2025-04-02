@@ -144,6 +144,18 @@ export class AuthService extends BaseApiService {
     return response;
   }
 
+  public async loginWithGoogle(
+    idToken: string
+  ): Promise<{success: boolean, message?: string, error?: string, user?: any}> {
+    const response = await this.request<{ success: boolean, message?: string, user: any }>(
+      '/auth/google/callback', 
+      'POST', 
+      { idToken }
+    );
+
+    return response;
+  }
+
   /*---------------------------------LOGOUT---------------------------------*/
 
   public async logout(): Promise<{success: boolean, message?: string, error?: string}> {
