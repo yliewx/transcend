@@ -5,13 +5,26 @@ import { ControlAccess } from '../services/control.access';
 export class LoginPage implements Page {
   private router: Router;
   private controlAccess: ControlAccess;
+  private element: HTMLElement | null = null;
+  private googleClientId: string | null = null;
   
   constructor(router: Router) {
     this.router = router;
     this.controlAccess = this.router.getControlAccess();
+    this.googleClientId = this.controlAccess.getGoogleClientId();
   }
   
   render(): HTMLElement {
+    // Return cached element if it exists
+    if (this.element) {
+      console.log('Returning cached element');
+      return this.element;
+    }
+
+    if (!this.googleClientId) {
+      this.googleClientId = this.controlAccess.getGoogleClientId();
+    }
+
     const container = document.createElement('div');
     container.className = 'py-10';
     
@@ -39,13 +52,13 @@ export class LoginPage implements Page {
                 <div>
                   <label for="username" class="block text-sm font-medium text-gray-700">Username</label>
                   <input id="username" name="username" type="text" 
-                         class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
                 </div>
                 
                 <div>
                   <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
                   <input id="password" name="password" type="password" 
-                         class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
                 </div>
               </div>
               
@@ -57,11 +70,34 @@ export class LoginPage implements Page {
                   Log in
                 </button>
               </div>
+              
               <div class="mt-6">
-                <button id="google-signin-button"
-                        class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
-                  Sign in with Google
-                </button>
+                <div class="relative">
+                  <div class="absolute inset-0 flex items-center">
+                    <div class="w-full border-t border-gray-300"></div>
+                  </div>
+                  <div class="relative flex justify-center text-sm">
+                    <span class="px-2 bg-white text-gray-500">Or continue with</span>
+                  </div>
+                </div>
+                
+                <div class="mt-6">
+                  <div id="g_id_onload"
+                      data-client_id="${this.googleClientId}"
+                      data-context="signin"
+                      data-callback="handleGoogleCredentialResponse">
+                  </div>
+                  
+                  <div class="g_id_signin"
+                      data-type="standard"
+                      data-size="large"
+                      data-theme="outline"
+                      data-text="sign_in_with"
+                      data-shape="rectangular"
+                      data-logo_alignment="center"
+                      data-width="100%">
+                  </div>
+                </div>
               </div>
             </form>
           </div>
@@ -70,68 +106,93 @@ export class LoginPage implements Page {
     `;
     
     // Add event listeners after rendering
-    setTimeout(() => this.attachEventListeners(), 0);
+    setTimeout(() => this.setupEventHandlers(container), 0);
+    setTimeout(() => this.loadGoogleScript(), 0);
+    
+    // Cache the element for future use
+    this.element = container;
     
     return container;
   }
+  update(): void {
+    // Reset form and error messages if the page is revisited
+    if (this.element) {
+      const loginForm = this.element.querySelector('#login-form') as HTMLFormElement;
+      const errorMessage = this.element.querySelector('#error-message');
+      const loginMessage = this.element.querySelector('#login-message');
+      
+      if (loginForm) loginForm.reset();
+      if (errorMessage) errorMessage.classList.add('hidden');
+      if (loginMessage) loginMessage.classList.add('hidden');
+    }
+  }
   
-  private attachEventListeners(): void {
-    const loginButton = document.getElementById('login-button');
-    const loginForm = document.getElementById('login-form');
-    const googleSignInButton = document.getElementById('google-signin-button');
+  private loadGoogleScript(): void {
+    if (!this.googleClientId) return;
+
+    // Only load if not already loaded
+    if (!document.querySelector('script[src="https://accounts.google.com/gsi/client"]')) {
+      const script = document.createElement('script');
+      script.src = "https://accounts.google.com/gsi/client";
+      script.async = true;
+      script.defer = true;
+      document.head.appendChild(script);
+
+      // Dynamically inject client ID
+      script.onload = () => {
+        const div = document.createElement('div');
+        div.id = 'g_id_onload';
+        div.setAttribute('data-client_id', this.googleClientId as string);
+        div.setAttribute('data-callback', 'handleCredentialResponse');
+
+        const signinDiv = document.createElement('div');
+        signinDiv.className = 'g_id_signin';
+        signinDiv.setAttribute('data-type', 'standard');
+
+        // Append the elements to the body or a specific container
+        document.body.appendChild(div);
+        document.body.appendChild(signinDiv);
+      };
+      
+      // Define the global callback function
+      window.handleGoogleCredentialResponse = this.handleGoogleCredentialResponse.bind(this);
+    }
+  }
+
+  private setupEventHandlers(container: HTMLElement): void {
+    const loginButton = container.querySelector('#login-button');
+    const loginForm = container.querySelector('#login-form');
     
     if (loginButton) {
       loginButton.addEventListener('click', () => this.handleLogin());
     }
     
     if (loginForm) {
-      loginForm.addEventListener('keypress', (e) => {
+      loginForm.addEventListener('keypress', ((e: KeyboardEvent) => {
         if (e.key === 'Enter') {
           e.preventDefault();
           this.handleLogin();
         }
-      });
+      }) as EventListener);
     }
-
-    if (googleSignInButton) {
-      googleSignInButton.addEventListener('click', (e) => {
-        // e.preventDefault();
-        this.handleGoogleSignIn();
-      })
-    }
+    
+    // Define the global callback for Google Sign-In
+    window.handleGoogleCredentialResponse = this.handleGoogleCredentialResponse.bind(this);
   }
 
   private async handleGoogleSignIn(): Promise<void> {
     console.log('inside handleGoogleSignIn()');
-    // const auth2 = gapi.auth2.getAuthInstance();
-    // auth2.signIn().then((googleUser) => {
-    //   const token = googleUser.getAuthResponse().id_token;
-      
-    //   // Send the token to the backend for verification
-    //   this.verifyGoogleToken(token)
-    //     .then((result) => {
-    //       if (result.success) {
-    //         // User successfully logged in with Google
-    //         sessionStorage.setItem('userId', result.user.id);
-    //         this.router.navigateTo('/home');
-    //       } else {
-    //         // Handle error
-    //         console.error('Google sign-in failed:', result.error);
-    //       }
-    //     })
-    //     .catch((error) => {
-    //       console.error('Error during Google login:', error);
-    //     });
-    // }).catch((error) => {
-    //   console.error('Error signing in with Google:', error);
-    // });
+
   }
   
   private async handleLogin(): Promise<void> {
-    const usernameInput = document.getElementById('username') as HTMLInputElement;
-    const passwordInput = document.getElementById('password') as HTMLInputElement;
-    const errorMessage = document.getElementById('error-message');
-    const loginMessage = document.getElementById('login-message');
+    // Existing login handler code...
+    if (!this.element) return;
+    
+    const usernameInput = this.element.querySelector('#username') as HTMLInputElement;
+    const passwordInput = this.element.querySelector('#password') as HTMLInputElement;
+    const errorMessage = this.element.querySelector('#error-message');
+    const loginMessage = this.element.querySelector('#login-message');
     
     if (!usernameInput || !passwordInput) return;
     
@@ -156,17 +217,13 @@ export class LoginPage implements Page {
         if (loginMessage) {
           loginMessage.classList.remove('hidden');
         }
-        // this.controlAccess.setAuthenticated(true);
+        
         if (result.user.id) {
           sessionStorage.setItem('userId', result.user.id);
         }
-        // this.router.navigateTo('/home');
+        
         // Check if user's preferred 2FA option is set
         if (result.user.otp_option !== null) {
-          if (result.user.otp_option === 'app') {
-            console.log('Check authenticator app for the OTP');
-            this.router.navigateTo('/otp/verify');
-          }
           // Send request to generate OTP before navigating to /otp/verify
           console.log(`Requesting OTP via ${result.user.otp_option}`);
           const res = await this.controlAccess.getAuthService().generateOtp();
@@ -175,7 +232,7 @@ export class LoginPage implements Page {
           }
           else {
             console.error('Failed to generate OTP:', res.message);
-          alert(`Failed to generate OTP: ${res.message || 'Unknown error'}`);
+            alert(`Failed to generate OTP: ${res.message || 'Unknown error'}`);
           }
         }
         else { // First time login: 2FA setup required
@@ -189,8 +246,6 @@ export class LoginPage implements Page {
         if (errorMessage) {
           errorMessage.classList.add('hidden');
         }
-
-        // Navigation is handled by the ControlAccess via its event listener in the router
       } else { // If login is unsuccessful
         // Show error message
         if (errorMessage) {
@@ -205,5 +260,57 @@ export class LoginPage implements Page {
       }
       console.error('Login error:', error);
     }
+  }
+
+  private async handleGoogleCredentialResponse(response: any): Promise<void> {
+    try {
+      // Get the ID token from the response
+      const idToken = response.credential;
+      
+      // Use AuthService to verify with your backend
+      const result = await this.controlAccess.getAuthService().loginWithGoogle(idToken);
+      
+      if (result.success) {
+        // Show success message
+        const loginMessage = this.element?.querySelector('#login-message');
+        if (loginMessage) {
+          loginMessage.classList.remove('hidden');
+        }
+        
+        if (result.user.id) {
+          sessionStorage.setItem('userId', result.user.id);
+        }
+
+        console.log('Signed in with Google; no need for 2FA');
+        this.controlAccess.setAuthenticated(true);
+        
+        // Hide error message if it was shown
+        const errorMessage = this.element?.querySelector('#error-message');
+        if (errorMessage) {
+          errorMessage.classList.add('hidden');
+        }
+      } else {
+        // Show error message
+        const errorMessage = this.element?.querySelector('#error-message');
+        if (errorMessage) {
+          errorMessage.textContent = result.error || 'Google login failed. Please try again.';
+          errorMessage.classList.remove('hidden');
+        }
+      }
+    } catch (error) {
+      const errorMessage = this.element?.querySelector('#error-message');
+      if (errorMessage) {
+        errorMessage.textContent = 'An unexpected error occurred with Google Sign-In. Please try again.';
+        errorMessage.classList.remove('hidden');
+      }
+      console.error('Google login error:', error);
+    }
+  }
+}
+
+// Add this to make the TypeScript compiler happy with the global function
+declare global {
+  interface Window {
+    handleGoogleCredentialResponse: (response: any) => void;
   }
 }

@@ -21,7 +21,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { SignOptions, VerifyOptions } from 'jsonwebtoken';
 import "@fastify/jwt";
-import { OAuth2Namespace } from '@fastify/oauth2';
+import { TokenPayload } from 'google-auth-library';
 
 // Extend FastifyInstance
 declare module "fastify" {
@@ -32,9 +32,11 @@ declare module "fastify" {
     reAuthenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
     jwtSign: (payload: string | object | Buffer, secretOrPrivateKey: string, options?: SignOptions) => string;
     jwtVerify: (token: string, secretOrPublicKey: string, options?: VerifyOptions) => any;
-    googleOAuth2: OAuth2Namespace;
     
-    // Add mailer property
+    // Verification for Google ID token
+    verifyGoogleToken: (idToken: string) => Promise<TokenPayload | null>;
+
+    // Add mailer property for 2FA
     mailer: {
       transporter?: any;
       sendEmailOtp: (email: string, otpToken: string) => Promise<boolean>;

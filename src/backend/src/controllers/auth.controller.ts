@@ -513,51 +513,67 @@ export async function logoutHandler(request: FastifyRequest, reply: FastifyReply
 // }
 
 // Route: /api/auth/google/callback -> handle response from Google
-export async function googleAuthCallbackHandler(request: FastifyRequest, reply: FastifyReply) {
-  try {
-    // Get Google access token
-    const token = await request.server.googleOAuth2.getAccessTokenFromAuthorizationCodeFlow(request);
-    
-    // Retrieve user info from access token
-    const userInfo = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-      headers: {
-        Authorization: `Bearer ${token.token.access_token}`
-      },
-    }).then(res => res.json());
-    const { id, email, name } = userInfo;
-
-    // Check if user exists in database -> create or update user
-    const db = await getDb();
-    let user = await User.findByEmail(db, email);
-    if (!user) // create new user
-    {
-      const username = name || email.split('@')[0];
-      const password = '';
-      request.server.log.info(`Creating new user from Google user info: ${username}, ${email}`);
-      await User.create(db, { username, email, password });
-      user = await User.findByEmail(db, email);
-    } else {
-      request.server.log.info(`Google user exists in database: ${user.username}, ${user.email}`);
-    }
-    
-    // Create new access and refresh tokens
-    const accessToken = await createAccessToken(user, reply);
-    const refreshToken = await createRefreshToken(db, user, reply);
-    
-    // Set access and refresh tokens in cookie
-    reply.setCookie('accessToken', accessToken, accessCookieOptions);
-    reply.setCookie('refreshToken', refreshToken, refreshCookieOptions);
-
-    return reply.status(200).send({ 
-      success: true,
-      message: 'Google sign-in successful',
-      user: {
-          id: user.id,
-          username: user.username,
-          email: user.email
-      }
+export async function googleAuthCallbackHandler(request: FastifyRequest<{ Body: { idToken: string }}>, reply: FastifyReply) {
+  // Get ID token from request
+  const { idToken } = request.body;
+  if (!idToken) {
+    return reply.status(400).send({ 
+      success: false, 
+      error: 'No ID token provided' 
     });
-  } catch (err) {
-    reply.code(500).send({ error: 'Google Authentication failed' });
   }
+
+  // Verify ID token
+  try {
+    const userData = await request.server.verifyGoogleToken(idToken);
+    request.server.log.info("Google Token Payload:", userData);
+    return reply.status(200).send({ success: true, message: 'Google token verified successfully' });
+  } catch (error) {
+      return reply.status(401).send({ success: false, error: 'Invalid token' });
+  }
+    // // Get Google access token
+    // const token = await request.server.googleOAuth2.getAccessTokenFromAuthorizationCodeFlow(request);
+    
+    // // Retrieve user info from access token
+    // const userInfo = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+    //   headers: {
+    //     Authorization: `Bearer ${token.token.access_token}`
+    //   },
+    // }).then(res => res.json());
+    // const { id, email, name } = userInfo;
+
+  //   // Check if user exists in database -> create or update user
+  //   const db = await getDb();
+  //   let user = await User.findByEmail(db, email);
+  //   if (!user) // create new user
+  //   {
+  //     const username = name || email.split('@')[0];
+  //     const password = '';
+  //     request.server.log.info(`Creating new user from Google user info: ${username}, ${email}`);
+  //     await User.create(db, { username, email, password });
+  //     user = await User.findByEmail(db, email);
+  //   } else {
+  //     request.server.log.info(`Google user exists in database: ${user.username}, ${user.email}`);
+  //   }
+    
+  //   // Create new access and refresh tokens
+  //   const accessToken = await createAccessToken(user, reply);
+  //   const refreshToken = await createRefreshToken(db, user, reply);
+    
+  //   // Set access and refresh tokens in cookie
+  //   reply.setCookie('accessToken', accessToken, accessCookieOptions);
+  //   reply.setCookie('refreshToken', refreshToken, refreshCookieOptions);
+
+  //   return reply.status(200).send({ 
+  //     success: true,
+  //     message: 'Google sign-in successful',
+  //     user: {
+  //         id: user.id,
+  //         username: user.username,
+  //         email: user.email
+  //     }
+  //   });
+  // } catch (err) {
+  //   reply.code(500).send({ error: 'Google Authentication failed' });
+  // }
 }

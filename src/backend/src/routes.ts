@@ -39,7 +39,7 @@ export default fp(async function setupRoutes(server: FastifyInstance) {
     }
     return { success: true, googleClientId: process.env.GOOGLE_CLIENT_ID };
   });
-  server.get('/api/auth/google/callback', googleAuthCallbackHandler);
+  server.post('/api/auth/google/callback', googleAuthCallbackHandler);
   // Auth tokens
   server.post('/api/auth/refresh', { preHandler: server.reAuthenticate }, refreshAccessHandler);
   server.get('/api/auth/refresh/status', getTokenStatus);
