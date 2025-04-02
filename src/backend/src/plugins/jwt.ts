@@ -1,21 +1,14 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import fastifyJwt from '@fastify/jwt';
-import jwt, { JwtPayload } from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 import fp from 'fastify-plugin';
+import { AuthTokenPayload } from '../../@types/global';
 
 export const jwtSecrets = new Map<string, string>([
   ['preAuth', process.env.PREAUTH_TOKEN_SECRET as string],
   ['access', process.env.ACCESS_TOKEN_SECRET as string],
   ['refresh', process.env.REFRESH_TOKEN_SECRET as string]
 ]);
-
-export interface AuthTokenPayload extends JwtPayload {
-  id: number; // user id
-  username?: string;
-  email?: string;
-  token_id?: string;
-  token_type: 'preAuth' | 'access' | 'refresh';
-}
 
 /*-----------------------------HELPER FUNCTIONS-----------------------------*/
 
