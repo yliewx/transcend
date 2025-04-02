@@ -14,6 +14,11 @@ class User {
         return db.get('SELECT * FROM users WHERE id = ?', id);
     }
 
+    // Find user by ID
+    static async findByGoogleId(db: Database, googleId: string) {
+        return db.get('SELECT * FROM users WHERE google_id = ?', googleId);
+    }
+
     // Find user by username
     static async findByUsername(db: Database, username: string) {
         return db.get('SELECT * FROM users WHERE username = ?', username);
@@ -27,24 +32,29 @@ class User {
     /*------------------------------CREATE USER-----------------------------*/
 
     // User registration
-    static async create(db: Database, { username, email, password }: { username: string; email: string; password: string }) {
+    static async create(
+        db: Database, 
+        { username, email, password, google_id }: { username: string; email: string; password?: string; google_id?: string }
+    ) {
         const existingUser = await db.get('SELECT username FROM users WHERE username = ?', username);
         if (existingUser) {
             throw new Error('Username already exists');
         }
-
+    
         const existingEmail = await this.findByEmail(db, email);
         if (existingEmail) {
             throw new Error('Email already exists');
         }
     
-        // Hash password
-        const hashedPassword = await bcrypt.hash(password, 10);
-
+        let hashedPassword: string | null = null;
+        if (password) {
+            hashedPassword = await bcrypt.hash(password, 10);
+        }
+    
         // Insert user
         return db.run(
-            'INSERT INTO users (username, password, email, created_at) VALUES (?, ?, ?, ?)',
-            username, hashedPassword, email, new Date().toISOString()
+            'INSERT INTO users (username, password, email, google_id, created_at) VALUES (?, ?, ?, ?, ?)',
+            username, hashedPassword, email, google_id || null, new Date().toISOString()
         );
     }
 
@@ -120,6 +130,12 @@ class User {
     }
     
     /*------------------------------UPDATE USER-----------------------------*/
+
+    // Update Google ID
+    static async updateGoogleId(db: Database, id: number, googleId: string) {
+        await db.run('UPDATE users SET google_id = ? WHERE id = ?', [googleId, id]);
+        return { id, googleId };
+    }
 
     // Update username
     static async updateUsername(db: Database, id: number, username: string) {

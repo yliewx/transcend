@@ -267,8 +267,8 @@ export class LoginPage implements Page {
       // Get the ID token from the response
       const idToken = response.credential;
       
-      // Use AuthService to verify with your backend
-      const result = await this.controlAccess.getAuthService().loginWithGoogle(idToken);
+      // Verify ID token in the backend
+      const result = await this.controlAccess.loginWithGoogle(idToken);
       
       if (result.success) {
         // Show success message
@@ -282,7 +282,6 @@ export class LoginPage implements Page {
         }
 
         console.log('Signed in with Google; no need for 2FA');
-        this.controlAccess.setAuthenticated(true);
         
         // Hide error message if it was shown
         const errorMessage = this.element?.querySelector('#error-message');
