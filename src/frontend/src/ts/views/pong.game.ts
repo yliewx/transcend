@@ -1,42 +1,53 @@
 import { Page } from '../types';
 import { Router } from '../router';
 
-// Game state interface matching the server
+
 interface GameState {
-  id: string;
-  paddleLeftY: number;
-  paddleRightY: number;
-  ballX: number;
-  ballY: number;
-  velocityX: number;
-  velocityY: number;
-  scoreLeft: number;
-  scoreRight: number;
-  gameWidth: number;
-  gameHeight: number;
-  paddleHeight: number;
-  paddleWidth: number;
-  ballSize: number;
-  status: 'waiting' | 'playing' | 'paused' | 'finished';
-  lastUpdateTime: number;
-  winner?: 'left' | 'right';
+    id: string;
+    status: 'waiting' | 'playing' | 'paused' | 'finished';
+    paddleLeftY: number;
+    paddleRightY: number;
+    ballX: number;
+    ballY: number;
+    scoreLeft: number;
+    scoreRight: number;
+    winner?: 'left' | 'right';
+    lastUpdateTime: number;
 }
 
 export class PongGamePage implements Page {
   private router: Router;
-  private gameId: string | null = null;
-  private canvas: HTMLCanvasElement | null = null;
-  private ctx: CanvasRenderingContext2D | null = null;
-  private updateInterval: number | null = null;
-  private currentState: GameState | null = null;
-  private keyState: { [key: string]: boolean } = {};
-  private stateHash: string | null = null; // For optimized polling
-  private lastInputTime: { [key: string]: number } = {}; // For throttling input
-  private inputThrottleMs = 50; // Send input at most every 50ms
-  
-  // Element caching
   private element: HTMLElement | null = null;
-  
+  private ctx: CanvasRenderingContext2D | null = null;
+  private gameWidth: number = 800;
+  private gameHeight: number = 600;
+  private paddleHeight: number = 100;
+  private paddleWidth: number = 10;
+  private ballSize: number = 30;
+  private gameId: string | null = null;
+  private state: GameState | null = null;
+  private gameLoopId: number | null = null;
+  private inputState = {
+    leftPaddleUp: false,
+    leftPaddleDown: false,
+    rightPaddleUp: false,
+    rightPaddleDown: false
+  };
+  private lastInputStateJson: string | null = null;
+  private inputChanged = false;
+  private stateHash: string | null = null;
+  private keysPressed: { [key: string]: boolean } = {};
+
+  private keyDownHandler = (e: KeyboardEvent) => {
+    console.log('Key down event:', e.key);
+    this.handleKeyDown(e);
+  };
+
+  private keyUpHandler = (e: KeyboardEvent) => {
+    console.log('Key up event:', e.key);
+    this.handleKeyUp(e);
+  };
+
   constructor(router: Router) {
     this.router = router;
   }
@@ -91,15 +102,17 @@ export class PongGamePage implements Page {
       </div>
     `;
     
+    setTimeout(() => {
+        this.setupEventHandlers();
+        this.setupCanvas();
+     }, 0);
+    
     // Cache the element
     this.element = container;
     
-    // Setup event handlers
-    this.setupEventHandlers();
-    
     return container;
   }
-  
+
   update(): void {
     // Reset the game state when revisiting the page
     this.resetGame();
@@ -107,18 +120,9 @@ export class PongGamePage implements Page {
   
   private resetGame(): void {
     // Clear any existing game state and intervals
-    if (this.updateInterval) {
-      clearInterval(this.updateInterval);
-      this.updateInterval = null;
-    }
-    
+    this.stopGameLoop();
     // Reset game state
-    this.gameId = null;
-    this.currentState = null;
-    this.stateHash = null;
-    this.keyState = {};
-    this.lastInputTime = {};
-    
+    this.state = null;
     // Reset UI elements
     if (this.element) {
       const gameIdElement = this.element.querySelector('#game-id');
@@ -133,274 +137,80 @@ export class PongGamePage implements Page {
       this.setupCanvas();
     }
   }
-  
+
   private setupEventHandlers(): void {
-    if (!this.element) return;
+    window.addEventListener('keyup', this.keyUpHandler);
+    window.addEventListener('keydown', this.keyDownHandler);
     
-    // Set up the canvas
-    this.setupCanvas();
-    
-    // Set up keyboard listeners for game controls
-    window.addEventListener('keydown', this.handleKeyDown.bind(this));
-    window.addEventListener('keyup', this.handleKeyUp.bind(this));
-    
-    // Set up UI button listeners
-    const createButton = this.element.querySelector('#create-game-btn');
-    const startButton = this.element.querySelector('#start-game-btn');
-    const pauseButton = this.element.querySelector('#pause-game-btn');
-    
-    if (createButton) {
-      createButton.addEventListener('click', () => {
-        console.log('Create button clicked');
-        this.createGame();
-      });
-    }
-    
-    if (startButton) {
-      startButton.addEventListener('click', () => {
-        console.log('Start button clicked');
-        this.startGame();
-      });
-    }
-    
-    if (pauseButton) {
-      pauseButton.addEventListener('click', () => {
-        console.log('Pause button clicked');
-        this.pauseGame();
-      });
-    }
-  }
-  
-  private setupCanvas(): void {
-    if (!this.element) return;
-    
-    this.canvas = this.element.querySelector('#pong-canvas') as HTMLCanvasElement;
-    if (this.canvas) {
-      this.ctx = this.canvas.getContext('2d');
+    const buttonActions = {
+        'create-game-btn': () => this.createGame(),
+        'start-game-btn': () => this.startGame(),
+        'pause-game-btn': () => this.pauseGame()
+      };
       
-      // Draw initial blank canvas
-      if (this.ctx) {
-        this.ctx.fillStyle = '#000000';
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-      }
-    }
-  }
-  
-  private handleKeyDown(event: KeyboardEvent): void {
-    this.keyState[event.key] = true;
-    
-    // Prevent default behavior for the game control keys
-    if (['w', 'W', 's', 'S', 'ArrowUp', 'ArrowDown'].includes(event.key)) {
-      event.preventDefault();
-    }
-  }
-  
-  private handleKeyUp(event: KeyboardEvent): void {
-    this.keyState[event.key] = false;
-  }
-  
-  private async createGame(): Promise<void> {
-    try {
-      const response = await fetch('/api/games', {
-        method: 'POST',
-        headers: {
-          //'Content-Type': 'application/json'
-        }
-        //body: JSON.stringify({}) // Empty object, but not an empty body
+    Object.entries(buttonActions).forEach(([id, handler]) => {
+        document.getElementById(id)?.addEventListener('click', () => {
+          console.log(`${id} clicked`);
+          handler(); 
+        });
       });
+  }
 
+  private handleKeyDown(e: KeyboardEvent): void {
+    if (['w', 'W', 's', 'S', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+        e.preventDefault();
+        this.keysPressed[e.key] = true;
+        console.log('After keyDown, keysPressed:', {...this.keysPressed}); // Spread to get a copy
+    }
+}
+  
+  private handleKeyUp(e: KeyboardEvent): void {
+    if (['w', 'W', 's', 'S', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+        this.keysPressed[e.key] = false;
+    }
+  }
+
+  private setupCanvas(): void {
+    const canvas = this.element?.querySelector('#pong-canvas') as HTMLCanvasElement;
+    this.ctx = canvas?.getContext('2d') || null;
+    
+    if (this.ctx) {
+      this.ctx.fillStyle = '#000000';
+      this.ctx.fillRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
+    }
+  }
+
+
+  private async createGame(): Promise<void> {
+    this.resetGame();
+
+    try {
+      const response = await fetch('/api/createGame', {
+        method: 'POST',
+        headers: {}
+      });
+  
       console.log('createGame response received:', response.status);
-
+  
       if (!response.ok) {
         console.error('Server returned error status:', response.status);
-        const errorText = await response.text();
-        console.error('Error response body:', errorText);
         return;
       }
-      
+    
       const data = await response.json();
       
       if (data.success) {
         this.gameId = data.gameId;
-        // Fetch initial state
-        await this.fetchGameState();
-        this.startGameLoop();
-        
-        // Update UI
-        this.updateGameStatus('Game created! Press Start to begin.');
-        
-        if (this.element) {
-          const gameIdElement = this.element.querySelector('#game-id');
-          if (gameIdElement) gameIdElement.textContent = this.gameId;
-          
-          const gameControlsElement = this.element.querySelector('#game-controls');
-          if (gameControlsElement) gameControlsElement.classList.remove('hidden');
-        }
+
+        const gameIdElement = this.element?.querySelector('#game-id');
+        if (gameIdElement) gameIdElement.textContent = this.gameId;
+        const gameControlsElement = this.element?.querySelector('#game-controls');
+        if (gameControlsElement) gameControlsElement.classList.remove('hidden');
+       
+        this.updateGameStatusUI('Game created! Press Start to begin.');
       }
     } catch (error) {
       console.error('Error creating game:', error);
-    }
-  }
-  
-  private async fetchGameState(): Promise<void> {
-    if (!this.gameId) return;
-    
-    try {
-      // Use the standard endpoint for initial fetch
-      const response = await fetch(`/api/games/${this.gameId}`);
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        this.currentState = data.state;
-        this.drawGame();
-      }
-    } catch (error) {
-      console.error('Error getting game state:', error);
-    }
-  }
-
-  private startGameLoop(): void {
-    if (this.updateInterval) {
-      clearInterval(this.updateInterval);
-    }
-    
-    // Separate input handling and state polling
-    // Process inputs on key events, not in the game loop
-    
-    // Poll for game state updates at a reasonable rate (20fps)
-    this.updateInterval = window.setInterval(() => {
-      this.pollGameState();
-    }, 50); // 50ms = 20 updates per second
-    
-    // Start continuous input checking separate from state updates
-    this.checkInputs();
-  }
-
-  private async pollGameState(): Promise<void> {
-    if (!this.gameId) return;
-    
-    try {
-      // Use optimized polling endpoint with hash for conditional update
-      const url = `/api/games/${this.gameId}/poll${this.stateHash ? `?hash=${this.stateHash}` : ''}`;
-      const response = await fetch(url);
-      
-      // If nothing changed (304 Not Modified), just return
-      if (response.status === 304) {
-        return;
-      }
-      
-      if (!response.ok) {
-        console.error('Error polling game state:', response.statusText);
-        return;
-      }
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        const previousState = this.currentState;
-        this.currentState = data.state;
-        this.stateHash = data.hash;
-        this.drawGame();
-        
-        // Add proper null check before accessing currentState properties
-        if (this.currentState) {
-          // Check if game just ended (transition from playing to finished)
-          const gameJustEnded = previousState?.status === 'playing' && 
-                              this.currentState.status === 'finished';
-          
-          if (gameJustEnded) {
-            // Game just ended, record the match if user is logged in
-            this.recordMatchResult();
-            if (this.currentState.status === 'finished') {
-              this.stopGameLoop();
-            }
-          }
-          
-          // Update UI based on game status
-          if (this.currentState.status === 'playing') {
-            this.updateGameStatus(`Playing: ${this.currentState.scoreLeft} - ${this.currentState.scoreRight}`);
-          } else if (this.currentState.status === 'paused') {
-            this.updateGameStatus('Game paused');
-          } else if (this.currentState.status === 'waiting') {
-            this.updateGameStatus('Waiting to start...');
-          } else if (this.currentState.status === 'finished') {
-            const winner = this.currentState.winner === 'left' ? 'Left' : 'Right';
-            const winningScore = this.currentState.winner === 'left' ? this.currentState.scoreLeft : this.currentState.scoreRight;
-            const losingScore = this.currentState.winner === 'left' ? this.currentState.scoreRight : this.currentState.scoreLeft;
-            
-            this.updateGameStatus(`Game over! ${winner} player wins ${winningScore}-${losingScore}!`);
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error polling game state:', error);
-    }
-  }
-
-  private checkInputs(): void {
-    // Use requestAnimationFrame for smooth input checking
-    // This separates input handling from network polling
-    const processInputs = () => {
-      if (this.currentState?.status === 'playing') {
-        // Player 1 controls (W/S keys)
-        if (this.keyState['w'] || this.keyState['W']) {
-          this.movePaddle('left', 'up');
-        } else if (this.keyState['s'] || this.keyState['S']) {
-          this.movePaddle('left', 'down');
-        }
-        
-        // Player 2 controls (Arrow Up/Down keys)
-        if (this.keyState['ArrowUp']) {
-          this.movePaddle('right', 'up');
-        } else if (this.keyState['ArrowDown']) {
-          this.movePaddle('right', 'down');
-        }
-      }
-      
-      // Continue the loop if game is still active
-      if (this.gameId && this.currentState && this.currentState.status !== 'finished') {
-        requestAnimationFrame(processInputs);
-      }
-    };
-    
-    // Start the input processing loop
-    requestAnimationFrame(processInputs);
-  }
-
-
-  private async movePaddle(side: 'left' | 'right', direction: 'up' | 'down'): Promise<void> {
-    if (!this.gameId || this.currentState?.status !== 'playing') {
-      return;
-    }
-    
-    const now = Date.now();
-    const inputKey = `${side}-${direction}`;
-    
-    // Throttle input to avoid overwhelming the server
-    if (this.lastInputTime[inputKey] && now - this.lastInputTime[inputKey] < this.inputThrottleMs) {
-      return;
-    }
-    
-    this.lastInputTime[inputKey] = now;
-    
-    try {
-      const response = await fetch(`/api/games/${this.gameId}/move`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          side,
-          direction
-        })
-      });
-      
-      if (!response.ok) {
-        console.error(`Move error: ${response.status}`, await response.text());
-      }
-    } catch (error) {
-      console.error('Error moving paddle:', error);
     }
   }
 
@@ -410,8 +220,7 @@ export class PongGamePage implements Page {
       return;
     }
     
-    // Check if game is finished
-    if (this.currentState?.status !== 'waiting') {
+    if (this.state && this.state.status !== 'waiting') {
       console.log("Cannot start game: game is already finished or already has been started");
       return;
     }
@@ -420,28 +229,21 @@ export class PongGamePage implements Page {
       console.log(`Starting game with ID: ${this.gameId}`);
       const response = await fetch(`/api/games/${this.gameId}/start`, {
         method: 'POST',
-        headers: {
-          //'Content-Type': 'application/json'
-        }
+        headers: {}
       });
 
       console.log('startGame response received:', response.status);
       
       if (!response.ok) {
         console.error('Server returned error status:', response.status);
-        const errorText = await response.text();
-        console.error('Error response body:', errorText);
         return;
       }
       
       const data = await response.json();
-      console.log('Start game response data:', data);
       
       if (data.success) {
-        this.updateGameStatus('Game started!');
-        // Force a state refresh
-        this.stateHash = null;
-        await this.pollGameState();
+        this.startGameLoop();
+        this.updateGameStatusUI();
       } else {
         console.error('Start game failed:', data);
       }
@@ -449,158 +251,108 @@ export class PongGamePage implements Page {
       console.error('Error starting game:', error);
     }
   }
-    
-  private async pauseGame(): Promise<void> {
-    if (!this.gameId) return;
 
-    // Check if game is finished
-    if (this.currentState?.status === 'finished') {
-      console.log("Cannot pause game: game is already finished");
-      return;
-    }
-    
-    try {
-      const response = await fetch(`/api/games/${this.gameId}/pause`, {
-        method: 'POST',
-        headers: {
-          //'Content-Type': 'application/json'
-        }
-      });
+
+  private startGameLoop(): void {
+    this.stopGameLoop();
+
+    const gameLoop = async () => {
+      if (!this.gameId || this.state?.status === 'finished') 
+        return;
       
-      const data = await response.json();
-      
-      if (data.success) {
-        if (this.currentState?.status === 'playing') {
-          // Game is being paused
-          this.updateGameStatus('Game paused');
-        } else {
-          // Game is being unpaused
-          this.updateGameStatus('Game resumed');
-        }
+      try {
+        await this.pollGameState();
+      } catch (error) {
+        console.error('Error updating game:', error);
+        return;
       }
+
+      this.gameLoopId = requestAnimationFrame(gameLoop);
+    };
+
+    this.gameLoopId = requestAnimationFrame(gameLoop);
+  }
+
+  
+  private async pollGameState(): Promise<void> {
+    this.updateInputState();
+    
+    const url = `/api/games/${this.gameId}/poll${this.stateHash ? `?hash=${this.stateHash}` : ''}`;
+
+    const requestBody = {
+      input: (this.inputChanged && (this.state?.status === 'playing' || this.state?.status === 'paused')) 
+        ? this.inputState 
+        : undefined
+    };
+  
+    try {
+      const response = await fetch(url, {
+        method: 'POST', 
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+      });
+    
+      if (response.status === 304) {
+        return;
+      }
+  
+      if (!response.ok) {
+        console.error('Error updating game state:', response.statusText);
+        return;
+      }
+  
+      const data = await response.json();
+      if (!data.success || !data.state) 
+      {
+        console.log("Game state not found or not successful");
+        return;
+      }  
+      
+      const previousState = this.state;
+      this.state = data.state;
+      this.stateHash = data.hash;
+      
+      this.drawGame();
+      
+      // Handle game end
+      if (previousState?.status === 'playing' && this.state?.status === 'finished') {
+        this.recordMatchResult();
+        this.stopGameLoop(); 
+      }
+      
+      this.updateGameStatusUI();
     } catch (error) {
-      console.error('Error pausing/resuming game:', error);
+      console.error('Error polling game state:', error);
     }
+  }
+
+  private updateInputState(): void {
+    this.inputState.leftPaddleUp = this.keysPressed['w'] || this.keysPressed['W'] || false;
+    this.inputState.leftPaddleDown = this.keysPressed['s'] || this.keysPressed['S'] || false;
+    this.inputState.rightPaddleUp = this.keysPressed['ArrowUp'] || false;
+    this.inputState.rightPaddleDown = this.keysPressed['ArrowDown'] || false;
+    
+    const currentInputStateJson = JSON.stringify(this.inputState);
+    this.inputChanged = this.lastInputStateJson === null || currentInputStateJson !== this.lastInputStateJson;
+    this.lastInputStateJson = this.inputChanged ? currentInputStateJson : this.lastInputStateJson;
   }
   
   private stopGameLoop(): void {
-    if (this.updateInterval) {
-      clearInterval(this.updateInterval);
-      this.updateInterval = null;
-    }
-  }
-  
-  private drawGame(): void {
-    if (!this.currentState || !this.ctx || !this.canvas) return;
-    
-    const { 
-      gameWidth, gameHeight, paddleLeftY, paddleRightY, 
-      paddleWidth, paddleHeight, ballX, ballY, ballSize,
-      scoreLeft, scoreRight, status
-    } = this.currentState;
-    
-    // Make sure canvas dimensions match the game state
-    this.canvas.width = gameWidth;
-    this.canvas.height = gameHeight;
-    
-    // Clear the canvas
-    this.ctx.fillStyle = '#000000';
-    this.ctx.fillRect(0, 0, gameWidth, gameHeight);
-
-    // If game is finished, just show a blank canvas with the final message
-    if (status === 'finished') {
-      this.ctx.fillStyle = '#FFFFFF';
-      this.ctx.font = '48px Arial';
-      this.ctx.textAlign = 'center';
-      
-      const winner = this.currentState.winner === 'left' ? 'Left' : 'Right';
-      const winningScore = this.currentState.winner === 'left' ? scoreLeft : scoreRight;
-      const losingScore = this.currentState.winner === 'left' ? scoreRight : scoreLeft;
-      
-      this.ctx.fillText(`${winner} player wins!`, gameWidth / 2, gameHeight / 2 - 30);
-      this.ctx.font = '32px Arial';
-      this.ctx.fillText(`Final Score: ${winningScore}-${losingScore}`, gameWidth / 2, gameHeight / 2 + 30);
-      this.ctx.font = '24px Arial';
-      this.ctx.fillText('Click "Create New Game" to play again', gameWidth / 2, gameHeight / 2 + 90);
-      
-      // Stop polling if we haven't already
-      this.stopGameLoop();
-      
-      return; // Return early, don't draw game elements
-    }
-    
-    // Draw the center line
-    this.ctx.strokeStyle = '#FFFFFF';
-    this.ctx.setLineDash([5, 15]);
-    this.ctx.beginPath();
-    this.ctx.moveTo(gameWidth / 2, 0);
-    this.ctx.lineTo(gameWidth / 2, gameHeight);
-    this.ctx.stroke();
-    this.ctx.setLineDash([]);
-    
-    // Draw the paddles
-    this.ctx.fillStyle = '#FFFFFF';
-    
-    // Left paddle
-    this.ctx.fillRect(0, paddleLeftY, paddleWidth, paddleHeight);
-    
-    // Right paddle
-    this.ctx.fillRect(gameWidth - paddleWidth, paddleRightY, paddleWidth, paddleHeight);
-    
-    // Draw the ball
-    this.ctx.beginPath();
-    this.ctx.fillStyle = "pink";
-    this.ctx.arc(ballX, ballY, ballSize / 2, 0, Math.PI * 2);
-    this.ctx.fill();
-    
-    // Draw the scores
-    this.ctx.font = '32px Arial';
-    this.ctx.textAlign = 'center';
-    
-    // Left player score
-    this.ctx.fillText(scoreLeft.toString(), gameWidth / 4, 50);
-    
-    // Right player score
-    this.ctx.fillText(scoreRight.toString(), (gameWidth / 4) * 3, 50);
-    
-    // If game is paused, show a message
-    if (status === 'paused') {
-      this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-      this.ctx.fillRect(0, 0, gameWidth, gameHeight);
-      
-      this.ctx.fillStyle = '#FFFFFF';
-      this.ctx.font = '48px Arial';
-      this.ctx.textAlign = 'center';
-      this.ctx.fillText('PAUSED', gameWidth / 2, gameHeight / 2);
-    }
-    
-    // If game is waiting to start, show a message
-    if (status === 'waiting') {
-      this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-      this.ctx.fillRect(0, 0, gameWidth, gameHeight);
-      
-      this.ctx.fillStyle = '#FFFFFF';
-      this.ctx.font = '32px Arial';
-      this.ctx.textAlign = 'center';
-      this.ctx.fillText('Press Start to begin', gameWidth / 2, gameHeight / 2);
-    }
-  }
-  
-  private updateGameStatus(message: string): void {
-    if (!this.element) return;
-    
-    const statusElement = this.element.querySelector('#game-status');
-    if (statusElement) {
-      statusElement.textContent = message;
+    if (this.gameLoopId !== null) {
+      cancelAnimationFrame(this.gameLoopId);
+      this.gameLoopId = null;
     }
   }
 
   private async recordMatchResult(): Promise<void> {
-    if (!this.gameId || !this.currentState) return;
+    if (!this.gameId || !this.state) return;
     
     try {
       // Get user ID from session storage
-      const userId = this.getCurrentUserId();
+      const userIdString = sessionStorage.getItem('userId');
+      const userId: number | null = userIdString ? parseInt(userIdString, 10) : null;
       
       if (!userId) {
         console.log('User not logged in, not recording match');
@@ -608,8 +360,7 @@ export class PongGamePage implements Page {
       }
       
       // Determine which side won
-      const winner = this.currentState.winner || 
-                    (this.currentState.scoreLeft >= 5 ? 'left' : 'right');
+      const winner = this.state.winner;
       
       // Call the API to record the match
       const response = await fetch('/api/games/record-match', {
@@ -623,8 +374,8 @@ export class PongGamePage implements Page {
           // For simplicity, we'll assume the logged-in user is always the left player
           // You could add a player side selection UI in the future
           userSide: 'left',
-          leftScore: this.currentState.scoreLeft,
-          rightScore: this.currentState.scoreRight,
+          leftScore: this.state.scoreLeft,
+          rightScore: this.state.scoreRight,
           winner: winner
         })
       });
@@ -642,25 +393,135 @@ export class PongGamePage implements Page {
     }
   }
 
-  // Helper method to get user ID from session storage
-  private getCurrentUserId(): number | null {
-    const userId = sessionStorage.getItem('userId');
-    return userId ? parseInt(userId, 10) : null;
-  }
 
-  // Clean up resources when component is destroyed
-  public destroy(): void {
-    console.log("Destroy method called");
-    
-    // Clear game intervals
-    if (this.updateInterval) {
-      clearInterval(this.updateInterval);
-      this.updateInterval = null;
+  private async pauseGame(): Promise<void> {
+    if (!this.gameId || !this.state) return;
+  
+    if (this.state.status === 'finished') {
+      console.log("Cannot pause game: game is already finished");
+      return;
     }
     
-    // Remove event listeners
-    window.removeEventListener('keydown', this.handleKeyDown.bind(this));
-    window.removeEventListener('keyup', this.handleKeyUp.bind(this));
+    try {
+      const response = await fetch(`/api/games/${this.gameId}/pause`, {
+        method: 'POST',
+        headers: {}        
+      });
+      
+      if (!response.ok) {
+        console.error('Error pausing/resuming game:', response.statusText);
+        return;
+      }
+      
+      const data = await response.json();
+      if (data.success) {
+        this.state.status = data.status;
+        this.updateGameStatusUI();
+      }
+    } catch (error) {
+      console.error('Error pausing/resuming game:', error);
+    }
+  }
+
+  private updateGameStatusUI(statusMessage?: string): void {
+    if (!this.state) return;
+    const statusElement = this.element?.querySelector('#game-status');
+    if (!statusElement) return;
+    
+    if (statusMessage) {
+      statusElement.textContent= statusMessage; 
+    } else if (this.state.status === 'waiting') {
+      statusElement.textContent= 'Game created! Press Start to begin.'; 
+    } else if (this.state.status === 'playing') {
+      statusElement.textContent= `Playing: ${this.state.scoreLeft} - ${this.state.scoreRight}`;
+    } else if (this.state.status === 'paused') {
+      statusElement.textContent= 'Game paused';
+    } else if (this.state.status === 'finished') {
+      const winner = this.state.winner === 'left' ? 'Left' : 'Right';
+      const winningScore = this.state.winner === 'left' ? this.state.scoreLeft : this.state.scoreRight;
+      const losingScore = this.state.winner === 'left' ? this.state.scoreRight : this.state.scoreLeft;
+      statusElement.textContent= `Game over! ${winner} player wins ${winningScore}-${losingScore}!`;
+    }
+  }
+
+  private drawGame(): void {
+    if (!this.state || !this.ctx) return;
+    
+    // Clear the canvas
+    this.ctx.fillStyle = '#000000';
+    this.ctx.fillRect(0, 0, this.gameWidth, this.gameHeight);
+    
+    if (this.state.status === 'paused' || this.state.status === 'waiting' || this.state.status === 'finished') {
+      // Add semi-transparent overlay
+      this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+      this.ctx.fillRect(0, 0, this.gameWidth, this.gameHeight);
+      this.ctx.fillStyle = '#FFFFFF';
+      this.ctx.textAlign = 'center';
+
+      if (this.state.status === 'waiting') { 
+        this.ctx.font = '32px Arial';
+        this.ctx.fillText('Press Start to begin', this.gameWidth / 2, this.gameHeight / 2);
+      } else if (this.state.status === 'paused') {
+        this.ctx.font = '48px Arial';
+        this.ctx.fillText('PAUSED', this.gameWidth / 2, this.gameHeight / 2);
+      } else {
+        this.ctx.fillText(`${this.state.winner} player wins!`, this.gameWidth / 2, this.gameHeight / 2 - 30);
+        this.ctx.font = '32px Arial';
+        this.ctx.fillText(`Final Score: ${Math.max(this.state.scoreLeft, this.state.scoreRight)}-${Math.min(this.state.scoreLeft, this.state.scoreRight)}`, this.gameWidth / 2, this.gameHeight / 2 + 30);
+        this.ctx.font = '24px Arial';
+        this.ctx.fillText('Click "Create New Game" to play again', this.gameWidth / 2, this.gameHeight / 2 + 90);
+      }
+      return;
+    }
+   
+    this.drawCenterLine();
+    this.drawPaddles();
+    this.drawBall();
+    this.drawScores(); 
+  }
+  
+  private drawCenterLine(): void {
+    if (!this.ctx) return;
+    this.ctx.strokeStyle = '#FFFFFF';
+    this.ctx.setLineDash([5, 15]);
+    this.ctx.beginPath();
+    this.ctx.moveTo(this.gameWidth / 2, 0);
+    this.ctx.lineTo(this.gameWidth / 2, this.gameHeight);
+    this.ctx.stroke();
+    this.ctx.setLineDash([]);
+  }
+  
+  private drawPaddles(): void {
+    if (!this.ctx || !this.state) return;
+    this.ctx.fillStyle = '#FFFFFF';
+    this.ctx.fillRect(0, this.state.paddleLeftY, this.paddleWidth, this.paddleHeight);
+    this.ctx.fillRect(this.gameWidth - this.paddleWidth, this.state.paddleRightY, this.paddleWidth, this.paddleHeight);
+  }
+  
+  private drawBall(): void {
+    if (!this.ctx || !this.state) return;
+    this.ctx.beginPath();
+    this.ctx.fillStyle = "pink";
+    this.ctx.arc(this.state.ballX, this.state.ballY, this.ballSize / 2, 0, Math.PI * 2);
+    this.ctx.fill();
+  }
+  
+  private drawScores(): void {
+    if (!this.ctx || !this.state) return;
+    this.ctx.font = '32px Arial';
+    this.ctx.textAlign = 'center';
+    this.ctx.fillStyle = '#FFFFFF';
+    this.ctx.fillText(this.state.scoreLeft.toString(), this.gameWidth / 4, 50);
+    this.ctx.fillText(this.state.scoreRight.toString(), (this.gameWidth / 4) * 3, 50);
+  }
+
+  public destroy(): void {
+    console.log("Pong game destroy method called");
+
+    window.removeEventListener('keydown', this.keyDownHandler);
+    window.removeEventListener('keyup', this.keyUpHandler);
+
+    this.resetGame();
     
     // Clean up the game on the server if needed
     if (this.gameId) {
@@ -670,11 +531,5 @@ export class PongGamePage implements Page {
         console.error('Error cleaning up game:', error);
       });
     }
-    
-    // Reset state
-    this.gameId = null;
-    this.currentState = null;
-    this.stateHash = null;
-    this.keyState = {};
   }
 }
