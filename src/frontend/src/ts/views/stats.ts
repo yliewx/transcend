@@ -50,8 +50,26 @@ export class StatsPage implements Page {
           </div>
           
           <div id="stats-content" class="hidden">
-            <!-- Stats boxes will be inserted here -->
-            <div id="stats-boxes" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8"></div>
+            <!-- Stats boxes are now part of the initial HTML -->
+            <div id="stats-boxes" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+              <!-- Games Played Box -->
+              <div id="games-played-box" class="bg-indigo-50 rounded-lg p-6 text-center">
+                <h2 class="text-xl font-bold text-indigo-800 mb-2">Games Played</h2>
+                <p id="games-played-value" class="text-4xl font-bold text-indigo-600">0</p>
+                <p id="games-played-details" class="mt-2 text-gray-600 text-sm">
+                  0 wins, 0 losses
+                </p>
+              </div>
+              
+              <!-- Win Rate Box -->
+              <div id="win-rate-box" class="bg-green-50 rounded-lg p-6 text-center">
+                <h2 class="text-xl font-bold text-green-800 mb-2">Win Rate</h2>
+                <p id="win-rate-value" class="text-4xl font-bold text-green-600">0%</p>
+                <p id="win-rate-details" class="mt-2 text-gray-600 text-sm">
+                  Play games to see your win rate
+                </p>
+              </div>
+            </div>
             
             <!-- Match history table will be inserted here -->
             <div id="match-history-container">
@@ -204,35 +222,31 @@ export class StatsPage implements Page {
   private renderStats(): void {
     if (!this.element || !this.stats) return;
     
-    const statsBoxesContainer = this.element.querySelector('#stats-boxes');
-    if (!statsBoxesContainer) return;
+    // Update Games Played Box content
+    const gamesPlayedValue = this.element.querySelector('#games-played-value');
+    const gamesPlayedDetails = this.element.querySelector('#games-played-details');
     
-    // Clear existing content
-    statsBoxesContainer.innerHTML = '';
+    if (gamesPlayedValue) {
+      gamesPlayedValue.textContent = this.stats.gamesPlayed.toString();
+    }
     
-    // Games Played Box
-    const gamesPlayedBox = document.createElement('div');
-    gamesPlayedBox.className = 'bg-indigo-50 rounded-lg p-6 text-center';
-    gamesPlayedBox.innerHTML = `
-      <h2 class="text-xl font-bold text-indigo-800 mb-2">Games Played</h2>
-      <p class="text-4xl font-bold text-indigo-600">${this.stats.gamesPlayed}</p>
-      <p class="mt-2 text-gray-600 text-sm">
-        ${this.stats.gamesWon} wins, ${this.stats.gamesLost} losses
-      </p>
-    `;
-    statsBoxesContainer.appendChild(gamesPlayedBox);
+    if (gamesPlayedDetails) {
+      gamesPlayedDetails.textContent = `${this.stats.gamesWon} wins, ${this.stats.gamesLost} losses`;
+    }
     
-    // Win Rate Box
-    const winRateBox = document.createElement('div');
-    winRateBox.className = 'bg-green-50 rounded-lg p-6 text-center';
-    winRateBox.innerHTML = `
-      <h2 class="text-xl font-bold text-green-800 mb-2">Win Rate</h2>
-      <p class="text-4xl font-bold text-green-600">${this.stats.winRate}%</p>
-      <p class="mt-2 text-gray-600 text-sm">
-        ${this.stats.gamesPlayed > 0 ? 'Based on your match history' : 'Play games to see your win rate'}
-      </p>
-    `;
-    statsBoxesContainer.appendChild(winRateBox);
+    // Update Win Rate Box content
+    const winRateValue = this.element.querySelector('#win-rate-value');
+    const winRateDetails = this.element.querySelector('#win-rate-details');
+    
+    if (winRateValue) {
+      winRateValue.textContent = `${this.stats.winRate}%`;
+    }
+    
+    if (winRateDetails) {
+      winRateDetails.textContent = this.stats.gamesPlayed > 0 
+        ? 'Based on your match history' 
+        : 'Play games to see your win rate';
+    }
   }
   
   private renderMatchHistory(): void {
@@ -241,51 +255,31 @@ export class StatsPage implements Page {
     const tableBody = this.element.querySelector('#match-history-table-body');
     if (!tableBody) return;
     
-    // Clear existing content
-    tableBody.innerHTML = '';
-    
     // Calculate slice for current page
     const startIndex = (this.currentPage - 1) * this.itemsPerPage;
     const endIndex = Math.min(startIndex + this.itemsPerPage, this.matchHistory.length);
     const currentItems = this.matchHistory.slice(startIndex, endIndex);
     
+    // Clear existing content - since we're showing different matches on each page,
+    // and match results don't change, we can just rebuild the table completely
+    tableBody.innerHTML = '';
+    
     if (currentItems.length === 0) {
-        // No match history
-        const emptyRow = document.createElement('tr');
-        emptyRow.innerHTML = `
-            <td colspan="4" class="px-4 py-6 text-center text-gray-500">
-            No match history found. Play some games to see your stats!
-            </td>
-        `;
-        tableBody.appendChild(emptyRow);
+      // No match history
+      const emptyRow = document.createElement('tr');
+      emptyRow.className = 'empty-row';
+      emptyRow.innerHTML = `
+        <td colspan="4" class="px-4 py-6 text-center text-gray-500">
+          No match history found. Play some games to see your stats!
+        </td>
+      `;
+      tableBody.appendChild(emptyRow);
     } else {
-        currentItems.forEach(match => {
-            const matchDate = new Date(match.match_date).toLocaleDateString();
-            
-            const row = document.createElement('tr');
-            row.className = 'border-t border-gray-200 hover:bg-gray-50';
-            
-            row.innerHTML = `
-            <td class="px-4 py-3 text-sm text-gray-600">${matchDate}</td>
-            <td class="px-4 py-3 text-sm text-gray-600">${match.opponent_name}</td>
-            <td class="px-4 py-3 text-center text-sm font-medium">
-                <span class="${match.user_won === 1 ? 'text-green-600' : 'text-gray-600'}">${match.user_score}</span>
-                <span class="text-gray-400 mx-1">-</span>
-                <span class="${match.user_won === 0 ? 'text-red-600' : 'text-gray-600'}">${match.opponent_score}</span>
-            </td>
-            <td class="px-4 py-3 text-center">
-                <span class="inline-block px-2 py-1 text-xs font-semibold rounded-full ${
-                match.user_won === 1
-                    ? 'bg-green-100 text-green-800' 
-                    : 'bg-red-100 text-red-800'
-                }">
-                ${match.user_won === 1 ? 'Win' : 'Loss'}
-                </span>
-            </td>
-            `;
-            
-            tableBody.appendChild(row);
-        });
+      // Create rows for each match item
+      currentItems.forEach(match => {
+        const row = this.createMatchRow(match);
+        tableBody.appendChild(row);
+      });
     }
 
     // Update pagination info
@@ -309,5 +303,36 @@ export class StatsPage implements Page {
     if (nextButton) {
         nextButton.disabled = this.currentPage >= this.totalPages;
     }
+  }
+  
+  /**
+   * Creates a match history row
+   */
+  private createMatchRow(match: MatchHistoryItem): HTMLElement {
+    const matchDate = new Date(match.match_date).toLocaleDateString();
+    
+    const row = document.createElement('tr');
+    row.className = 'border-t border-gray-200 hover:bg-gray-50';
+    
+    row.innerHTML = `
+      <td class="px-4 py-3 text-sm text-gray-600">${matchDate}</td>
+      <td class="px-4 py-3 text-sm text-gray-600">${match.opponent_name}</td>
+      <td class="px-4 py-3 text-center text-sm font-medium">
+        <span class="${match.user_won === 1 ? 'text-green-600' : 'text-gray-600'}">${match.user_score}</span>
+        <span class="text-gray-400 mx-1">-</span>
+        <span class="${match.user_won === 0 ? 'text-red-600' : 'text-gray-600'}">${match.opponent_score}</span>
+      </td>
+      <td class="px-4 py-3 text-center">
+        <span class="inline-block px-2 py-1 text-xs font-semibold rounded-full ${
+          match.user_won === 1
+            ? 'bg-green-100 text-green-800' 
+            : 'bg-red-100 text-red-800'
+        }">
+          ${match.user_won === 1 ? 'Win' : 'Loss'}
+        </span>
+      </td>
+    `;
+    
+    return row;
   }
 }

@@ -134,56 +134,9 @@ export class FriendsPage implements Page {
       this.loadInitialData();
     }
   }
-  
-  private setupEventHandlers(): void {
-    if (!this.element) return;
-    
-    // Tab navigation
-    const tabFriends = this.element.querySelector('#tab-friends');
-    const tabPending = this.element.querySelector('#tab-pending');
-    const tabSearch = this.element.querySelector('#tab-search');
-    
-    if (tabFriends) {
-      tabFriends.addEventListener('click', () => this.switchTab('friends'));
-    }
-    if (tabPending) {
-      tabPending.addEventListener('click', () => this.switchTab('pending'));
-    }
-    if (tabSearch) {
-      tabSearch.addEventListener('click', () => this.switchTab('search'));
-    }
-    
-    // Search functionality
-    const searchBtn = this.element.querySelector('#search-btn');
-    const searchInput = this.element.querySelector('#search-input');
-    
-    if (searchBtn) {
-      searchBtn.addEventListener('click', () => this.performSearch());
-    }
-    if (searchInput) {
-      searchInput.addEventListener('keypress', ((e: KeyboardEvent) => {
-        if (e.key === 'Enter') {
-          this.performSearch();
-        }
-      }) as EventListener);
-    }
-    
-    // Find friends button
-    const findFriendsBtn = this.element.querySelector('#find-friends-btn');
-    if (findFriendsBtn) {
-      findFriendsBtn.addEventListener('click', () => this.switchTab('search'));
-    }
-    
-    // Retry button
-    const retryBtn = this.element.querySelector('#retry-btn');
-    if (retryBtn) {
-      retryBtn.addEventListener('click', () => this.loadInitialData());
-    }
-  }
-  
+
   private async loadInitialData(): Promise<void> {
-    const userIdStr = sessionStorage.getItem('userId');
-    this.userId = userIdStr ? parseInt(userIdStr, 10) : null;
+    this.userId = parseInt(sessionStorage.getItem('userId') || '0', 10) || null;
     
     if (!this.userId) {
       this.showError('User ID not found');
@@ -194,22 +147,24 @@ export class FriendsPage implements Page {
     this.updateUI();
     
     try {
-      // Load friends list
-      const friendsResponse = await this.friendService.getFriends();
-      if (friendsResponse.success) {
-        this.currentFriends = friendsResponse.friends || [];
-      } else {
+      // Load both data sources in parallel
+      const [friendsResponse, pendingResponse] = await Promise.all([
+        this.friendService.getFriends(),
+        this.friendService.getPendingRequests()
+      ]);
+      
+      // Handle responses
+      if (!friendsResponse.success) {
         throw new Error(friendsResponse.error || 'Failed to load friends');
       }
       
-      // Load pending requests
-      const pendingResponse = await this.friendService.getPendingRequests();
-      if (pendingResponse.success) {
-        this.pendingRequests = pendingResponse.requests || [];
-      } else {
+      if (!pendingResponse.success) {
         throw new Error(pendingResponse.error || 'Failed to load pending requests');
       }
-
+      
+      // Update data
+      this.currentFriends = friendsResponse.friends || [];
+      this.pendingRequests = pendingResponse.requests || [];
       this.updateUI();
       
     } catch (error) {
@@ -217,7 +172,87 @@ export class FriendsPage implements Page {
       this.showError(error instanceof Error ? error.message : 'Unknown error');
     }
   }
+
+  private setupEventHandlers(): void {
+    if (!this.element) return;
+    
+    // Define tuple type with proper types
+    type HandlerTuple = [string, string, EventListener];
+    
+    const handlers: HandlerTuple[] = [
+      ['#tab-friends', 'click', (() => this.switchTab('friends')) as EventListener],
+      ['#tab-pending', 'click', (() => this.switchTab('pending')) as EventListener],
+      ['#tab-search', 'click', (() => this.switchTab('search')) as EventListener],
+      ['#search-btn', 'click', (() => this.performSearch()) as EventListener],
+      ['#search-input', 'keypress', ((e: Event) => {
+        if ((e as KeyboardEvent).key === 'Enter') this.performSearch();
+      }) as EventListener],
+      ['#find-friends-btn', 'click', (() => this.switchTab('search')) as EventListener],
+      ['#retry-btn', 'click', (() => this.loadInitialData()) as EventListener]
+    ];
+    
+    handlers.forEach(([selector, event, handler]) => {
+      const element = this.element?.querySelector(selector);
+      if (element) element.addEventListener(event, handler);
+    });
+  }
   
+  private switchTab(tab: 'friends' | 'pending' | 'search'): void {
+    this.currentTab = tab;
+    this.hasError = false;
+    this.updateUI();
+  }
+
+  private updateUI(): void {
+    if (!this.element) return;
+    
+    this.element.querySelector('#error-container')?.classList.toggle('hidden', !this.hasError);
+    
+    const tabs = {
+      'friends': {
+        container: '#friends-container',
+        render: () => this.renderFriendsList()
+      },
+      'pending': {
+        container: '#pending-container', 
+        render: () => this.renderPendingRequests()
+      },
+      'search': {
+        container: '#search-container',
+        render: () => this.renderSearchResults()
+      }
+    };
+    
+    Object.entries(tabs).forEach(([tabName, config]) => {
+      const isActive = this.currentTab === tabName && !this.hasError;
+      
+      const container = this.element?.querySelector(config.container);
+      container?.classList.toggle('hidden', !isActive);
+      if (isActive && container) config.render();
+      
+      const button = this.element?.querySelector(`#tab-${tabName}`);
+      if (button) {
+        button.classList.toggle('text-indigo-600', isActive);
+        button.classList.toggle('border-b-2', isActive);
+        button.classList.toggle('border-indigo-600', isActive);
+        button.classList.toggle('text-gray-500', !isActive);
+        button.classList.toggle('hover:text-gray-700', !isActive);
+      }
+    });
+    
+    this.updatePendingBadge();
+  }
+
+  private updatePendingBadge(): void {
+    const pendingBadge = this.element?.querySelector('#pending-badge');
+    const hasPendingRequests = this.pendingRequests.length > 0;
+    
+    pendingBadge?.classList.toggle('hidden', !hasPendingRequests);
+    if (hasPendingRequests && pendingBadge) {
+      pendingBadge.textContent = this.pendingRequests.length.toString();
+    }
+  }
+
   private async performSearch(): Promise<void> {
     if (!this.element) return;
     
@@ -245,79 +280,7 @@ export class FriendsPage implements Page {
     } catch (error) {
       console.error('Search error:', error);
       this.showError(error instanceof Error ? error.message : 'Search failed');
-    }
-  }
-  
-  private switchTab(tab: 'friends' | 'pending' | 'search'): void {
-    this.currentTab = tab;
-    this.hasError = false;
-    this.updateUI();
-  }
-
-  private updateUI(): void {
-    if (!this.element) return;
-    
-    // Handle error container visibility
-    const errorContainer = this.element.querySelector('#error-container');
-    if (errorContainer) {
-      if (this.hasError) {
-        errorContainer.classList.remove('hidden');
-      } else {
-        errorContainer.classList.add('hidden');
-      }
-    }
-    
-    // Only update tab content if no error is present
-    if (!this.hasError) {
-      // Update tab visibility
-      ['friends', 'pending', 'search'].forEach(tab => {
-        const container = this.element?.querySelector(`#${tab}-container`);
-        const tabButton = this.element?.querySelector(`#tab-${tab}`);
-        
-        if (container) {
-          if (this.currentTab === tab) {
-            container.classList.remove('hidden');
-          } else {
-            container.classList.add('hidden');
-          }
-        }
-        
-        if (tabButton) {
-          if (this.currentTab === tab) {
-            tabButton.classList.add('text-indigo-600', 'border-b-2', 'border-indigo-600');
-            tabButton.classList.remove('text-gray-500', 'hover:text-gray-700');
-          } else {
-            tabButton.classList.remove('text-indigo-600', 'border-b-2', 'border-indigo-600');
-            tabButton.classList.add('text-gray-500', 'hover:text-gray-700');
-          }
-        }
-      });
       
-      // Update the pending badge count
-      this.updatePendingBadge();
-      
-      // Update content based on current tab
-      if (this.currentTab === 'friends') {
-        this.renderFriendsList();
-      } else if (this.currentTab === 'pending') {
-        this.renderPendingRequests();
-      } else if (this.currentTab === 'search') {
-        this.renderSearchResults();
-      }
-    }
-  }
-
-  private updatePendingBadge(): void {
-    if (!this.element) return;
-    
-    const pendingBadge = this.element.querySelector('#pending-badge');
-    if (pendingBadge) {
-      if (this.pendingRequests.length > 0) {
-        pendingBadge.textContent = this.pendingRequests.length.toString();
-        pendingBadge.classList.remove('hidden');
-      } else {
-        pendingBadge.classList.add('hidden');
-      }
     }
   }
   
@@ -548,150 +511,135 @@ export class FriendsPage implements Page {
     const errorContainer = this.element.querySelector('#error-container');
     const errorMessage = errorContainer?.querySelector('p');
     
-    if (errorContainer) {
-      if (errorMessage) {
-        errorMessage.textContent = message;
-      }
-      errorContainer.classList.remove('hidden');
+    if (errorContainer && errorMessage) {
+      errorMessage.textContent = message;
     }
+    
+    this.updateUI();
   }
 
   private setupDataEventListeners(): void {
     this.removeDataEventListeners();
     
-    this.boundEventHandlers.friendRequestSent = ((event: CustomEvent) => {
-      const { userId, request } = event.detail;
+    // Common helper function for empty list handling
+    const showEmptyState = (listSelector: string, emptyStateSelector: string): void => {
+      const list = this.element?.querySelector(listSelector);
+      const emptyState = this.element?.querySelector(emptyStateSelector);
       
-      this.pendingRequests.push({
-        ...request,
-        userId: request.userId || userId
-      });
-
-      this.updatePendingBadge();
-      
-      // If we're in search results, update the specific user card
-      if (this.currentTab === 'search') {
-        this.updateSearchUserCard(userId, 'pending');
+      if (list && emptyState) {
+        list.classList.add('hidden');
+        emptyState.classList.remove('hidden');
       }
-    }) as EventListener;
+    };
     
-    this.boundEventHandlers.friendRequestAccepted = ((event: CustomEvent) => {
-      const { requestId, userId, friend } = event.detail;
-
-      this.pendingRequests = this.pendingRequests.filter(req => req.id !== requestId);
-      this.currentFriends.push(friend);
-      this.updatePendingBadge();
-      
-      if (this.currentTab === 'pending') {
-        this.removeRequestCard(requestId);
+    // Define event handlers with their implementations
+    const eventHandlers = {
+      friendRequestSent: (event: CustomEvent) => {
+        const { userId, request } = event.detail;
         
-        if (this.pendingRequests.length === 0) {
-          const pendingList = this.element?.querySelector('#pending-requests-list');
-          const noPending = this.element?.querySelector('#no-pending');
+        this.pendingRequests.push({
+          ...request,
+          userId: request.userId || userId
+        });
+  
+        this.updatePendingBadge();
+        
+        if (this.currentTab === 'search') {
+          this.updateSearchUserCard(userId, 'pending');
+        }
+      },
+      
+      friendRequestAccepted: (event: CustomEvent) => {
+        const { requestId, userId, friend } = event.detail;
+  
+        this.pendingRequests = this.pendingRequests.filter(req => req.id !== requestId);
+        this.currentFriends.push(friend);
+        this.updatePendingBadge();
+        
+        if (this.currentTab === 'pending') {
+          this.removeRequestCard(requestId);
           
-          if (pendingList && noPending) {
-            pendingList.classList.add('hidden');
-            noPending.classList.remove('hidden');
+          if (this.pendingRequests.length === 0) {
+            showEmptyState('#pending-requests-list', '#no-pending');
           }
         }
-      }
-      
-      if (this.currentTab === 'search') {
-        this.updateSearchUserCard(userId, 'friend');
-      }
-    }) as EventListener;
-    
-    this.boundEventHandlers.friendRequestDeclined = ((event: CustomEvent) => {
-      const { requestId } = event.detail;
-
-      const request = this.pendingRequests.find(req => req.id === requestId);
-      const userId = request?.userId;      
-      this.pendingRequests = this.pendingRequests.filter(req => req.id !== requestId);
-      
-      this.updatePendingBadge();
-      
-      if (this.currentTab === 'pending') {
-        this.removeRequestCard(requestId);
         
-        if (this.pendingRequests.length === 0) {
-          const pendingList = this.element?.querySelector('#pending-requests-list');
-          const noPending = this.element?.querySelector('#no-pending');
+        if (this.currentTab === 'search') {
+          this.updateSearchUserCard(userId, 'friend');
+        }
+      },
+      
+      friendRequestDeclined: (event: CustomEvent) => {
+        const { requestId } = event.detail;
+  
+        const request = this.pendingRequests.find(req => req.id === requestId);
+        const userId = request?.userId;      
+        this.pendingRequests = this.pendingRequests.filter(req => req.id !== requestId);
+        
+        this.updatePendingBadge();
+        
+        if (this.currentTab === 'pending') {
+          this.removeRequestCard(requestId);
           
-          if (pendingList && noPending) {
-            pendingList.classList.add('hidden');
-            noPending.classList.remove('hidden');
+          if (this.pendingRequests.length === 0) {
+            showEmptyState('#pending-requests-list', '#no-pending');
           }
         }
-      }
-      
-      if (this.currentTab === 'search' && userId) {
-        this.updateSearchUserCard(userId, 'add');
-      }
-
-    }) as EventListener;
-    
-    this.boundEventHandlers.friendRequestCancelled = ((event: CustomEvent) => {
-      const { requestId } = event.detail;
-      
-      const request = this.pendingRequests.find(req => req.id === requestId);
-      const userId = request?.userId;      
-      this.pendingRequests = this.pendingRequests.filter(req => req.id !== requestId);      
-      this.updatePendingBadge();
-      
-      if (this.currentTab === 'pending') {
-        this.removeRequestCard(requestId);
         
-        if (this.pendingRequests.length === 0) {
-          const pendingList = this.element?.querySelector('#pending-requests-list');
-          const noPending = this.element?.querySelector('#no-pending');
+        if (this.currentTab === 'search' && userId) {
+          this.updateSearchUserCard(userId, 'add');
+        }
+      },
+      
+      friendRequestCancelled: (event: CustomEvent) => {
+        const { requestId } = event.detail;
+        
+        const request = this.pendingRequests.find(req => req.id === requestId);
+        const userId = request?.userId;      
+        this.pendingRequests = this.pendingRequests.filter(req => req.id !== requestId);      
+        this.updatePendingBadge();
+        
+        if (this.currentTab === 'pending') {
+          this.removeRequestCard(requestId);
           
-          if (pendingList && noPending) {
-            pendingList.classList.add('hidden');
-            noPending.classList.remove('hidden');
+          if (this.pendingRequests.length === 0) {
+            showEmptyState('#pending-requests-list', '#no-pending');
           }
         }
-      }
-      
-      if (this.currentTab === 'search' && userId) {
-        this.updateSearchUserCard(userId, 'add');
-      }
-    }) as EventListener;
-    
-    this.boundEventHandlers.friendRemoved = ((event: CustomEvent) => {
-      const { friendId } = event.detail;
-      
-      this.currentFriends = this.currentFriends.filter(friend => friend.id !== friendId);
-      
-      if (this.currentTab === 'friends') {
-        this.removeFriendCard(friendId);
         
-        if (this.currentFriends.length === 0) {
-          const friendsList = this.element?.querySelector('#friends-list');
-          const noFriends = this.element?.querySelector('#no-friends');
+        if (this.currentTab === 'search' && userId) {
+          this.updateSearchUserCard(userId, 'add');
+        }
+      },
+      
+      friendRemoved: (event: CustomEvent) => {
+        const { friendId } = event.detail;
+        
+        this.currentFriends = this.currentFriends.filter(friend => friend.id !== friendId);
+        
+        if (this.currentTab === 'friends') {
+          this.removeFriendCard(friendId);
           
-          if (friendsList && noFriends) {
-            friendsList.classList.add('hidden');
-            noFriends.classList.remove('hidden');
+          if (this.currentFriends.length === 0) {
+            showEmptyState('#friends-list', '#no-friends');
           }
         }
-      }
+        
+        if (this.currentTab === 'search') {
+          this.updateSearchUserCard(friendId, 'add');
+        }
+      },
       
-      if (this.currentTab === 'search') {
-        this.updateSearchUserCard(friendId, 'add');
+      notification: (event: CustomEvent) => {
+        this.showNotification(event.detail.type, event.detail.message);
       }
-    }) as EventListener;
+    };
     
-    this.boundEventHandlers.notification = ((event: CustomEvent) => {
-      this.showNotification(event.detail.type, event.detail.message);
-    }) as EventListener;
-    
-    // Add all the event listeners
-    document.addEventListener('friendRequestSent', this.boundEventHandlers.friendRequestSent);
-    document.addEventListener('friendRequestAccepted', this.boundEventHandlers.friendRequestAccepted);
-    document.addEventListener('friendRequestDeclined', this.boundEventHandlers.friendRequestDeclined);
-    document.addEventListener('friendRequestCancelled', this.boundEventHandlers.friendRequestCancelled);
-    document.addEventListener('friendRemoved', this.boundEventHandlers.friendRemoved);
-    document.addEventListener('notification', this.boundEventHandlers.notification);
+    // Register all event handlers
+    Object.entries(eventHandlers).forEach(([eventName, handler]) => {
+      this.boundEventHandlers[eventName] = handler as EventListener;
+      document.addEventListener(eventName, this.boundEventHandlers[eventName]);
+    });
   }
   
   // Helper method to remove a friend card from the DOM
@@ -835,33 +783,27 @@ export class FriendsPage implements Page {
   }
 
   private removeDataEventListeners(): void {
-    if (this.boundEventHandlers.friendRequestSent) {
-      document.removeEventListener('friendRequestSent', this.boundEventHandlers.friendRequestSent);
-    }
-    if (this.boundEventHandlers.friendRequestAccepted) {
-      document.removeEventListener('friendRequestAccepted', this.boundEventHandlers.friendRequestAccepted);
-    }
-    if (this.boundEventHandlers.friendRequestDeclined) {
-      document.removeEventListener('friendRequestDeclined', this.boundEventHandlers.friendRequestDeclined);
-    }
-    if (this.boundEventHandlers.friendRequestCancelled) {
-      document.removeEventListener('friendRequestCancelled', this.boundEventHandlers.friendRequestCancelled);
-    }
-    if (this.boundEventHandlers.friendRemoved) {
-      document.removeEventListener('friendRemoved', this.boundEventHandlers.friendRemoved);
-    }
-    if (this.boundEventHandlers.notification) {
-      document.removeEventListener('notification', this.boundEventHandlers.notification);
-    }
+    const events = [
+      'friendRequestSent',
+      'friendRequestAccepted',
+      'friendRequestDeclined',
+      'friendRequestCancelled',
+      'friendRemoved',
+      'notification'
+    ] as const;
+    
+    events.forEach(event => {
+      if (event in this.boundEventHandlers) {
+        document.removeEventListener(event, this.boundEventHandlers[event]);
+      }
+    });
     
     this.boundEventHandlers = {};
   }
 
   public destroy(): void {
-    // Clean up all document-level event listeners
     this.removeDataEventListeners();
     
-    // Any other cleanup tasks can go here
     console.log('FriendsPage destroyed and event listeners removed');
   }
 

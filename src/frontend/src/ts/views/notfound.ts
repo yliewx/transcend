@@ -31,7 +31,5 @@ export class NotFoundPage implements Page {
         return container;
     }
     
-    update(): void {
-        // NotFoundPage is static, no updates needed
-    }
+    update(): void {}
 }
