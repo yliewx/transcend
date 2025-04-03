@@ -5,17 +5,22 @@ import { ControlAccess } from '../services/control.access';
 export class HeaderPage implements Page {
   private router: Router;
   private controlAccess: ControlAccess;
+  private element: HTMLElement | null = null;
 
   constructor(router: Router) {
     this.router = router;
     this.controlAccess = this.router.getControlAccess();
   }
 
-  render(): HTMLElement {  
+  render(): HTMLElement {
+    // Return cached element if it exists
+    if (this.element) {
+      return this.element;
+    }
+  
     const header = document.createElement('header');
     header.className = 'bg-white shadow';
     
-    // Only render authenticated header
     header.innerHTML = `
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
@@ -47,16 +52,14 @@ export class HeaderPage implements Page {
       </div>
     `;
     
-    // Add logout handler
-    setTimeout(() => {
-      const logoutButton = document.getElementById('logout-button');
-      if (logoutButton) {
-        logoutButton.addEventListener('click', () => this.performLogout());
-      }
-    }, 0);
+    header.querySelector('#logout-button')?.addEventListener('click', () => this.performLogout());
+
+    // Cache the element for future use
+    this.element = header;
     
     return header;
   }
+
 
   private async performLogout(): Promise<void> {
     try {
@@ -65,9 +68,33 @@ export class HeaderPage implements Page {
       if (!result.success) {
         console.error('Logout failed:', result.error);
       }
-      // No need to navigate or set authentication state - ControlAccess handles that
     } catch (error) {
       console.error('Logout error:', error);
     }
+  }
+
+  update(): void {
+    if (this.element) {
+      const currentPath = this.router.getCurrentPath();
+      this.updateActiveNavItem(currentPath);
+    }
+  }
+  
+  private updateActiveNavItem(path: string): void {
+    if (!this.element) return;
+    
+    const navLinks = this.element.querySelectorAll('.nav-link');
+    navLinks.forEach(link => {
+      const href = (link as HTMLAnchorElement).getAttribute('href');
+      if (href && href !== '/home') { // Skip the logo link
+        const isActive = href === path;
+        
+        // Toggle classes based on whether this link matches the current path
+        link.classList.toggle('text-indigo-700', isActive);
+        link.classList.toggle('border-indigo-500', isActive);
+        link.classList.toggle('text-gray-500', !isActive);
+        link.classList.toggle('border-transparent', !isActive);
+      }
+    });
   }
 }

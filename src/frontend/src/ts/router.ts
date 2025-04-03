@@ -1,11 +1,11 @@
 import { Page } from './types';
 import { ControlAccess } from './services/control.access';
-import { UserService } from './services/user.service';
 
 export class Router {
   private routes: Map<string, Page>;
   private container: HTMLElement;
   private currentPath: string = '';
+  private protectedRoutes: string[] = ['/home', '/play', '/stats', '/profile', '/friends'];
 
   /*------------------------------CONSTRUCTOR-------------------------------*/
 
@@ -17,7 +17,7 @@ export class Router {
     window.addEventListener('popstate', (event) => {
       const newPath = window.location.pathname;
       if (newPath !== this.currentPath) {
-        this.handleRoute(newPath);
+        this.navigateTo(newPath);
       }
     });
     
@@ -30,88 +30,89 @@ export class Router {
         // Redirect to login when user logs out
         this.navigateTo('/login');
       }
-      // if (!isAuthenticated) {
-      //   this.navigateTo('/login');
-      // }
     });
   }
 
   /*---------------------------NAVIGATION HANDLER---------------------------*/
 
   // Register routes
-  addRoute(path: string, page: Page): void {
+  public addRoute(path: string, page: Page): void {
     this.routes.set(path, page);
   }
-
-  // Redirect to login
-  redirectToLogin(message?: string) {
-    console.log('Redirecting to login page.', message);
-    window.history.pushState({ path: '/login' }, '', '/login');
-    this.handleRoute('/login');
-  }
-
+  
   // Navigate to a specific route
   async navigateTo(path: string): Promise<void> {
-    if (path === this.currentPath) return; // Prevent re-navigation
+    if (path === '/')
+      path = '/home'; // Redirect root to home
 
+    if (path === this.currentPath) {
+      console.log(`Already on route: ${path}, updating but not re-rendering`);
+      // If we're already on this route, just call update on the component
+      const currentPage = this.routes.get(path);
+      if (currentPage && typeof currentPage.update === 'function') {
+        await Promise.resolve(currentPage.update());
+      }
+      return;
+    }
+    
     console.log(`Attempting to navigate to: ${path}, isAuthenticated: ${this.controlAccess.isLoggedIn()}`);
     
-    if (this.isProtectedRoute(path)) {
+    if (this.protectedRoutes.includes(path)) {
       const isAuthenticated = await this.controlAccess.checkAuthStatus();
       if (!isAuthenticated) {
-        this.redirectToLogin('');
-        return ;
+        await this.redirectToLogin('');
+        return;
       }
     }
 
     // Update browser history
     window.history.pushState({ path }, '', path);
-    this.handleRoute(path);
+    this.currentPath = path;
+    await this.showPage(path);
   }
 
-  async handleRoute(path: string): Promise<void> {
-    // If trying to access protected route
-    if (!this.controlAccess.isLoggedIn() && this.isProtectedRoute(path)) {
-      this.redirectToLogin('Protected route accessed while not authenticated');
-      return;
-    }
+  // Redirect to login
+  private async redirectToLogin(message?: string): Promise<void> {
+    console.log('Redirecting to login page.', message);
+    window.history.pushState({ path: '/login' }, '', '/login');
+    await this.showPage('/login');
+  }
 
-    if (path === this.currentPath) {
-      console.log(`Already on route: ${path}, not rendering again`);
-      return;
-    }
-  
-    this.currentPath = path;
-    
-    // If path is root, redirect based on auth status
-    if (path === '/') {
-      if (this.controlAccess.isLoggedIn()) {
-        this.navigateTo('/home');
-      } else {
-        this.navigateTo('/login');
-      }
-      return;
-    }
-  
+  // Show the page for the given path
+  private async showPage(path: string): Promise<void> {
     // Clear container
     while (this.container.firstChild) {
       this.container.removeChild(this.container.firstChild);
     }
   
-    // Get the page for the current route
+    // Get the page component for the current route
     const page = this.routes.get(path) || this.routes.get('/404');
     
-    if (page) {
-      // Handle both synchronous and asynchronous rendering
+    if (!page) {
+      console.error(`No page component found for route: ${path}`);
+      return;
+    }
+    
+    try {
+      // Get the rendered element from the component
       const element = await Promise.resolve(page.render());
+      
+      // Call update method if it exists
+      if (typeof page.update === 'function') {
+        await Promise.resolve(page.update());
+      }
+      
+      // Append to container - now element will be HTMLElement, not a Promise
       this.container.appendChild(element);
+    } catch (error) {
+      console.error(`Error rendering page for route ${path}:`, error);
     }
   }
 
   /*-------------------------------INIT ROUTER------------------------------*/
 
   // Initialize the router
-  init(defaultPath: string = '/'): void {
+  public async init(defaultPath: string = '/'): Promise<void> {
     // Listen for clicks on navigation links
     document.addEventListener('click', (e) => { 
       const target = e.target as HTMLElement; 
@@ -127,26 +128,14 @@ export class Router {
     const initialPath = window.location.pathname;
 
     if (this.routes.has(initialPath)) {
-      this.handleRoute(initialPath);
+      await this.navigateTo(initialPath);
     } else {
       window.history.replaceState({ path: defaultPath }, '', defaultPath);
-      this.handleRoute(defaultPath);
+      await this.navigateTo(defaultPath);
     }
   }
 
   /*--------------------------------ACCESSORS-------------------------------*/
-
-  private isProtectedRoute(path: string): boolean {
-    // Routes that require authentication
-    const protectedRoutes = ['/home', '/play', '/stats', '/profile'];
-    return protectedRoutes.includes(path);
-  }
-  
-  private isAuthRoute(path: string): boolean {
-    // Routes that are only for unauthenticated users
-    const authRoutes = ['/login', '/register'];
-    return authRoutes.includes(path);
-  }
   
   // Getter for current path (for components)
   public getCurrentPath(): string {

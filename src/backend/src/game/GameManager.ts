@@ -11,44 +11,18 @@ export class GameManager {
     }, 60 * 60 * 1000);
   }
 
-  public createGame(): string {
-    const gameId = uuidv4();
-    const game = new PongGame(gameId);
-    this.games.set(gameId, game);
-    return gameId;
-  }
-
   public getGame(gameId: string): PongGame | undefined {
+    console.log(`Fetching game with ID: ${gameId}`);
+    console.log(`Current games: ${Array.from(this.games.keys())}`);
     return this.games.get(gameId);
   }
 
-  public getAllGames(): { id: string, state: GameState }[] {
-    const gameList: { id: string, state: GameState }[] = [];
-    
-    this.games.forEach((game, id) => {
-      gameList.push({
-        id,
-        state: game.getState()
-      });
-    });
-    
-    return gameList;
-  }
-
-  public updateGameState(gameId: string): boolean {
-    const game = this.games.get(gameId);
-    if (!game) return false;
-    
-    game.updateState(16); // Roughly 60fps
-    return true;
-  }
-
-  public movePaddle(gameId: string, side: 'left' | 'right', direction: 'up' | 'down'): boolean {
-    const game = this.games.get(gameId);
-    if (!game) return false;
-    
-    game.movePaddle(side, direction);
-    return true;
+  public createGame(): string {
+    const gameId = uuidv4();
+    console.log(`Creating game with ID: ${gameId}`);
+    const game = new PongGame(gameId);
+    this.games.set(gameId, game);
+    return gameId;
   }
 
   public startGame(gameId: string): boolean {
@@ -66,23 +40,7 @@ export class GameManager {
     game.pauseGame();
     return true;
   }
-
-  public resetGame(gameId: string): boolean {
-    const game = this.games.get(gameId);
-    if (!game) return false;
-    
-    game.resetGame();
-    return true;
-  }
-
-  public endGame(gameId: string, winner: 'left' | 'right'): boolean {
-    const game = this.games.get(gameId);
-    if (!game) return false;
-    
-    game.endGame(winner);
-    return true;
-  }
-   
+  
   public deleteGame(gameId: string): boolean {
     const game = this.games.get(gameId);
     if (game) {
@@ -102,6 +60,19 @@ export class GameManager {
         this.games.delete(gameId);
       }
     });
+  }
+
+  public updatePaddleInput(gameId: string, input: {
+    leftPaddleUp: boolean;
+    leftPaddleDown: boolean;
+    rightPaddleUp: boolean;
+    rightPaddleDown: boolean;
+  }): boolean {
+    const game = this.games.get(gameId);
+    if (!game) return false;
+    
+    game.updatePaddleInput(input);
+    return true;
   }
 }
 

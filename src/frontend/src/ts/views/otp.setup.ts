@@ -2,17 +2,24 @@ import { Page } from '../types';
 import { Router } from '../router';
 import { AuthService } from '../services/auth.service';
 
-
 export class OTPSetupPage implements Page {
   private router: Router;
   private authService: AuthService;
-    constructor(router: Router) {
-      this.router = router;
-      this.authService = router.getControlAccess().getAuthService();
-    }
+  private element: HTMLElement | null = null;
+  private selectedOption: string | null;
+  constructor(router: Router) {
+    this.router = router;
+    this.authService = router.getControlAccess().getAuthService();
+    this.selectedOption = null;
+  }
 
 
   render(): HTMLElement {
+    // Return cached element if it exists
+    if (this.element) {
+      return this.element;
+    }
+    
     const container = document.createElement('div');
     container.className = 'py-10';
 
@@ -35,7 +42,7 @@ export class OTPSetupPage implements Page {
                   <!-- Method selection radio buttons -->
                   <div class="space-y-3">
                     <label class="flex items-center p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
-                      <input type="radio" name="2fa-method" id="2fa-sms" class="h-4 w-4 text-indigo-600" />
+                      <input type="radio" name="2fa-method" id="tfa-sms" class="h-4 w-4 text-indigo-600" />
                       <div class="ml-3">
                         <span class="block text-sm font-medium text-gray-700">SMS Verification</span>
                         <span class="block text-xs text-gray-500">Receive OTP via text message</span>
@@ -43,7 +50,7 @@ export class OTPSetupPage implements Page {
                     </label>
                     
                     <label class="flex items-center p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
-                      <input type="radio" name="2fa-method" id="2fa-email" class="h-4 w-4 text-indigo-600" />
+                      <input type="radio" name="2fa-method" id="tfa-email" class="h-4 w-4 text-indigo-600" />
                       <div class="ml-3">
                         <span class="block text-sm font-medium text-gray-700">Email Verification</span>
                         <span class="block text-xs text-gray-500">Receive OTP via email</span>
@@ -51,7 +58,7 @@ export class OTPSetupPage implements Page {
                     </label>
                     
                     <label class="flex items-center p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
-                      <input type="radio" name="2fa-method" id="2fa-app" class="h-4 w-4 text-indigo-600" />
+                      <input type="radio" name="2fa-method" id="tfa-app" class="h-4 w-4 text-indigo-600" />
                       <div class="ml-3">
                         <span class="block text-sm font-medium text-gray-700">Authenticator App</span>
                         <span class="block text-xs text-gray-500">Receive OPT via Google Authenticator</span>
@@ -153,25 +160,50 @@ export class OTPSetupPage implements Page {
       </div>
     `;
     
-    setTimeout(() => this.attachEventListeners(), 0);
+    // Cache the element
+    this.element = container;
+    
+    // Set up event handlers
+    this.setupEventHandlers();
 
     return container;
   }
 
-  private attachEventListeners(): void {
+  update(): void {
+    // Reset the form state when revisiting the page
+    if (this.element) {
+      const smsSetup = this.element.querySelector('#sms-setup');
+      const emailSetup = this.element.querySelector('#email-setup');
+      const appSetup = this.element.querySelector('#app-setup');
+      const successSection = this.element.querySelector('#success-section');
+      
+      if (smsSetup) smsSetup.classList.add('hidden');
+      if (emailSetup) emailSetup.classList.add('hidden');
+      if (appSetup) appSetup.classList.add('hidden');
+      if (successSection) successSection.classList.add('hidden');
+      
+      // Reset radio buttons
+      const radioButtons = this.element.querySelectorAll('input[type="radio"]');
+      radioButtons.forEach(btn => (btn as HTMLInputElement).checked = false);
+    }
+  }
+
+  private setupEventHandlers(): void {
+    if (!this.element) return;
+    
     // Method selection radio buttons
-    const smsRadio = document.getElementById('2fa-sms') as HTMLInputElement;
-    const emailRadio = document.getElementById('2fa-email') as HTMLInputElement;
-    const appRadio = document.getElementById('2fa-app') as HTMLInputElement;
+    const smsRadio = this.element?.querySelector('#tfa-sms') as HTMLInputElement;
+    const emailRadio = this.element?.querySelector('#tfa-email') as HTMLInputElement;
+    const appRadio = this.element?.querySelector('#tfa-app') as HTMLInputElement;
     
     // Setup sections
-    const smsSetup = document.getElementById('sms-setup');
-    const emailSetup = document.getElementById('email-setup');
-    const appSetup = document.getElementById('app-setup');
+    const smsSetup = this.element?.querySelector('#sms-setup') as HTMLElement;
+    const emailSetup = this.element?.querySelector('#email-setup') as HTMLElement;
+    const appSetup = this.element?.querySelector('#app-setup') as HTMLElement;
 
     // QR code elements in appSetup section
-    const qrPlaceholder = document.getElementById('qr-placeholder');
-    const secretKey = document.getElementById('secret-key');
+    const qrPlaceholder = this.element?.querySelector('#qr-placeholder');
+    const secretKey = this.element?.querySelector('#secret-key');
     
     // SMS radio button click handler
     smsRadio?.addEventListener('change', () => {
@@ -197,6 +229,9 @@ export class OTPSetupPage implements Page {
       try {
         console.log('Generating QR code...');
         const response = await this.authService.generateQRCode();
+        if (response.success) {
+          console.log('response secret:', response.secret);
+        }
 
         // Update placeholders
         if (response.success && response.qrCode && qrPlaceholder && secretKey) {
@@ -212,14 +247,16 @@ export class OTPSetupPage implements Page {
     });
     
     // Action buttons
-    const enableSmsBtn = document.getElementById('enable-sms');
-    const enableEmailBtn = document.getElementById('enable-email');
-    const enableAppBtn = document.getElementById('enable-app');
-    const continueBtn = document.getElementById('continue-button');
+    const enableSmsBtn = this.element.querySelector('#enable-sms');
+    const enableEmailBtn = this.element.querySelector('#enable-email');
+    const enableAppBtn = this.element.querySelector('#enable-app');
+    const continueBtn = this.element.querySelector('#continue-button');
 
     // When enable SMS button is clicked
     enableSmsBtn?.addEventListener('click', async () => {
       try {
+        this.selectedOption = 'sms';
+
         const phoneInput = document.getElementById('phone-number') as HTMLInputElement;
         const phoneNumber = phoneInput.value;
         
@@ -247,6 +284,8 @@ export class OTPSetupPage implements Page {
     // When enable Email button is clicked
     enableEmailBtn?.addEventListener('click', async () => {
       try {
+        this.selectedOption = 'email';
+
         const emailInput = document.getElementById('email-address') as HTMLInputElement;
         const email = emailInput.value;
         
@@ -273,6 +312,8 @@ export class OTPSetupPage implements Page {
     // When enable App button is clicked
     enableAppBtn?.addEventListener('click', async () => {
       try {
+        this.selectedOption = 'app';
+
         const secretKey = document.getElementById('secret-key')?.textContent || '';
         
         // Call API to confirm and enable App 2FA
@@ -293,6 +334,12 @@ export class OTPSetupPage implements Page {
     // When continue button is clicked
     continueBtn?.addEventListener('click', async () => {
       try {
+        if (this.selectedOption === 'app') {
+          console.log('App OTP is enabled. Navigating to verification page');
+          this.router.navigateTo('/otp/verify');
+          return;
+        }
+
         console.log('Generating OTP before navigating to verification page');
         const result = await this.authService.generateOtp();
         
@@ -319,15 +366,16 @@ export class OTPSetupPage implements Page {
     return emailRegex.test(email);
   }
   
-  
   private showSuccessSection(): void {
+    if (!this.element) return;
+    
     // Hide all setup sections
-    this.hideSection(document.getElementById('sms-setup'));
-    this.hideSection(document.getElementById('email-setup'));
-    this.hideSection(document.getElementById('app-setup'));
+    this.hideSection(this.element.querySelector('#sms-setup'));
+    this.hideSection(this.element.querySelector('#email-setup'));
+    this.hideSection(this.element.querySelector('#app-setup'));
     
     // Show success section
-    this.showSection(document.getElementById('success-section'));
+    this.showSection(this.element.querySelector('#success-section'));
   }
   
   private showSection(element: HTMLElement | null): void {

@@ -9,11 +9,6 @@ interface GameParams {
   id: string;
 }
 
-interface MoveBody {
-  side: 'left' | 'right';
-  direction: 'up' | 'down';
-}
-
 interface PollQuery {
   hash?: string;
 }
@@ -28,73 +23,6 @@ export async function createGame(request: FastifyRequest, reply: FastifyReply) {
   return { gameId, success: true };
 }
 
-export async function getGames(request: FastifyRequest, reply: FastifyReply) {
-  const games = gameManager.getAllGames();
-  return { games, success: true };
-}
-
-export async function getGameState(request: FastifyRequest<{ Params: GameParams }>, reply: FastifyReply) {
-  const { id } = request.params;
-  const game = gameManager.getGame(id);
-  
-  if (!game) {
-    return reply.code(404).send({ error: 'Game not found', success: false });
-  }
-  
-  const state = game.getState();
-  const hash = await createStateHash(state);
-  
-  return { state, hash, success: true };
-}
-
-export async function pollGameState(request: FastifyRequest<{ Params: GameParams; Querystring: PollQuery }>, reply: FastifyReply) {
-  const { id } = request.params;
-  const { hash } = request.query;
-  
-  const game = gameManager.getGame(id);
-  if (!game) {
-    return reply.code(404).send({ error: 'Game not found', success: false });
-  }
-  
-  const state = game.getState();
-  const currentHash = await createStateHash(state);
-  
-  if (hash && hash === currentHash) {
-    return reply.code(304).send();
-  }
-  
-  gameManager.updateGameState(id);
-  const updatedState = game.getState();
-  const updatedHash = await createStateHash(updatedState);
-  
-  return { state: updatedState, hash: updatedHash, success: true };
-}
-
-export async function updateGameState(request: FastifyRequest<{ Params: GameParams }>, reply: FastifyReply) {
-  const { id } = request.params;
-  const success = gameManager.updateGameState(id);
-  if (!success) {
-    return reply.code(404).send({ error: 'Game not found', success: false });
-  }
-  const game = gameManager.getGame(id);
-  return { state: game?.getState(), success: true };
-}
-
-export async function movePaddle(request: FastifyRequest<{ Params: GameParams; Body: MoveBody }>, reply: FastifyReply) {
-  const { id } = request.params;
-  const { side, direction } = request.body;
-  
-  if (!['left', 'right'].includes(side) || !['up', 'down'].includes(direction)) {
-    return reply.code(400).send({ error: 'Invalid input parameters', success: false });
-  }
-  
-  const success = gameManager.movePaddle(id, side, direction);
-  if (!success) {
-    return reply.code(404).send({ error: 'Game not found', success: false });
-  }
-  return { success: true };
-}
-
 export async function startGame(request: FastifyRequest<{ Params: GameParams }>, reply: FastifyReply) {
   const { id } = request.params;
   const success = gameManager.startGame(id);
@@ -103,8 +31,19 @@ export async function startGame(request: FastifyRequest<{ Params: GameParams }>,
 
 export async function pauseGame(request: FastifyRequest<{ Params: GameParams }>, reply: FastifyReply) {
   const { id } = request.params;
-  const success = gameManager.pauseGame(id);
-  return success ? { success: true } : reply.code(404).send({ error: 'Game not found', success: false });
+  const game = gameManager.getGame(id);
+  
+  if (!game) {
+    return reply.code(404).send({ error: 'Game not found', success: false });
+  }
+  
+  game.pauseGame();
+  const state = game.getState();
+  
+  return { 
+    success: true, 
+    status: state.status // Return the new status after toggling
+  };
 }
 
 export async function deleteGame(request: FastifyRequest<{ Params: GameParams }>, reply: FastifyReply) {
@@ -113,44 +52,56 @@ export async function deleteGame(request: FastifyRequest<{ Params: GameParams }>
   return success ? { success: true } : reply.code(404).send({ error: 'Game not found', success: false });
 }
 
-export async function resetGame(request: FastifyRequest<{ Params: GameParams }>, reply: FastifyReply) {
-  const { id } = request.params;
-  const success = gameManager.resetGame(id);
-  return success ? { success: true } : reply.code(404).send({ error: 'Game not found', success: false });
+export async function pollGameState(
+  request: FastifyRequest<{
+    Params: GameParams;
+    Querystring: PollQuery;
+    Body?: { input?: any }
+  }>, 
+  reply: FastifyReply
+) {
+  try {
+    const { id } = request.params;
+    const { hash } = request.query;
+    
+    console.log(`pollGameState called for game ID: ${id}`);
+    
+    const game = gameManager.getGame(id);
+    if (!game) {
+      return reply.code(404).send({ error: 'Game not found', success: false });
+    }
+
+    // Process input if provided
+    if (request.body?.input) {
+      console.log(`Processing input for game ${id}:`, request.body.input);
+      gameManager.updatePaddleInput(id, request.body.input);
+    }
+
+    const gameState = game.getState();
+    const currentHash = await createStateHash(gameState);
+
+    // If hash matches, no change in state
+    if (hash && hash === currentHash) {
+      return reply.code(304).send();
+    } 
+    
+    // Make sure gameState is serializable without nesting JSON operations
+    const safeGameState = JSON.parse(JSON.stringify(gameState));
+    
+    // Return the state and include the new hash for the next poll
+    return reply.code(200).send({ 
+      success: true,
+      state: safeGameState,
+      hash: currentHash
+    });
+  } catch (error) {
+    console.error('Error in pollGameState:', error);
+    return reply.code(500).send({ 
+      error: 'Internal Server Error', 
+      success: false
+    });
+  }
 }
-// export async function recordMatch(request: FastifyRequest<{ Body: {
-//     gameId: string;
-//     userId: number;
-//     userSide: 'left' | 'right';
-//     leftScore: number;
-//     rightScore: number;
-//     winner: 'left' | 'right';
-//   } }>, reply: FastifyReply)
-// {  
-//   const authRequest = request as AuthenticatedRequest;
-//   try {
-//     const db = await getDb();
-//     if (authRequest.user.id !== request.body.userId) {
-//       return reply.code(403).send({ success: false, message: 'You can only record your own matches' });
-//     }
-//     const game = gameManager.getGame(request.body.gameId);
-//     if (!game || game.getState().status !== 'finished') {
-//       return reply.code(400).send({ success: false, message: 'Invalid game state' });
-//     }
-//     await GameStats.recordGameResult(
-//         db,
-//         player1Id,
-//         player2Id,
-//         winnerId,
-//         leftScore,
-//         rightScore
-//     );
-//     return reply.send({ success: true, message: 'Match recorded successfully' });
-//   } catch (error) {
-//     console.error('Error recording match:', error);
-//     return reply.status(500).send({ success: false, message: 'Error recording match' });
-//   }
-// }
 
 export async function recordMatch(request: FastifyRequest, reply: FastifyReply)
 {

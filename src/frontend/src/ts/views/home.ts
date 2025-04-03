@@ -3,12 +3,18 @@ import { Router } from '../router';
 
 export class HomePage implements Page {
   private router: Router;
+  private element: HTMLElement | null = null;
   
   constructor(router: Router) {
     this.router = router;
   }
   
   render(): HTMLElement {
+    // Return cached element if it exists
+    if (this.element) {
+      return this.element;
+    }
+    
     const container = document.createElement('div');
     container.innerHTML = `
       <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
@@ -45,6 +51,12 @@ export class HomePage implements Page {
       </div>
     `;
     
+    // Cache the element for future use
+    this.element = container;
+    
     return container;
+  }
+  
+  update(): void {
   }
 }

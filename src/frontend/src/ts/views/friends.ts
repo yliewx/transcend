@@ -11,14 +11,23 @@ export class FriendsPage implements Page {
   private searchResults: any[] = [];
   private currentFriends: any[] = [];
   private pendingRequests: any[] = [];
-  private isLoading: boolean = false;
+  private hasError: boolean = false;
+  private boundEventHandlers: {[key: string]: EventListener} = {};
   
+  // Element caching
+  private element: HTMLElement | null = null;
+
   constructor(router: Router, friendService: FriendService) {
     this.router = router;
     this.friendService = friendService;
   }
   
-  async render(): Promise<HTMLElement> {
+  render(): HTMLElement {
+    // Return cached element if it exists
+    if (this.element) {
+      return this.element;
+    }
+    
     const container = document.createElement('div');
     container.className = 'max-w-7xl mx-auto py-6 sm:px-6 lg:px-8';
     
@@ -44,11 +53,6 @@ export class FriendsPage implements Page {
             </button>
           </div>
           
-          <!-- Loading State -->
-          <div id="loading-indicator" class="text-center py-10 ${this.isLoading ? '' : 'hidden'}">
-            <p class="text-lg text-gray-600">Loading...</p>
-          </div>
-          
           <!-- Error State -->
           <div id="error-container" class="hidden text-center py-10">
             <p class="text-lg text-red-600">Something went wrong. Please try again.</p>
@@ -58,7 +62,7 @@ export class FriendsPage implements Page {
           </div>
           
           <!-- Friends Tab Content -->
-          <div id="friends-container" class="${this.currentTab === 'friends' && !this.isLoading ? '' : 'hidden'}">
+          <div id="friends-container" class="${this.currentTab === 'friends' ? '' : 'hidden'}">
             <div id="friends-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <!-- Friends will be dynamically inserted here -->
             </div>
@@ -71,7 +75,7 @@ export class FriendsPage implements Page {
           </div>
           
           <!-- Pending Requests Tab Content -->
-          <div id="pending-container" class="${this.currentTab === 'pending' && !this.isLoading ? '' : 'hidden'}">
+          <div id="pending-container" class="${this.currentTab === 'pending' ? '' : 'hidden'}">
             <div id="pending-requests-list" class="space-y-4">
               <!-- Pending requests will be dynamically inserted here -->
             </div>
@@ -81,7 +85,7 @@ export class FriendsPage implements Page {
           </div>
           
           <!-- Search Tab Content -->
-          <div id="search-container" class="${this.currentTab === 'search' && !this.isLoading ? '' : 'hidden'}">
+          <div id="search-container" class="${this.currentTab === 'search' ? '' : 'hidden'}">
             <div class="mb-6">
               <div class="flex items-center">
                 <input 
@@ -111,84 +115,155 @@ export class FriendsPage implements Page {
       </div>
     `;
     
-    // Set up event handlers after adding to DOM
-    setTimeout(() => this.setupEventHandlers(), 0);
+    // Cache the element
+    this.element = container;
+    
+    // Set up event handlers
+    this.setupEventHandlers();
+    this.setupDataEventListeners();
     
     // Load initial data
-    this.loadInitialData();
+    setTimeout(() => this.loadInitialData(), 0);
     
     return container;
   }
-  
-  private setupEventHandlers(): void {
-    // Tab navigation
-    document.getElementById('tab-friends')?.addEventListener('click', () => this.switchTab('friends'));
-    document.getElementById('tab-pending')?.addEventListener('click', () => this.switchTab('pending'));
-    document.getElementById('tab-search')?.addEventListener('click', () => this.switchTab('search'));
-    
-    // Search functionality
-    document.getElementById('search-btn')?.addEventListener('click', () => this.performSearch());
-    document.getElementById('search-input')?.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
-        this.performSearch();
-      }
-    });
-    
-    // Find friends button
-    document.getElementById('find-friends-btn')?.addEventListener('click', () => this.switchTab('search'));
-    
-    // Retry button
-    document.getElementById('retry-btn')?.addEventListener('click', () => this.loadInitialData());
+
+  update(): void {
+    if (this.element) {
+      // Refresh data when page is revisited
+      this.loadInitialData();
+    }
   }
-  
+
   private async loadInitialData(): Promise<void> {
-    const userIdStr = sessionStorage.getItem('userId');
-    this.userId = userIdStr ? parseInt(userIdStr, 10) : null;
+    this.userId = parseInt(sessionStorage.getItem('userId') || '0', 10) || null;
     
     if (!this.userId) {
       this.showError('User ID not found');
       return;
     }
     
-    this.isLoading = true;
+    this.hasError = false;
     this.updateUI();
     
     try {
-      // Load friends list
-      const friendsResponse = await this.friendService.getFriends();
-      if (friendsResponse.success) {
-        this.currentFriends = friendsResponse.friends || [];
-      } else {
+      // Load both data sources in parallel
+      const [friendsResponse, pendingResponse] = await Promise.all([
+        this.friendService.getFriends(),
+        this.friendService.getPendingRequests()
+      ]);
+      
+      // Handle responses
+      if (!friendsResponse.success) {
         throw new Error(friendsResponse.error || 'Failed to load friends');
       }
       
-      // Load pending requests
-      const pendingResponse = await this.friendService.getPendingRequests();
-      if (pendingResponse.success) {
-        this.pendingRequests = pendingResponse.requests || [];
-      } else {
+      if (!pendingResponse.success) {
         throw new Error(pendingResponse.error || 'Failed to load pending requests');
       }
       
-      this.isLoading = false;
+      // Update data
+      this.currentFriends = friendsResponse.friends || [];
+      this.pendingRequests = pendingResponse.requests || [];
       this.updateUI();
       
     } catch (error) {
       console.error('Error loading friends data:', error);
-      this.isLoading = false;
       this.showError(error instanceof Error ? error.message : 'Unknown error');
     }
   }
+
+  private setupEventHandlers(): void {
+    if (!this.element) return;
+    
+    // Define tuple type with proper types
+    type HandlerTuple = [string, string, EventListener];
+    
+    const handlers: HandlerTuple[] = [
+      ['#tab-friends', 'click', (() => this.switchTab('friends')) as EventListener],
+      ['#tab-pending', 'click', (() => this.switchTab('pending')) as EventListener],
+      ['#tab-search', 'click', (() => this.switchTab('search')) as EventListener],
+      ['#search-btn', 'click', (() => this.performSearch()) as EventListener],
+      ['#search-input', 'keypress', ((e: Event) => {
+        if ((e as KeyboardEvent).key === 'Enter') this.performSearch();
+      }) as EventListener],
+      ['#find-friends-btn', 'click', (() => this.switchTab('search')) as EventListener],
+      ['#retry-btn', 'click', (() => this.loadInitialData()) as EventListener]
+    ];
+    
+    handlers.forEach(([selector, event, handler]) => {
+      const element = this.element?.querySelector(selector);
+      if (element) element.addEventListener(event, handler);
+    });
+  }
   
+  private switchTab(tab: 'friends' | 'pending' | 'search'): void {
+    this.currentTab = tab;
+    this.hasError = false;
+    this.updateUI();
+  }
+
+  private updateUI(): void {
+    if (!this.element) return;
+    
+    this.element.querySelector('#error-container')?.classList.toggle('hidden', !this.hasError);
+    
+    const tabs = {
+      'friends': {
+        container: '#friends-container',
+        render: () => this.renderFriendsList()
+      },
+      'pending': {
+        container: '#pending-container', 
+        render: () => this.renderPendingRequests()
+      },
+      'search': {
+        container: '#search-container',
+        render: () => this.renderSearchResults()
+      }
+    };
+    
+    Object.entries(tabs).forEach(([tabName, config]) => {
+      const isActive = this.currentTab === tabName && !this.hasError;
+      
+      const container = this.element?.querySelector(config.container);
+      container?.classList.toggle('hidden', !isActive);
+      if (isActive && container) config.render();
+      
+      const button = this.element?.querySelector(`#tab-${tabName}`);
+      if (button) {
+        button.classList.toggle('text-indigo-600', isActive);
+        button.classList.toggle('border-b-2', isActive);
+        button.classList.toggle('border-indigo-600', isActive);
+        button.classList.toggle('text-gray-500', !isActive);
+        button.classList.toggle('hover:text-gray-700', !isActive);
+      }
+    });
+    
+    this.updatePendingBadge();
+  }
+
+  private updatePendingBadge(): void {
+    const pendingBadge = this.element?.querySelector('#pending-badge');
+    const hasPendingRequests = this.pendingRequests.length > 0;
+    
+    pendingBadge?.classList.toggle('hidden', !hasPendingRequests);
+    if (hasPendingRequests && pendingBadge) {
+      pendingBadge.textContent = this.pendingRequests.length.toString();
+    }
+  }
+
   private async performSearch(): Promise<void> {
-    const searchInput = document.getElementById('search-input') as HTMLInputElement;
+    if (!this.element) return;
+    
+    const searchInput = this.element.querySelector('#search-input') as HTMLInputElement;
     this.searchQuery = searchInput?.value.trim() || '';
     
     if (!this.searchQuery) {
       return;
     }
     
-    this.isLoading = true;
+    this.hasError = false;
     this.updateUI();
     
     try {
@@ -200,82 +275,20 @@ export class FriendsPage implements Page {
         throw new Error(response.error || 'Search failed');
       }
       
-      this.isLoading = false;
       this.updateUI();
       
     } catch (error) {
       console.error('Search error:', error);
-      this.isLoading = false;
       this.showError(error instanceof Error ? error.message : 'Search failed');
-    }
-  }
-  
-  private switchTab(tab: 'friends' | 'pending' | 'search'): void {
-    this.currentTab = tab;
-    this.updateUI();
-  }
-  
-  private updateUI(): void {
-    // Update loading state
-    const loadingIndicator = document.getElementById('loading-indicator');
-    if (loadingIndicator) {
-      if (this.isLoading) {
-        loadingIndicator.classList.remove('hidden');
-      } else {
-        loadingIndicator.classList.add('hidden');
-      }
-    }
-    
-    // Update tab visibility
-    ['friends', 'pending', 'search'].forEach(tab => {
-      const container = document.getElementById(`${tab}-container`);
-      const tabButton = document.getElementById(`tab-${tab}`);
       
-      if (container) {
-        if (this.currentTab === tab && !this.isLoading) {
-          container.classList.remove('hidden');
-        } else {
-          container.classList.add('hidden');
-        }
-      }
-      
-      if (tabButton) {
-        if (this.currentTab === tab) {
-          tabButton.classList.add('text-indigo-600', 'border-b-2', 'border-indigo-600');
-          tabButton.classList.remove('text-gray-500', 'hover:text-gray-700');
-        } else {
-          tabButton.classList.remove('text-indigo-600', 'border-b-2', 'border-indigo-600');
-          tabButton.classList.add('text-gray-500', 'hover:text-gray-700');
-        }
-      }
-    });
-    
-    // Update pending badge
-    const pendingBadge = document.getElementById('pending-badge');
-    if (pendingBadge) {
-      if (this.pendingRequests.length > 0) {
-        pendingBadge.textContent = this.pendingRequests.length.toString();
-        pendingBadge.classList.remove('hidden');
-      } else {
-        pendingBadge.classList.add('hidden');
-      }
-    }
-    
-    // Update content based on current tab
-    if (!this.isLoading) {
-      if (this.currentTab === 'friends') {
-        this.renderFriendsList();
-      } else if (this.currentTab === 'pending') {
-        this.renderPendingRequests();
-      } else if (this.currentTab === 'search') {
-        this.renderSearchResults();
-      }
     }
   }
   
   private renderFriendsList(): void {
-    const friendsList = document.getElementById('friends-list');
-    const noFriends = document.getElementById('no-friends');
+    if (!this.element) return;
+    
+    const friendsList = this.element.querySelector('#friends-list');
+    const noFriends = this.element.querySelector('#no-friends');
     
     if (!friendsList || !noFriends) return;
     
@@ -332,8 +345,10 @@ export class FriendsPage implements Page {
   }
   
   private renderPendingRequests(): void {
-    const pendingList = document.getElementById('pending-requests-list');
-    const noPending = document.getElementById('no-pending');
+    if (!this.element) return;
+    
+    const pendingList = this.element.querySelector('#pending-requests-list');
+    const noPending = this.element.querySelector('#no-pending');
     
     if (!pendingList || !noPending) return;
     
@@ -408,8 +423,10 @@ export class FriendsPage implements Page {
   }
   
   private renderSearchResults(): void {
-    const searchResults = document.getElementById('search-results');
-    const noResults = document.getElementById('no-results');
+    if (!this.element) return;
+    
+    const searchResults = this.element.querySelector('#search-results');
+    const noResults = this.element.querySelector('#no-results');
     
     if (!searchResults || !noResults) return;
     
@@ -487,19 +504,310 @@ export class FriendsPage implements Page {
   }
 
   private showError(message: string): void {
-    this.isLoading = false;
+    if (!this.element) return;
     
-    const errorContainer = document.getElementById('error-container');
-    const errorMessage = document.getElementById('error-message');
-    const loadingIndicator = document.getElementById('loading-indicator');
+    this.hasError = true;
+    
+    const errorContainer = this.element.querySelector('#error-container');
+    const errorMessage = errorContainer?.querySelector('p');
     
     if (errorContainer && errorMessage) {
       errorMessage.textContent = message;
-      errorContainer.classList.remove('hidden');
     }
     
-    if (loadingIndicator) {
-      loadingIndicator.classList.add('hidden');
+    this.updateUI();
+  }
+
+  private setupDataEventListeners(): void {
+    this.removeDataEventListeners();
+    
+    // Common helper function for empty list handling
+    const showEmptyState = (listSelector: string, emptyStateSelector: string): void => {
+      const list = this.element?.querySelector(listSelector);
+      const emptyState = this.element?.querySelector(emptyStateSelector);
+      
+      if (list && emptyState) {
+        list.classList.add('hidden');
+        emptyState.classList.remove('hidden');
+      }
+    };
+    
+    // Define event handlers with their implementations
+    const eventHandlers = {
+      friendRequestSent: (event: CustomEvent) => {
+        const { userId, request } = event.detail;
+        
+        this.pendingRequests.push({
+          ...request,
+          userId: request.userId || userId
+        });
+  
+        this.updatePendingBadge();
+        
+        if (this.currentTab === 'search') {
+          this.updateSearchUserCard(userId, 'pending');
+        }
+      },
+      
+      friendRequestAccepted: (event: CustomEvent) => {
+        const { requestId, userId, friend } = event.detail;
+  
+        this.pendingRequests = this.pendingRequests.filter(req => req.id !== requestId);
+        this.currentFriends.push(friend);
+        this.updatePendingBadge();
+        
+        if (this.currentTab === 'pending') {
+          this.removeRequestCard(requestId);
+          
+          if (this.pendingRequests.length === 0) {
+            showEmptyState('#pending-requests-list', '#no-pending');
+          }
+        }
+        
+        if (this.currentTab === 'search') {
+          this.updateSearchUserCard(userId, 'friend');
+        }
+      },
+      
+      friendRequestDeclined: (event: CustomEvent) => {
+        const { requestId } = event.detail;
+  
+        const request = this.pendingRequests.find(req => req.id === requestId);
+        const userId = request?.userId;      
+        this.pendingRequests = this.pendingRequests.filter(req => req.id !== requestId);
+        
+        this.updatePendingBadge();
+        
+        if (this.currentTab === 'pending') {
+          this.removeRequestCard(requestId);
+          
+          if (this.pendingRequests.length === 0) {
+            showEmptyState('#pending-requests-list', '#no-pending');
+          }
+        }
+        
+        if (this.currentTab === 'search' && userId) {
+          this.updateSearchUserCard(userId, 'add');
+        }
+      },
+      
+      friendRequestCancelled: (event: CustomEvent) => {
+        const { requestId } = event.detail;
+        
+        const request = this.pendingRequests.find(req => req.id === requestId);
+        const userId = request?.userId;      
+        this.pendingRequests = this.pendingRequests.filter(req => req.id !== requestId);      
+        this.updatePendingBadge();
+        
+        if (this.currentTab === 'pending') {
+          this.removeRequestCard(requestId);
+          
+          if (this.pendingRequests.length === 0) {
+            showEmptyState('#pending-requests-list', '#no-pending');
+          }
+        }
+        
+        if (this.currentTab === 'search' && userId) {
+          this.updateSearchUserCard(userId, 'add');
+        }
+      },
+      
+      friendRemoved: (event: CustomEvent) => {
+        const { friendId } = event.detail;
+        
+        this.currentFriends = this.currentFriends.filter(friend => friend.id !== friendId);
+        
+        if (this.currentTab === 'friends') {
+          this.removeFriendCard(friendId);
+          
+          if (this.currentFriends.length === 0) {
+            showEmptyState('#friends-list', '#no-friends');
+          }
+        }
+        
+        if (this.currentTab === 'search') {
+          this.updateSearchUserCard(friendId, 'add');
+        }
+      },
+      
+      notification: (event: CustomEvent) => {
+        this.showNotification(event.detail.type, event.detail.message);
+      }
+    };
+    
+    // Register all event handlers
+    Object.entries(eventHandlers).forEach(([eventName, handler]) => {
+      this.boundEventHandlers[eventName] = handler as EventListener;
+      document.addEventListener(eventName, this.boundEventHandlers[eventName]);
+    });
+  }
+  
+  // Helper method to remove a friend card from the DOM
+  private removeFriendCard(friendId: number): void {
+    if (!this.element) return;
+    
+    const friendCard = this.element.querySelector(`button[data-friend-id="${friendId}"]`)?.closest('.bg-gray-50');
+    
+    if (friendCard) {
+      // Add a fade-out animation
+      friendCard.classList.add('transition-opacity', 'duration-300', 'opacity-0');
+      
+      // Remove after animation
+      setTimeout(() => {
+        friendCard.remove();
+      }, 300);
     }
   }
+  
+  // Helper method to remove a request card from the DOM
+  private removeRequestCard(requestId: number): void {
+    if (!this.element) return;
+    
+    const requestCard = this.element.querySelector(`button[data-request-id="${requestId}"]`)?.closest('.bg-gray-50');
+    
+    if (requestCard) {
+      // Add a fade-out animation
+      requestCard.classList.add('transition-opacity', 'duration-300', 'opacity-0');
+      
+      // Remove after animation
+      setTimeout(() => {
+        requestCard.remove();
+      }, 300);
+    }
+  }
+  
+  // Helper method to update a user card in search results
+  private updateSearchUserCard(userId: number, newStatus: 'add' | 'pending' | 'friend'): void {
+    const userCard = document.querySelector(`button[data-user-id="${userId}"]`)?.closest('.bg-gray-50');
+    
+    if (userCard) {
+      const actionsContainer = userCard.querySelector('div:last-child');
+      
+      if (actionsContainer) {
+        // Clear existing actions
+        actionsContainer.innerHTML = '';
+        
+        if (newStatus === 'add') {
+          // Add Friend button
+          const addFriendBtn = document.createElement('button');
+          addFriendBtn.className = 'px-3 py-1 text-sm bg-indigo-600 text-white rounded hover:bg-indigo-700';
+          addFriendBtn.textContent = 'Add Friend';
+          addFriendBtn.dataset.userId = userId.toString();
+          addFriendBtn.addEventListener('click', () => this.friendService.sendFriendRequest(userId));
+          actionsContainer.appendChild(addFriendBtn);
+        } else if (newStatus === 'pending') {
+          // Pending tag
+          const pendingTag = document.createElement('span');
+          pendingTag.className = 'px-3 py-1 text-sm bg-yellow-100 text-yellow-600 rounded';
+          pendingTag.textContent = 'Pending';
+          actionsContainer.appendChild(pendingTag);
+        } else if (newStatus === 'friend') {
+          // Friend tag
+          const friendTag = document.createElement('span');
+          friendTag.className = 'px-3 py-1 text-sm bg-green-100 text-green-600 rounded';
+          friendTag.textContent = 'Friend';
+          actionsContainer.appendChild(friendTag);
+        }
+      }
+    }
+  }
+
+  private showNotification(type: 'success' | 'error' | 'info', message: string): void {
+    const notification = document.createElement('div');
+    notification.className = `fixed bottom-4 right-4 p-4 rounded-md shadow-lg transition-opacity duration-500 opacity-0 max-w-md ${
+      type === 'success' ? 'bg-green-100 text-green-800' :
+      type === 'error' ? 'bg-red-100 text-red-800' :
+      'bg-blue-100 text-bluce-800'
+    }`;
+    
+    notification.innerHTML = `
+      <div class="flex items-center">
+        <div class="flex-shrink-0">
+          ${type === 'success' ? 
+            '<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>' :
+            type === 'error' ?
+            '<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>' :
+            '<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>'
+          }
+        </div>
+        <div class="ml-3">
+          <p class="text-sm font-medium">${message}</p>
+        </div>
+        <div class="ml-auto pl-3">
+          <div class="-mx-1.5 -my-1.5">
+            <button class="notification-close inline-flex rounded-md p-1.5 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+              type === 'success' ? 'text-green-500 hover:text-green-600 focus:ring-green-400' :
+              type === 'error' ? 'text-red-500 hover:text-red-600 focus:ring-red-400' :
+              'text-blue-500 hover:text-blue-600 focus:ring-blue-400'
+            }">
+              <span class="sr-only">Dismiss</span>
+              <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Fade in
+    setTimeout(() => {
+      notification.classList.remove('opacity-0');
+      notification.classList.add('opacity-100');
+    }, 10);
+    
+    // Add close button functionality
+    const closeBtn = notification.querySelector('.notification-close');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => {
+        notification.classList.remove('opacity-100');
+        notification.classList.add('opacity-0');
+        setTimeout(() => {
+          notification.remove();
+        }, 500);
+      });
+    }
+    
+    // Auto dismiss after 5 seconds
+    setTimeout(() => {
+      if (document.body.contains(notification)) {
+        notification.classList.remove('opacity-100');
+        notification.classList.add('opacity-0');
+        setTimeout(() => {
+          notification.remove();
+        }, 500);
+      }
+    }, 5000);
+  }
+
+  private removeDataEventListeners(): void {
+    const events = [
+      'friendRequestSent',
+      'friendRequestAccepted',
+      'friendRequestDeclined',
+      'friendRequestCancelled',
+      'friendRemoved',
+      'notification'
+    ] as const;
+    
+    events.forEach(event => {
+      if (event in this.boundEventHandlers) {
+        document.removeEventListener(event, this.boundEventHandlers[event]);
+      }
+    });
+    
+    this.boundEventHandlers = {};
+  }
+
+  public destroy(): void {
+    this.removeDataEventListeners();
+    
+    console.log('FriendsPage destroyed and event listeners removed');
+  }
+
+  // private logPendingRequests(location: string): void {
+  //   console.log(`${location} - pendingRequests:`, JSON.parse(JSON.stringify(this.pendingRequests)));
+  // }  
 }

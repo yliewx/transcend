@@ -1,25 +1,30 @@
 services:
 
 #---------------------------------BACKEND--------------------------------
-
+# available on port 3000 inside docker
   backend:
     container_name: backend
     build:
       context: ./backend
       dockerfile: Dockerfile
-    environment:
-      - NODE_ENV=development
-      - DB_PATH=/db/database.sqlite
-      - PREAUTH_TOKEN_SECRET=preauth-secret-key
-      - ACCESS_TOKEN_SECRET=access-secret-key
-      - REFRESH_TOKEN_SECRET=refresh-secret-key
-      - SMTP_HOST=smtp.gmail.com
-      - SMTP_PORT=587
-      - SMTP_SECURE=false
-      - SMTP_USER=test2fapong@gmail.com
-      - SMTP_PASS=cwtcmjranmavanxo
-      - EMAIL_FROM_NAME=Admin
-      - EMAIL_FROM_ADDRESS=test2fapong@gmail.com
+    # environment:
+    #   - NODE_ENV=development
+    #   - DB_PATH=/db/database.sqlite
+    #   - PREAUTH_TOKEN_SECRET=preauth-secret-key
+    #   - ACCESS_TOKEN_SECRET=access-secret-key
+    #   - REFRESH_TOKEN_SECRET=refresh-secret-key
+    #   - SMTP_HOST=smtp.gmail.com
+    #   - SMTP_PORT=587
+    #   - SMTP_SECURE=false
+    #   - SMTP_USER=test2fapong@gmail.com
+    #   - SMTP_PASS=cwtcmjranmavanxo
+    #   - EMAIL_FROM_NAME=Admin
+    #   - EMAIL_FROM_ADDRESS=test2fapong@gmail.com
+    #   - TWILIO_ACCOUNT_SID=ACc1a04cd69f55f6abeef9b45c6c53b9ad
+    #   - TWILIO_AUTH_TOKEN=702c401ef1ee615baad021b31c466935
+    #   - TWILIO_PHONE_NUMBER=+12202153545
+    env_file:
+      - .env
     networks:
       - ft_transcendence
     volumes:
@@ -35,13 +40,8 @@ services:
       dockerfile: Dockerfile
     environment:
       - NODE_ENV=development
-      # - SMTP_HOST=smtp.gmail.com
-      # - SMTP_PORT=587
-      # - SMTP_SECURE=false
-      # - SMTP_USER=test2fapong@gmail.com
-      # - SMTP_PASS=cwtcmjranmavanxo
-      # - EMAIL_FROM_NAME=Admin
-      # - EMAIL_FROM_ADDRESS=test2fapong@gmail.com
+    env_file:
+      - .env
     networks:
       - ft_transcendence
     volumes:

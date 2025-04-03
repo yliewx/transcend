@@ -1,4 +1,3 @@
-// views/register.ts
 import { Page } from '../types';
 import { Router } from '../router';
 import { AuthService } from '../services/auth.service';
@@ -6,6 +5,7 @@ import { AuthService } from '../services/auth.service';
 export class RegisterPage implements Page {
   private router: Router;
   private authService: AuthService;
+  private element: HTMLElement | null = null;
   
   constructor(router: Router) {
     this.router = router;
@@ -13,6 +13,11 @@ export class RegisterPage implements Page {
   }
   
   render(): HTMLElement {
+    // Return cached element if it exists
+    if (this.element) {
+      return this.element;
+    }
+    
     const container = document.createElement('div');
     container.className = 'py-10';
     
@@ -83,14 +88,29 @@ export class RegisterPage implements Page {
       </main>
     `;
     
-    // Add event listeners after rendering
-    setTimeout(() => this.attachEventListeners(), 0);
+    this.setupEventHandlers(container);
+    
+    // Cache the element for future use
+    this.element = container;
     
     return container;
   }
   
-  private attachEventListeners(): void {
-    const registerForm = document.getElementById('register-form') as HTMLFormElement;
+  update(): void {
+    // Reset form and messages when revisited
+    if (this.element) {
+      const registerForm = this.element.querySelector('#register-form') as HTMLFormElement;
+      const errorContainer = this.element.querySelector('#register-error');
+      const successContainer = this.element.querySelector('#register-success');
+      
+      if (registerForm) registerForm.reset();
+      if (errorContainer) errorContainer.classList.add('hidden');
+      if (successContainer) successContainer.classList.add('hidden');
+    }
+  }
+  
+  private setupEventHandlers(container: HTMLElement): void {
+    const registerForm = container.querySelector('#register-form') as HTMLFormElement;
     
     if (registerForm) {
       registerForm.addEventListener('submit', (e) => this.handleRegister(e));
@@ -100,11 +120,13 @@ export class RegisterPage implements Page {
   private async handleRegister(e: Event): Promise<void> {
     e.preventDefault();
     
+    if (!this.element) return;
+    
     const registerForm = e.target as HTMLFormElement;
-    const errorMessage = document.getElementById('register-error-message') as HTMLElement;
-    const errorContainer = document.getElementById('register-error') as HTMLElement;
-    const successMessage = document.getElementById('register-success-message') as HTMLElement;
-    const successContainer = document.getElementById('register-success') as HTMLElement;
+    const errorMessage = this.element.querySelector('#register-error-message') as HTMLElement;
+    const errorContainer = this.element.querySelector('#register-error') as HTMLElement;
+    const successMessage = this.element.querySelector('#register-success-message') as HTMLElement;
+    const successContainer = this.element.querySelector('#register-success') as HTMLElement;
     
     // Hide messages
     errorContainer.classList.add('hidden');
