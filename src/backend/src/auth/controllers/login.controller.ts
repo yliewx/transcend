@@ -5,6 +5,7 @@ import Profile from '../../models/profile';
 import { getDb } from '../../db.js';
 import { Database } from 'sqlite';
 import { createPreAuthToken, createAccessToken, createRefreshToken, accessCookieOptions, refreshCookieOptions } from '../services/token.service';
+import { registerGoogleUser } from '../../controllers/user.register';
 
 /* Login process
 
@@ -123,43 +124,6 @@ export async function loginHandler(request: FastifyRequest, reply: FastifyReply)
 
 /*------------------------------GOOGLE SIGN-IN------------------------------*/
 
-async function createUserAndProfile(db: Database, name?: string, email?: string, google_id?: string) {
-  // Begin transaction
-  await db.run('BEGIN TRANSACTION');
-  try {
-    const username = name ?? (email ? email.split('@')[0] : 'default_username');
-    const password = 'placeholder_for_google_user';
-
-    const validEmail = email ?? '';  // Default to empty string if email is undefined
-    const validGoogleId = google_id ?? ''; // Default to empty string if google_id is undefined
-
-    // Create user
-    const userResult = await User.create(db, { username, email: validEmail, password, google_id: validGoogleId });
-    if (userResult.lastID === undefined) {
-      throw new Error("Failed to create user: No user ID was generated");
-    }
-    const userId = userResult.lastID; // Now userId is guaranteed to be a number
-
-    // Create profile
-    await Profile.create(db, {
-      user_id: userId,
-      display_name: username // Use username as default display name
-    });
-
-    const profResult = await Profile.findByUserId(db, userId);
-    console.log(`profResult: ${profResult}`);
-
-    // Commit transaction
-    await db.run('COMMIT');
-    
-    return await User.findByGoogleId(db, google_id as string);
-  } catch (error) {
-    // Rollback transaction if error occurs
-    await db.run('ROLLBACK');
-    throw error;
-  }
-}
-
 // Route: /api/auth/google/callback -> handle response from Google
 export async function googleAuthCallbackHandler(request: FastifyRequest<{ Body: { idToken: string }}>, reply: FastifyReply) {
   // Get ID token from request
@@ -193,12 +157,14 @@ export async function googleAuthCallbackHandler(request: FastifyRequest<{ Body: 
     {
       // Check if user with that email exists
       user = await User.findByEmail(db, email);
-      if (!user) // No user with that google ID or email -> create new user
+      if (!user)
       {
+        // No user with that google ID or email -> create new user
         request.server.log.info(`Creating new user from Google user info: ${name}, ${email}; Google ID: ${google_id}`);
-        user = await createUserAndProfile(db, name, email, google_id);
+        user = await registerGoogleUser(db, request.server, name, email, google_id);
         request.server.log.info('New user created');
-      } else { // User exists but no google ID in database
+      } else {
+        // User exists but no google ID in database -> update user google ID
         await User.updateGoogleId(db, user.id, google_id);
         user = await User.findByGoogleId(db, google_id);
         request.server.log.info(`User exists in database: ${user.username}, ${user.email}. Updating with Google ID: ${user.google_id}`);
