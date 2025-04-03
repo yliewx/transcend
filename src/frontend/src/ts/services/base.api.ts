@@ -49,6 +49,11 @@ export class BaseApiService {
 
       console.log(`Response status: ${response.status}`);
 
+      // Handle 304 Not Modified specially
+      if (response.status === 304) {
+        return { success: true } as {success: boolean} & T;
+      }
+
       // Parse response
       const responseData = await response.json();
       
