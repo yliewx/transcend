@@ -49,23 +49,10 @@ export class BaseApiService {
 
       console.log(`Response status: ${response.status}`);
 
-      // // Try refreshing access token once if expired
-      // if (response.status === 401 && retry) {
-      //   console.error('Access token expired. Attempting refresh...');
-        
-      //   const refreshResult = await this.refreshAccessToken();
-      //   if (refreshResult.success) {
-      //     console.log('Access token refreshed! Retrying request...');
-      //     return this.request<T>(endpoint, method, body, requiresAuth, options, false);
-      //   } else {
-      //     console.error('Token refresh failed.');
-      //     retry = false;
-      //     return {
-      //       success: false,
-      //       error: 'Unauthorized. Please log in again.'
-      //     } as { success: boolean; error?: string } & T;
-      //   }
-      // }
+      // Handle 304 Not Modified specially
+      if (response.status === 304) {
+        return { success: true } as {success: boolean} & T;
+      }
 
       // Parse response
       const responseData = await response.json();

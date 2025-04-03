@@ -1,5 +1,5 @@
 import { Database } from 'sqlite';
-import { AuthTokenPayload } from '../plugins/jwt';
+import { AuthTokenPayload } from '../../@types/global';
 import bcrypt from 'bcrypt';
 
 class RefreshToken {
