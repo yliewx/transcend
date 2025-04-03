@@ -81,7 +81,7 @@ export class LoginPage implements Page {
                   </div>
                 </div>
                 
-                <div class="mt-6">
+                <div class="mt-6 flex justify-center">
                   <div id="g_id_onload"
                       data-client_id="${this.googleClientId}"
                       data-context="signin"
