@@ -21,7 +21,6 @@ export class HeaderPage implements Page {
     const header = document.createElement('header');
     header.className = 'bg-white shadow';
     
-    // Only render authenticated header
     header.innerHTML = `
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
@@ -53,28 +52,14 @@ export class HeaderPage implements Page {
       </div>
     `;
     
-    this.setupEventHandlers(header);
-    
+    header.querySelector('#logout-button')?.addEventListener('click', () => this.performLogout());
+
     // Cache the element for future use
     this.element = header;
     
     return header;
   }
 
-  update(): void {
-    // Update active navigation link based on current path
-    if (this.element) {
-      const currentPath = this.router.getCurrentPath();
-      this.updateActiveNavItem(currentPath);
-    }
-  }
-
-  private setupEventHandlers(element: HTMLElement): void {
-    const logoutButton = element.querySelector('#logout-button');
-    if (logoutButton) {
-      logoutButton.addEventListener('click', () => this.performLogout());
-    }
-  }
 
   private async performLogout(): Promise<void> {
     try {
@@ -83,31 +68,33 @@ export class HeaderPage implements Page {
       if (!result.success) {
         console.error('Logout failed:', result.error);
       }
-      // No need to navigate or set authentication state - ControlAccess handles that
     } catch (error) {
       console.error('Logout error:', error);
     }
   }
+
+  update(): void {
+    if (this.element) {
+      const currentPath = this.router.getCurrentPath();
+      this.updateActiveNavItem(currentPath);
+    }
+  }
   
-  // Method to update active navigation item based on current route
   private updateActiveNavItem(path: string): void {
     if (!this.element) return;
     
-    // Remove active state from all nav links
     const navLinks = this.element.querySelectorAll('.nav-link');
     navLinks.forEach(link => {
       const href = (link as HTMLAnchorElement).getAttribute('href');
       if (href && href !== '/home') { // Skip the logo link
-        link.classList.remove('text-indigo-700', 'border-indigo-500');
-        link.classList.add('text-gray-500', 'border-transparent');
+        const isActive = href === path;
+        
+        // Toggle classes based on whether this link matches the current path
+        link.classList.toggle('text-indigo-700', isActive);
+        link.classList.toggle('border-indigo-500', isActive);
+        link.classList.toggle('text-gray-500', !isActive);
+        link.classList.toggle('border-transparent', !isActive);
       }
     });
-    
-    // Add active state to current path
-    const activeLink = this.element.querySelector(`.nav-link[href="${path}"]`);
-    if (activeLink) {
-      activeLink.classList.remove('text-gray-500', 'border-transparent');
-      activeLink.classList.add('text-indigo-700', 'border-indigo-500');
-    }
   }
 }

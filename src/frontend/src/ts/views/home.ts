@@ -58,8 +58,5 @@ export class HomePage implements Page {
   }
   
   update(): void {
-    // Home page is static, so no updates needed
-    // But we could potentially update with user-specific information
-    // like username or game stats in the future
   }
 }
