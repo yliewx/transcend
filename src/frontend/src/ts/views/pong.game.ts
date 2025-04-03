@@ -239,11 +239,14 @@ export class PongGamePage implements Page {
     const url = `/games/${this.gameId}/poll${this.stateHash ? `?hash=${this.stateHash}` : ''}`;
     const response = await this.pongService.pollGameState(url,requestBody);
 
-    if (!response.success || !response.state) 
-    {
-      console.error("Game state not found or not successful");
+    if (!response.success) {
+      console.error("Error polling game state");
       return;
-    }  
+    }
+    
+    if (!response.state) {
+      return;  // This is a 304 response - the state hasn't changed, no action needed
+    }
 
     const previousState = this.state;
     this.state = response.state;
