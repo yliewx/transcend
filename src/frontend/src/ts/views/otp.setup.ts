@@ -5,12 +5,13 @@ import { AuthService } from '../services/auth.service';
 export class OTPSetupPage implements Page {
   private router: Router;
   private authService: AuthService;
-  private element: HTMLElement | null = null;
-  
-  constructor(router: Router) {
-    this.router = router;
-    this.authService = router.getControlAccess().getAuthService();
-  }
+  private selectedOption: string | null;
+    constructor(router: Router) {
+      this.router = router;
+      this.authService = router.getControlAccess().getAuthService();
+      this.selectedOption = null;
+    }
+
 
   render(): HTMLElement {
     // Return cached element if it exists
@@ -227,6 +228,9 @@ export class OTPSetupPage implements Page {
       try {
         console.log('Generating QR code...');
         const response = await this.authService.generateQRCode();
+        if (response.success) {
+          console.log('response secret:', response.secret);
+        }
 
         // Update placeholders
         if (response.success && response.qrCode && qrPlaceholder && secretKey) {
@@ -250,8 +254,10 @@ export class OTPSetupPage implements Page {
     // When enable SMS button is clicked
     enableSmsBtn?.addEventListener('click', async () => {
       try {
-        const phoneInput = this.element?.querySelector('#phone-number') as HTMLInputElement;
-        const phoneNumber = phoneInput?.value;
+        this.selectedOption = 'sms';
+
+        const phoneInput = document.getElementById('phone-number') as HTMLInputElement;
+        const phoneNumber = phoneInput.value;
         
         if (!phoneNumber) {
           alert('Please enter a valid phone number');
@@ -277,8 +283,10 @@ export class OTPSetupPage implements Page {
     // When enable Email button is clicked
     enableEmailBtn?.addEventListener('click', async () => {
       try {
-        const emailInput = this.element?.querySelector('#email-address') as HTMLInputElement;
-        const email = emailInput?.value;
+        this.selectedOption = 'email';
+
+        const emailInput = document.getElementById('email-address') as HTMLInputElement;
+        const email = emailInput.value;
         
         if (!email || !this.isValidEmail(email)) {
           alert('Please enter a valid email address');
@@ -303,8 +311,9 @@ export class OTPSetupPage implements Page {
     // When enable App button is clicked
     enableAppBtn?.addEventListener('click', async () => {
       try {
-        const secretKeyEl = this.element?.querySelector('#secret-key');
-        const secretKey = secretKeyEl?.textContent || '';
+        this.selectedOption = 'app';
+
+        const secretKey = document.getElementById('secret-key')?.textContent || '';
         
         // Call API to confirm and enable App 2FA
         const result = await this.authService.update2FAMethod("app", secretKey);
@@ -324,6 +333,12 @@ export class OTPSetupPage implements Page {
     // When continue button is clicked
     continueBtn?.addEventListener('click', async () => {
       try {
+        if (this.selectedOption === 'app') {
+          console.log('App OTP is enabled. Navigating to verification page');
+          this.router.navigateTo('/otp/verify');
+          return;
+        }
+
         console.log('Generating OTP before navigating to verification page');
         const result = await this.authService.generateOtp();
         
