@@ -1,208 +1,189 @@
 export interface GameState {
-    id: string;
-    paddleLeftY: number;
-    paddleRightY: number;
-    ballX: number;
-    ballY: number;
-    velocityX: number;
-    velocityY: number;
-    scoreLeft: number;
-    scoreRight: number;
-    gameWidth: number;
-    gameHeight: number;
-    paddleHeight: number;
-    paddleWidth: number;
-    ballSize: number;
-    status: 'waiting' | 'playing' | 'paused' | 'finished';
-    lastUpdateTime: number;
-    winner?: 'left' | 'right';
-  }
-  
-  export class PongGame {
-    private state: GameState;
-    private updateInterval: NodeJS.Timeout | null = null;
+  id: string;
+  status: 'waiting' | 'playing' | 'paused' | 'finished';
+  paddleLeftY: number;
+  paddleRightY: number;
+  ballX: number;
+  ballY: number;
+  scoreLeft: number;
+  scoreRight: number;
+  winner?: 'left' | 'right';
+  lastUpdateTime: number;
+}
 
-    
-    constructor(gameId: string) {
+
+export class PongGame {
+  private gameWidth: number = 800;
+  private gameHeight: number = 600;
+  private paddleHeight: number = 100;
+  private paddleWidth: number = 10;
+  private ballSize: number = 30;
+  private ballSpeedX: number = 5;
+  private ballSpeedY: number = 3;
+  private paddleLeftSpeed: number = 5;
+  private paddleRightSpeed: number = 5;
+  private leftPaddleUp: boolean = false;
+  private leftPaddleDown: boolean = false;  
+  private rightPaddleUp: boolean = false;
+  private rightPaddleDown: boolean = false;
+
+  private state: GameState;
+  private updateInterval: NodeJS.Timeout | null = null;
+
+  constructor(gameId: string) {
       this.state = {
         id: gameId,
+        status: 'waiting',
         paddleLeftY: 250,
         paddleRightY: 250,
         ballX: 400,
         ballY: 300,
-        velocityX: 5,
-        velocityY: 3,
         scoreLeft: 0,
         scoreRight: 0,
-        gameWidth: 800,
-        gameHeight: 600,
-        paddleHeight: 100,
-        paddleWidth: 10,
-        ballSize: 30,
-        status: 'waiting',
-        lastUpdateTime: Date.now(),
-        winner: undefined 
+        winner: undefined,
+        lastUpdateTime: Date.now()
       };
-    }
+  }
   
-    public startGame(): void {
+  public startGame(): void {
+      if (this.state.status !== 'waiting' )
+          return;
+     
       this.state.status = 'playing';
-      this.resetBall();
-      
-      // Start a dedicated update loop for this game
-      if (!this.updateInterval) {
-        console.log(`Starting game loop for game ${this.state.id}`);
-        this.updateInterval = setInterval(() => {
-          if (this.state.status === 'playing') {
-            this.updateState(16); // ~60fps
+
+      if (this.updateInterval !== null)
+          clearInterval(this.updateInterval);
+
+      this.updateInterval = setInterval(() => {
+          if (this.state.status === 'playing') 
+          {
+              this.moveBall(); 
+              this.movePaddles();
+              this.state.lastUpdateTime = Date.now();
           }
-        }, 16);
-      }
-    }
-  
-    public pauseGame(): void {
-      if (this.state.status === 'playing') {
-        this.state.status = 'paused';
-      } else if (this.state.status === 'paused') {
-        this.state.status = 'playing';
-      }
-    }
-  
-    public updateState(delta: number): void {
+      }, 16);   
+  }
 
-      console.log('Updating game state', this.state.id, 'delta:', delta);
-      if (this.state.status !== 'playing') {
-        console.log('Game not playing, status:', this.state.status);
-        return;
-      }
-
-      // Update ball position
-      this.state.ballX += this.state.velocityX;
-      this.state.ballY += this.state.velocityY;
-
-      // Ball collision with top and bottom walls
-      if (this.state.ballY <= 0 || this.state.ballY >= this.state.gameHeight - this.state.ballSize) {
-        this.state.velocityY = -this.state.velocityY;
-      }
-  
-      // Ball collision with paddles
-      // Left paddle
-      if (
-        this.state.ballX <= this.state.paddleWidth &&
-        this.state.ballY + this.state.ballSize >= this.state.paddleLeftY &&
-        this.state.ballY <= this.state.paddleLeftY + this.state.paddleHeight
-      ) {
-        this.state.velocityX = Math.abs(this.state.velocityX); // Ensure positive (moving right)
-        
-        // Add slight angle based on where the ball hits the paddle
-        const paddleCenter = this.state.paddleLeftY + (this.state.paddleHeight / 2);
-        const ballRelativePosition = (this.state.ballY - this.state.paddleLeftY) / this.state.paddleHeight;
-        this.state.velocityY = (ballRelativePosition - 0.5) * 10; // -5 to +5 based on position
-      }
-  
-      // Right paddle
-      if (
-        this.state.ballX >= this.state.gameWidth - this.state.paddleWidth - this.state.ballSize &&
-        this.state.ballY + this.state.ballSize >= this.state.paddleRightY &&
-        this.state.ballY <= this.state.paddleRightY + this.state.paddleHeight
-      ) {
-        this.state.velocityX = -Math.abs(this.state.velocityX); // Ensure negative (moving left)
-        
-        // Add slight angle based on where the ball hits the paddle
-        const paddleCenter = this.state.paddleRightY + (this.state.paddleHeight / 2);
-        const ballRelativePosition = (this.state.ballY - this.state.paddleRightY) / this.state.paddleHeight;
-        this.state.velocityY = (ballRelativePosition - 0.5) * 10; // -5 to +5 based on position
-      }
-  
-     // Scoring
-      if (this.state.ballX < 0) {
-        // Right player scores
-        this.state.scoreRight += 1;
-        
-        // Check if right player won
-        if (this.state.scoreRight >= 5) {
-          this.endGame('right');
-        } else {
-          this.resetBall('left');
-        }
-      } else if (this.state.ballX > this.state.gameWidth) {
-        // Left player scores
-        this.state.scoreLeft += 1;
-        
-        // Check if left player won
-        if (this.state.scoreLeft >= 5) {
-          this.endGame('left');
-        } else {
-          this.resetBall('right');
-        }
-      }
+  private moveBall(): void {
+    this.state.ballX += this.ballSpeedX;
+    this.state.ballY += this.ballSpeedY;
     
-      this.state.lastUpdateTime = Date.now();
+    // Left paddle collision
+    if (
+      this.state.ballX <= this.paddleWidth &&
+      this.state.ballX >= 0 &&
+      this.state.ballY >= this.state.paddleLeftY && 
+      this.state.ballY <= this.state.paddleLeftY + this.paddleHeight
+    ) {
+        this.ballSpeedX = Math.abs(this.ballSpeedX); // Reflect right
+        return;
     }
-  
-    public movePaddle(side: 'left' | 'right', direction: 'up' | 'down'): void {
-      const moveAmount = 40;
-      
-      if (side === 'left') {
-        if (direction === 'up') {
-          this.state.paddleLeftY = Math.max(0, this.state.paddleLeftY - moveAmount);
-        } else {
-          this.state.paddleLeftY = Math.min(this.state.gameHeight - this.state.paddleHeight, this.state.paddleLeftY + moveAmount);
-        }
-      } else {
-        if (direction === 'up') {
-          this.state.paddleRightY = Math.max(0, this.state.paddleRightY - moveAmount);
-        } else {
-          this.state.paddleRightY = Math.min(this.state.gameHeight - this.state.paddleHeight, this.state.paddleRightY + moveAmount);
-        }
-      }
-    }
-  
-    public getState(): GameState {
-      return { ...this.state };
-    }
-  
-    private resetBall(direction: 'left' | 'right' | 'random' = 'random'): void {
-        this.state.ballX = this.state.gameWidth / 2;
-        this.state.ballY = this.state.gameHeight / 2;
-        
-        const speed = 3;
-        
-        if (direction === 'random') {
-            this.state.velocityX = speed * (Math.random() > 0.5 ? 1 : -1);
-        } else if (direction === 'left') {
-            this.state.velocityX = -speed;
-        } else {
-            this.state.velocityX = speed;
-        }
-        
-        this.state.velocityY = (Math.random() * 2 - 1) * 5;
-    }
-  
-    public resetGame(): void {
-      this.state.scoreLeft = 0;
-      this.state.scoreRight = 0;
-      this.state.paddleLeftY = 250;
-      this.state.paddleRightY = 250;
-      this.resetBall();
-      this.state.status = 'waiting';
+    // Right paddle collision
+    if (
+        this.state.ballX >= this.gameWidth - this.paddleWidth &&
+        this.state.ballX <= this.gameWidth &&
+        this.state.ballY >= this.state.paddleRightY && 
+        this.state.ballY <= this.state.paddleRightY + this.paddleHeight
+    ) {
+        this.ballSpeedX = -Math.abs(this.ballSpeedX); // Reflect left
+        return;
     }
 
-    public endGame(winner: 'left' | 'right'): void {
-      this.state.status = 'finished';
-      this.state.winner = winner;
-      
-      // Stop the game loop when the game is finished
-      if (this.updateInterval) {
-        clearInterval(this.updateInterval);
-        this.updateInterval = null;
-      }
-    }
+    // Horizontal Border collision 
+    if (this.state.ballY <= 0 || this.state.ballY >= this.gameHeight - this.ballSize) 
+        this.ballSpeedY = -this.ballSpeedY;
 
-    public cleanup(): void {
-      if (this.updateInterval) {
-        clearInterval(this.updateInterval);
-        this.updateInterval = null;
-      }
+    // Vertical Border collision
+    if (this.state.ballX <= 0 || this.state.ballX >= this.gameWidth) {
+        const rightScored = this.state.ballX <= 0;
+        rightScored ? this.state.scoreRight++ : this.state.scoreLeft++;
+        
+        const score = rightScored ? this.state.scoreRight : this.state.scoreLeft;
+        const scoringSide = rightScored ? 'right' : 'left' as 'right' | 'left';
+        
+        if (score >= 5) {
+          this.endGame(scoringSide);
+        } else {
+          this.resetBall();
+        }
     }
   }
+
+  public updatePaddleInput(input: {
+    leftPaddleUp: boolean;
+    leftPaddleDown: boolean;
+    rightPaddleUp: boolean;
+    rightPaddleDown: boolean;
+  }): void {
+    if (this.state.status !== 'playing' && this.state.status !== 'paused') return;
+    
+    this.leftPaddleUp = input.leftPaddleUp;
+    this.leftPaddleDown = input.leftPaddleDown;
+    this.rightPaddleUp = input.rightPaddleUp;
+    this.rightPaddleDown = input.rightPaddleDown;
+  }
+
+  private movePaddles(): void {
+    // Left paddle
+    if (this.leftPaddleUp && !this.leftPaddleDown) {
+      this.paddleLeftSpeed = Math.max(this.paddleLeftSpeed - 1, -10); // Move up (negative speed)
+    } else if (this.leftPaddleDown && !this.leftPaddleUp) {
+      this.paddleLeftSpeed = Math.min(this.paddleLeftSpeed + 1, 10); // Move down (positive speed)
+    } else {
+      // Decelerate when no input
+      this.paddleLeftSpeed = this.paddleLeftSpeed > 0 
+        ? Math.max(this.paddleLeftSpeed - 1, 0) 
+        : Math.min(this.paddleLeftSpeed + 1, 0);
+    }
+    
+    // Right paddle
+    if (this.rightPaddleUp && !this.rightPaddleDown) {
+      this.paddleRightSpeed = Math.max(this.paddleRightSpeed - 1, -10); // Move up
+    } else if (this.rightPaddleDown && !this.rightPaddleUp) {
+      this.paddleRightSpeed = Math.min(this.paddleRightSpeed + 1, 10); // Move down
+    } else {
+      // Decelerate when no input
+      this.paddleRightSpeed = this.paddleRightSpeed > 0 
+        ? Math.max(this.paddleRightSpeed - 1, 0) 
+        : Math.min(this.paddleRightSpeed + 1, 0);
+    }
+    
+    // Update positions
+    this.state.paddleLeftY += this.paddleLeftSpeed;
+    this.state.paddleRightY += this.paddleRightSpeed;
+    
+    // Constrain to game boundaries
+    this.state.paddleLeftY = Math.max(0, Math.min(this.state.paddleLeftY, this.gameHeight - this.paddleHeight));
+    this.state.paddleRightY = Math.max(0, Math.min(this.state.paddleRightY, this.gameHeight - this.paddleHeight));
+  }
+
+  private resetBall(): void {
+      this.state.ballX = this.gameWidth / 2 - this.ballSize / 2;
+      this.state.ballY = this.gameHeight / 2 - this.ballSize / 2;
+      this.ballSpeedX = Math.random() > 0.5 ? 3 : -3;
+      this.ballSpeedY = Math.random() > 0.5 ? 5 : -5;
+  }
+
+  public pauseGame(): void {
+      if (this.state.status === 'playing' || this.state.status === 'paused') {
+        this.state.status = this.state.status === 'playing' ? 'paused' : 'playing';
+      }
+  }
+
+  private endGame(winner: 'left' | 'right'): void {
+      this.state.status = 'finished';
+      this.state.winner = winner;
+      this.cleanup();
+  }
+
+  public cleanup(): void {
+      if (this.updateInterval) {
+        clearInterval(this.updateInterval);
+        this.updateInterval = null;
+      }
+  }
+
+  public getState(): GameState {
+        return { ...this.state };
+  }
+}

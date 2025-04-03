@@ -22,11 +22,6 @@ interface GameParams {
   id: string;
 }
 
-interface MoveBody {
-  side: 'left' | 'right';
-  direction: 'up' | 'down';
-}
-
 interface PollQuery {
   hash?: string;
 }
@@ -128,22 +123,7 @@ export default fp(async function setupRoutes(server: FastifyInstance) {
 
   // GAME ROUTES
   // Create a new game
-  server.post('/api/games', { preHandler: server.authenticate }, GameController.createGame);
-
-  // Get all games
-  server.get('/api/games', { preHandler: server.authenticate }, GameController.getGames);
-
-  // Get specific game state
-  server.get<{ Params: GameParams }>('/api/games/:id', GameController.getGameState);
-
-  // Efficient polling endpoint with conditional response
-  server.get<{ Params: GameParams, Querystring: PollQuery }>('/api/games/:id/poll', GameController.pollGameState);
-
-  // Update game state (server-side game loop)
-  server.post<{ Params: GameParams }>('/api/games/:id/update', GameController.updateGameState);
-
-  // Move paddle
-  server.post<{ Params: GameParams, Body: MoveBody }>('/api/games/:id/move', GameController.movePaddle);
+  server.post('/api/createGame', { preHandler: server.authenticate }, GameController.createGame);
 
   // Start game
   server.post<{ Params: GameParams }>('/api/games/:id/start', { preHandler: server.authenticate }, GameController.startGame);
@@ -151,12 +131,15 @@ export default fp(async function setupRoutes(server: FastifyInstance) {
   // Pause/Resume game
   server.post<{ Params: GameParams }>('/api/games/:id/pause', GameController.pauseGame);
 
-  // Reset game
-  server.post<{ Params: GameParams }>('/api/games/:id/reset', { preHandler: server.authenticate }, GameController.resetGame);
-
   // Delete game
   server.delete<{ Params: GameParams }>('/api/games/:id', { preHandler: server.authenticate }, GameController.deleteGame);
 
+  // Polling
+  server.post<{ Params: GameParams, Querystring: PollQuery, Body?: { input?: any } }>(
+    '/api/games/:id/poll', 
+    GameController.pollGameState
+  );
+ 
 
   // STAT ROUTES 
   server.post('/api/games/record-match', { preHandler: server.authenticate }, GameController.recordMatch);
