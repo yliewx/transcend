@@ -36,3 +36,32 @@ export interface RequestResponse {
     status: string;
     requestDate: string;
   }
+
+export interface GameState {
+    id: string;
+    status: 'waiting' | 'playing' | 'paused' | 'finished';
+    paddleLeftY: number;
+    paddleRightY: number;
+    ballX: number;
+    ballY: number;
+    scoreLeft: number;
+    scoreRight: number;
+    winner?: 'left' | 'right';
+    lastUpdateTime: number;
+  }
+  
+export interface InputState {
+    leftPaddleUp: boolean;
+    leftPaddleDown: boolean;
+    rightPaddleUp: boolean;
+    rightPaddleDown: boolean;
+  }
+  
+export interface MatchRecord {
+    gameId: string;
+    userId: number;
+    userSide: 'left' | 'right';
+    leftScore: number;
+    rightScore: number;
+    winner?: 'left' | 'right';
+  }
