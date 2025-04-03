@@ -5,12 +5,13 @@ import { AuthService } from '../services/auth.service';
 export class OTPSetupPage implements Page {
   private router: Router;
   private authService: AuthService;
+  private element: HTMLElement | null = null;
   private selectedOption: string | null;
-    constructor(router: Router) {
-      this.router = router;
-      this.authService = router.getControlAccess().getAuthService();
-      this.selectedOption = null;
-    }
+  constructor(router: Router) {
+    this.router = router;
+    this.authService = router.getControlAccess().getAuthService();
+    this.selectedOption = null;
+  }
 
 
   render(): HTMLElement {
