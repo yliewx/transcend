@@ -1,22 +1,11 @@
 import { Page } from '../types';
 import { Router } from '../router';
-
-
-interface GameState {
-    id: string;
-    status: 'waiting' | 'playing' | 'paused' | 'finished';
-    paddleLeftY: number;
-    paddleRightY: number;
-    ballX: number;
-    ballY: number;
-    scoreLeft: number;
-    scoreRight: number;
-    winner?: 'left' | 'right';
-    lastUpdateTime: number;
-}
+import { GameState } from '../types';
+import { PongGameService } from '../services/pong.game.service';
 
 export class PongGamePage implements Page {
   private router: Router;
+  private pongService: PongGameService;
   private element: HTMLElement | null = null;
   private ctx: CanvasRenderingContext2D | null = null;
   private gameWidth: number = 800;
@@ -48,8 +37,9 @@ export class PongGamePage implements Page {
     this.handleKeyUp(e);
   };
 
-  constructor(router: Router) {
+  constructor(router: Router, pongService: PongGameService) {
     this.router = router;
+    this.pongService = pongService;
   }
   
   render(): HTMLElement {
@@ -180,38 +170,25 @@ export class PongGamePage implements Page {
     }
   }
 
-
   private async createGame(): Promise<void> {
     this.resetGame();
 
-    try {
-      const response = await fetch('/api/createGame', {
-        method: 'POST',
-        headers: {}
-      });
-  
-      console.log('createGame response received:', response.status);
-  
-      if (!response.ok) {
-        console.error('Server returned error status:', response.status);
-        return;
-      }
-    
-      const data = await response.json();
-      
-      if (data.success) {
-        this.gameId = data.gameId;
+    const response = await this.pongService.createGame();
 
-        const gameIdElement = this.element?.querySelector('#game-id');
-        if (gameIdElement) gameIdElement.textContent = this.gameId;
-        const gameControlsElement = this.element?.querySelector('#game-controls');
-        if (gameControlsElement) gameControlsElement.classList.remove('hidden');
-       
-        this.updateGameStatusUI('Game created! Press Start to begin.');
-      }
-    } catch (error) {
-      console.error('Error creating game:', error);
+    if (!response.success) {
+      console.error('Server returned error:', response.error);
+      return;
     }
+    
+    this.gameId = response.gameId!;
+    
+    const gameIdElement = this.element?.querySelector('#game-id');
+    if (gameIdElement) gameIdElement.textContent = this.gameId;
+    
+    const gameControlsElement = this.element?.querySelector('#game-controls');
+    if (gameControlsElement) gameControlsElement.classList.remove('hidden');
+    
+    this.updateGameStatusUI('Game created! Press Start to begin.');
   }
 
   private async startGame(): Promise<void> {
@@ -225,33 +202,17 @@ export class PongGamePage implements Page {
       return;
     }
     
-    try {
-      console.log(`Starting game with ID: ${this.gameId}`);
-      const response = await fetch(`/api/games/${this.gameId}/start`, {
-        method: 'POST',
-        headers: {}
-      });
-
-      console.log('startGame response received:', response.status);
-      
-      if (!response.ok) {
-        console.error('Server returned error status:', response.status);
-        return;
-      }
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        this.startGameLoop();
-        this.updateGameStatusUI();
-      } else {
-        console.error('Start game failed:', data);
-      }
-    } catch (error) {
-      console.error('Error starting game:', error);
+    console.log(`Starting game with ID: ${this.gameId}`);
+    const response = await this.pongService.startGame(this.gameId);
+    
+    if (!response.success) {
+      console.error('Server returned error:', response.error);
+      return;
     }
+    
+    this.startGameLoop();
+    this.updateGameStatusUI();
   }
-
 
   private startGameLoop(): void {
     this.stopGameLoop();
@@ -259,13 +220,8 @@ export class PongGamePage implements Page {
     const gameLoop = async () => {
       if (!this.gameId || this.state?.status === 'finished') 
         return;
-      
-      try {
-        await this.pollGameState();
-      } catch (error) {
-        console.error('Error updating game:', error);
-        return;
-      }
+    
+      await this.pollGameState();
 
       this.gameLoopId = requestAnimationFrame(gameLoop);
     };
@@ -273,59 +229,35 @@ export class PongGamePage implements Page {
     this.gameLoopId = requestAnimationFrame(gameLoop);
   }
 
-  
+
   private async pollGameState(): Promise<void> {
     this.updateInputState();
     
-    const url = `/api/games/${this.gameId}/poll${this.stateHash ? `?hash=${this.stateHash}` : ''}`;
+    const requestBody = (this.inputChanged && (this.state?.status === 'playing' || this.state?.status === 'paused'))
+      ? { input: this.inputState }
+      : undefined;
+    const url = `/games/${this.gameId}/poll${this.stateHash ? `?hash=${this.stateHash}` : ''}`;
+    const response = await this.pongService.pollGameState(url,requestBody);
 
-    const requestBody = {
-      input: (this.inputChanged && (this.state?.status === 'playing' || this.state?.status === 'paused')) 
-        ? this.inputState 
-        : undefined
-    };
-  
-    try {
-      const response = await fetch(url, {
-        method: 'POST', 
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(requestBody)
-      });
+    if (!response.success || !response.state) 
+    {
+      console.error("Game state not found or not successful");
+      return;
+    }  
+
+    const previousState = this.state;
+    this.state = response.state;
+    this.stateHash = response.hash || null;
     
-      if (response.status === 304) {
-        return;
-      }
-  
-      if (!response.ok) {
-        console.error('Error updating game state:', response.statusText);
-        return;
-      }
-  
-      const data = await response.json();
-      if (!data.success || !data.state) 
-      {
-        console.log("Game state not found or not successful");
-        return;
-      }  
-      
-      const previousState = this.state;
-      this.state = data.state;
-      this.stateHash = data.hash;
-      
-      this.drawGame();
-      
-      // Handle game end
-      if (previousState?.status === 'playing' && this.state?.status === 'finished') {
-        this.recordMatchResult();
-        this.stopGameLoop(); 
-      }
-      
-      this.updateGameStatusUI();
-    } catch (error) {
-      console.error('Error polling game state:', error);
+    this.drawGame();
+    
+    // Handle game end
+    if (previousState?.status === 'playing' && this.state?.status === 'finished') {
+      this.recordMatchResult();
+      this.stopGameLoop(); 
     }
+
+    this.updateGameStatusUI();
   }
 
   private updateInputState(): void {
@@ -349,50 +281,35 @@ export class PongGamePage implements Page {
   private async recordMatchResult(): Promise<void> {
     if (!this.gameId || !this.state) return;
     
-    try {
-      // Get user ID from session storage
-      const userIdString = sessionStorage.getItem('userId');
-      const userId: number | null = userIdString ? parseInt(userIdString, 10) : null;
-      
-      if (!userId) {
-        console.log('User not logged in, not recording match');
-        return;
-      }
-      
-      // Determine which side won
-      const winner = this.state.winner;
-      
-      // Call the API to record the match
-      const response = await fetch('/api/games/record-match', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          gameId: this.gameId,
-          userId: userId,
-          // For simplicity, we'll assume the logged-in user is always the left player
-          // You could add a player side selection UI in the future
-          userSide: 'left',
-          leftScore: this.state.scoreLeft,
-          rightScore: this.state.scoreRight,
-          winner: winner
-        })
-      });
-      
-      if (!response.ok) {
-        console.error('Failed to record match:', response.statusText);
-        return;
-      }
-      
-      const data = await response.json();
-      console.log('Match recorded successfully:', data);
-      
-    } catch (error) {
-      console.error('Error recording match:', error);
+    // Get user ID from session storage
+    const userIdString = sessionStorage.getItem('userId');
+    const userId: number | null = userIdString ? parseInt(userIdString, 10) : null;
+    
+    if (!userId) {
+      console.log('User not logged in, not recording match');
+      return;
     }
+    
+    // Determine which side won
+    const winner = this.state.winner;
+    
+    // Call the API to record the match
+    const response = await this.pongService.recordMatchResult({
+      gameId: this.gameId,
+      userId: userId,
+      // For simplicity, we'll assume the logged-in user is always the left player
+      userSide: 'left',
+      leftScore: this.state.scoreLeft,
+      rightScore: this.state.scoreRight,
+      winner: winner
+    });
+    
+    if (!response.success) {
+      console.error('Failed to record match:', response.error);
+      return;
+    }
+    console.log('Match recorded successfully');
   }
-
 
   private async pauseGame(): Promise<void> {
     if (!this.gameId || !this.state) return;
@@ -402,24 +319,16 @@ export class PongGamePage implements Page {
       return;
     }
     
-    try {
-      const response = await fetch(`/api/games/${this.gameId}/pause`, {
-        method: 'POST',
-        headers: {}        
-      });
-      
-      if (!response.ok) {
-        console.error('Error pausing/resuming game:', response.statusText);
-        return;
-      }
-      
-      const data = await response.json();
-      if (data.success) {
-        this.state.status = data.status;
-        this.updateGameStatusUI();
-      }
-    } catch (error) {
-      console.error('Error pausing/resuming game:', error);
+    const response = await this.pongService.pauseGame(this.gameId);
+    
+    if (!response.success) {
+      console.error('Error pausing/resuming game:', response.error);
+      return;
+    }
+    
+    if (response.status) {
+      this.state.status = response.status as GameState['status'];
+      this.updateGameStatusUI();
     }
   }
 
@@ -523,13 +432,7 @@ export class PongGamePage implements Page {
 
     this.resetGame();
     
-    // Clean up the game on the server if needed
-    if (this.gameId) {
-      fetch(`/api/games/${this.gameId}`, {
-        method: 'DELETE'
-      }).catch(error => {
-        console.error('Error cleaning up game:', error);
-      });
-    }
+    if (this.gameId) 
+      this.pongService.cleanupGame(this.gameId);
   }
 }
