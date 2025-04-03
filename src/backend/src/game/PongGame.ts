@@ -71,8 +71,7 @@ export class PongGame {
     // Left paddle collision
     if (
       this.state.ballX <= this.paddleWidth &&
-      this.state.ballX >= 0 &&
-      this.state.ballY >= this.state.paddleLeftY && 
+      this.state.ballY + this.ballSize >= this.state.paddleLeftY &&
       this.state.ballY <= this.state.paddleLeftY + this.paddleHeight
     ) {
         this.ballSpeedX = Math.abs(this.ballSpeedX); // Reflect right
@@ -80,10 +79,9 @@ export class PongGame {
     }
     // Right paddle collision
     if (
-        this.state.ballX >= this.gameWidth - this.paddleWidth &&
-        this.state.ballX <= this.gameWidth &&
-        this.state.ballY >= this.state.paddleRightY && 
-        this.state.ballY <= this.state.paddleRightY + this.paddleHeight
+      this.state.ballX >= this.gameWidth - this.paddleWidth - this.ballSize &&
+      this.state.ballY + this.ballSize >= this.state.paddleRightY &&
+      this.state.ballY <= this.state.paddleRightY + this.paddleHeight
     ) {
         this.ballSpeedX = -Math.abs(this.ballSpeedX); // Reflect left
         return;
