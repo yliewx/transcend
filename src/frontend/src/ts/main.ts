@@ -17,10 +17,44 @@ import { FriendService } from './services/friend.service';
 import { FriendsPage } from './views/friends';
 import { NotFoundPage } from './views/notfound';
 
-document.addEventListener('DOMContentLoaded', () => {
+// function initGoogleAuth(googleClientId: string) {
+//   // Initialise GoogleAuth object
+//   if (googleClientId) {
+//     gapi.load('auth2', function() {
+//       gapi.auth2.init({
+//         client_id: googleClientId,
+//         scope: 'profile email' // allow access to personal info and gmail address
+//       }).then(() => {
+//         console.log("GoogleAuth initialized");
+//       }).catch((error: Error) => {
+//         console.error("GoogleAuth init error:", error);
+//       });
+//     });
+//   }
+// }
+
+// function loadGoogleAuth(googleClientId: string) {
+//   // Append meta tag with Google client ID
+//   const metaTag = document.createElement('meta');
+//   metaTag.name = 'google-signin-client_id';
+//   metaTag.content = googleClientId;
+//   document.head.appendChild(metaTag);
+
+//   // Append script tag to load Google API
+//   const scriptTag = document.createElement('script');
+//   scriptTag.src = 'https://accounts.google.com/gsi/client';
+//   scriptTag.async = true;
+//   scriptTag.defer = true;
+//   scriptTag.onload = () => initGoogleAuth(googleClientId);
+//   document.head.appendChild(scriptTag);
+// }
+
+document.addEventListener('DOMContentLoaded', async () => {  
   // Initialize application dependencies
   const appContainer = document.getElementById('app') as HTMLElement;
   const controlAccess = new ControlAccess(new AuthService());
+  await controlAccess.checkAuthStatus(); // wait for access/refresh token status to be updated
+  await controlAccess.setGoogleClientId(); // so that google library can be loaded properly
   const userService = new UserService();
   const gameStatsService = new GameStatsService(); 
   const friendService = new FriendService();
