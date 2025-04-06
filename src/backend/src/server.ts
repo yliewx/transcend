@@ -1,7 +1,9 @@
-import fastify from 'fastify';
+import fastify, { FastifyInstance } from 'fastify';
 import fastifyStatic from '@fastify/static';
 import { join } from 'path';
-import fastifyCookie from '@fastify/cookie'
+import fastifyCookie from '@fastify/cookie';
+import websocket from '@fastify/websocket';
+import { WebSocket } from 'ws';
 // From ./plugins
 import setupJwt from './plugins/jwt';
 import setupCors from './plugins/cors';
@@ -11,6 +13,7 @@ import setupMailer from './plugins/mailer';
 import setupTwilio from './plugins/twilio';
 import setupGoogleAuth from './plugins/oauth2';
 import authRoutes from './auth/routes/auth.routes';
+import setupWebSocket from './websocket/routes/ws.routes'
 
 // Initialize database
 setupDbConnection();
@@ -30,6 +33,13 @@ server.addHook("onRequest", async (req, reply) => {
   server.log.info(`Received request: ${req.method} ${req.url}`);
 });
 
+// Register fastify websocket
+server.register(websocket, {
+  options: {
+    clientTracking: true,
+  }
+});
+
 // Register plugins for authentication
 server.register(setupJwt);
 server.register(fastifyCookie);
@@ -41,6 +51,7 @@ server.register(setupCors);
 // Register routes
 server.register(authRoutes);
 server.register(setupRoutes);
+server.register(setupWebSocket);
 
 // Start server
 const start = async () => {

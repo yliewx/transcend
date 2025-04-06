@@ -1,3 +1,5 @@
+import { WebSocket } from 'ws';
+
 export interface GameState {
   id: string;
   status: 'waiting' | 'playing' | 'paused' | 'finished';
@@ -11,6 +13,14 @@ export interface GameState {
   lastUpdateTime: number;
 }
 
+export interface GameSession {
+  id: string;
+  sockets: {
+    left?: WebSocket;
+    right?: WebSocket;
+  };
+  game: PongGame;
+}
 
 export class PongGame {
   private gameWidth: number = 800;

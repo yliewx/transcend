@@ -1,8 +1,8 @@
 export class BaseApiService {
   protected baseUrl: string;
   
-  constructor(baseUrl = "https://localhost:8080/api") {
-    this.baseUrl = baseUrl;
+  constructor() {
+    this.baseUrl = process.env.BASE_API_URL as string;
   }
 
   /*--------------------------REFRESH ACCESS TOKEN--------------------------*/

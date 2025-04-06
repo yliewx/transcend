@@ -95,7 +95,7 @@ export class LoginPage implements Page {
                       data-text="sign_in_with"
                       data-shape="rectangular"
                       data-logo_alignment="center"
-                      data-width="100%">
+                      data-width="300">
                   </div>
                 </div>
               </div>
