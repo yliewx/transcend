@@ -1,17 +1,23 @@
 import { Page } from './types';
 import { ControlAccess } from './services/control.access';
+import { WebSocketManager } from './services/websocket.manager';
 
 export class Router {
   private routes: Map<string, Page>;
   private container: HTMLElement;
   private currentPath: string = '';
   private protectedRoutes: string[] = ['/home', '/play', '/stats', '/profile', '/friends'];
+  private wss: WebSocketManager;
 
   /*------------------------------CONSTRUCTOR-------------------------------*/
 
   constructor(container: HTMLElement, private controlAccess: ControlAccess) {
     this.routes = new Map();
     this.container = container;
+    
+    // Create websocket connection to server
+    this.wss = new WebSocketManager(process.env.BASE_WSS_URL as string);
+    this.wss.connect();
 
     // Handle popstate events (browser back/forward buttons)
     window.addEventListener('popstate', (event) => {
@@ -25,6 +31,7 @@ export class Router {
     this.controlAccess.addAuthStateChangeListener((isAuthenticated: boolean) => {
       if (isAuthenticated) {
         // Redirect to home when user logs in
+        this.wss.connect();
         this.navigateTo('/home');
       } else {
         // Redirect to login when user logs out
