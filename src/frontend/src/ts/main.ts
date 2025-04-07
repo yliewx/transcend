@@ -16,6 +16,7 @@ import { PongGamePage } from './views/pong.game';
 import { FriendService } from './services/friend.service';
 import { FriendsPage } from './views/friends';
 import { NotFoundPage } from './views/notfound';
+import { BlackjackGamePage } from './views/blackjack.game';
 
 // function initGoogleAuth(googleClientId: string) {
 //   // Initialise GoogleAuth object
@@ -74,6 +75,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   router.addRoute('/', new PageWithHeader(new HomePage(router), router));
   router.addRoute('/home', new PageWithHeader(new HomePage(router), router));
   router.addRoute('/play', new PageWithHeader(new PongGamePage(router, pongGameService), router));
+  router.addRoute('/blackjack', new PageWithHeader(new BlackjackGamePage(router), router));
   router.addRoute('/stats', new PageWithHeader(new StatsPage(router, gameStatsService), router));
   router.addRoute('/profile', new PageWithHeader(new ProfilePage(router, userService), router));
   router.addRoute('/friends', new PageWithHeader(new FriendsPage(router, friendService), router));

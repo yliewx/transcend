@@ -14,9 +14,9 @@ export class HeaderPage implements Page {
 
   render(): HTMLElement {
     // Return cached element if it exists
-    if (this.element) {
-      return this.element;
-    }
+    // if (this.element) {
+    //   return this.element;
+    // }
   
     const header = document.createElement('header');
     header.className = 'bg-white shadow';
@@ -30,7 +30,10 @@ export class HeaderPage implements Page {
             </div>
             <div class="hidden md:ml-6 md:flex md:space-x-8">
               <a href="/play" class="nav-link border-transparent text-gray-500 hover:border-indigo-500 hover:text-indigo-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                Play
+                Play Pong
+              </a>
+              <a href="/blackjack" class="nav-link border-transparent text-gray-500 hover:border-indigo-500 hover:text-indigo-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                Play Blackjack
               </a>
               <a href="/stats" class="nav-link border-transparent text-gray-500 hover:border-indigo-500 hover:text-indigo-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                 Stats
