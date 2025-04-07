@@ -3,10 +3,6 @@
 # define base for the image
 FROM nginx:latest
 
-# install dependencies
-# RUN apt-get update && apt-get upgrade -y && \
-# 	apt-get install -y openssl procps
-
 # create ssl directory
 RUN mkdir -p /etc/nginx/ssl /usr/share/nginx/html
 
