@@ -13,15 +13,6 @@ export interface GameState {
   lastUpdateTime: number;
 }
 
-export interface GameSession {
-  id: string;
-  sockets: {
-    left?: WebSocket;
-    right?: WebSocket;
-  };
-  game: PongGame;
-}
-
 export class PongGame {
   private gameWidth: number = 800;
   private gameHeight: number = 600;
@@ -39,6 +30,7 @@ export class PongGame {
 
   private state: GameState;
   private updateInterval: NodeJS.Timeout | null = null;
+  private endGameCallback: ((winner: 'left' | 'right') => void) | null = null;
 
   constructor(gameId: string) {
       this.state = {
@@ -117,18 +109,33 @@ export class PongGame {
     }
   }
 
-  public updatePaddleInput(input: {
-    leftPaddleUp: boolean;
-    leftPaddleDown: boolean;
-    rightPaddleUp: boolean;
-    rightPaddleDown: boolean;
+  // public updatePaddleInput(input: {
+  //   leftPaddleUp: boolean;
+  //   leftPaddleDown: boolean;
+  //   rightPaddleUp: boolean;
+  //   rightPaddleDown: boolean;
+  // }): void {
+  //   if (this.state.status !== 'playing' && this.state.status !== 'paused') return;
+    
+  //   this.leftPaddleUp = input.leftPaddleUp;
+  //   this.leftPaddleDown = input.leftPaddleDown;
+  //   this.rightPaddleUp = input.rightPaddleUp;
+  //   this.rightPaddleDown = input.rightPaddleDown;
+  // }
+
+  public updatePaddleInput(side: string, input: {
+    paddleUp: boolean;
+    paddleDown: boolean;
   }): void {
     if (this.state.status !== 'playing' && this.state.status !== 'paused') return;
-    
-    this.leftPaddleUp = input.leftPaddleUp;
-    this.leftPaddleDown = input.leftPaddleDown;
-    this.rightPaddleUp = input.rightPaddleUp;
-    this.rightPaddleDown = input.rightPaddleDown;
+
+    if (side === 'left') {
+      this.leftPaddleUp = input.paddleUp;
+      this.leftPaddleDown = input.paddleDown;
+    } else {
+      this.rightPaddleUp = input.paddleUp;
+      this.rightPaddleDown = input.paddleDown;
+    }
   }
 
   private movePaddles(): void {
@@ -172,16 +179,28 @@ export class PongGame {
       this.ballSpeedY = Math.random() > 0.5 ? 5 : -5;
   }
 
-  public pauseGame(): void {
+  public pauseGame(): string {
       if (this.state.status === 'playing' || this.state.status === 'paused') {
         this.state.status = this.state.status === 'playing' ? 'paused' : 'playing';
       }
+      return this.state.status;
   }
 
+  // Method to set the callback to notify GameRoom when the game has ended
+  public onGameEnd(callback: (winner: 'left' | 'right') => void) {
+    this.endGameCallback = callback;
+  }
+
+  // Method to end game
   private endGame(winner: 'left' | 'right'): void {
-      this.state.status = 'finished';
-      this.state.winner = winner;
-      this.cleanup();
+    this.state.status = 'finished';
+    this.state.winner = winner;
+    this.cleanup();
+
+    // Notify GameRoom of the winner
+    if (this.endGameCallback) {
+      this.endGameCallback(winner);
+    }
   }
 
   public cleanup(): void {

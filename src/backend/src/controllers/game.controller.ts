@@ -19,10 +19,21 @@ async function createStateHash(state: any) {
 }
 
 export async function createGame(request: FastifyRequest, reply: FastifyReply) {
-  const gameId = gameManager.createGame();
+  // Extract game mode from request body
+  const { mode } = request.body as { mode: 'local' | 'remote' };
+
+  // Check if game mode is valid
+  if (mode !== 'local' && mode !== 'remote') {
+    return reply.status(400).send({
+      success: false,
+      message: 'Invalid game mode. Must be "local" or "remote".'
+    });
+  }
+
+  const gameId = gameManager.createGame(mode);
   return { gameId, success: true };
 }
-
+/*
 export async function startGame(request: FastifyRequest<{ Params: GameParams }>, reply: FastifyReply) {
   const { id } = request.params;
   const success = gameManager.startGame(id);
@@ -102,7 +113,7 @@ export async function pollGameState(
     });
   }
 }
-
+*/
 export async function recordMatch(request: FastifyRequest, reply: FastifyReply)
 {
     const { gameId, userId, userSide, leftScore, rightScore, winner } = request.body as {
