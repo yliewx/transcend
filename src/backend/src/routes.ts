@@ -111,7 +111,7 @@ export default fp(async function setupRoutes(server: FastifyInstance) {
   // GAME ROUTES
   // Create a new game
   server.post('/api/createGame', { preHandler: server.authenticate }, GameController.createGame);
-
+  /*
   // Start game
   server.post<{ Params: GameParams }>('/api/games/:id/start', { preHandler: server.authenticate }, GameController.startGame);
 
@@ -120,13 +120,13 @@ export default fp(async function setupRoutes(server: FastifyInstance) {
 
   // Delete game
   server.delete<{ Params: GameParams }>('/api/games/:id', { preHandler: server.authenticate }, GameController.deleteGame);
-
+  
   // Polling
   server.post<{ Params: GameParams, Querystring: PollQuery, Body?: { input?: any } }>(
     '/api/games/:id/poll', 
     GameController.pollGameState
   );
- 
+ */
 
   // STAT ROUTES 
   server.post('/api/games/record-match', { preHandler: server.authenticate }, GameController.recordMatch);

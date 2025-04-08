@@ -7,12 +7,16 @@ export class PongGamePage implements Page {
   private router: Router;
   private pongService: PongGameService;
   private element: HTMLElement | null = null;
+  // For rendering game
   private ctx: CanvasRenderingContext2D | null = null;
   private gameWidth: number = 800;
   private gameHeight: number = 600;
   private paddleHeight: number = 100;
   private paddleWidth: number = 10;
   private ballSize: number = 30;
+  // For handling game modes
+  private gameMode: 'local' | 'remote' = 'remote';
+  // Game data
   private gameId: string | null = null;
   private state: GameState | null = null;
   private gameLoopId: number | null = null;
@@ -103,6 +107,8 @@ export class PongGamePage implements Page {
     return container;
   }
 
+  /*----------------------------RESET GAME STATE----------------------------*/
+
   update(): void {
     // Reset the game state when revisiting the page
     this.resetGame();
@@ -128,22 +134,62 @@ export class PongGamePage implements Page {
     }
   }
 
+  /*-----------------------------EVENT HANDLERS-----------------------------*/
+
   private setupEventHandlers(): void {
+    // Remove any existing event listeners first
+    window.removeEventListener('keyup', this.keyUpHandler);
+    window.removeEventListener('keydown', this.keyDownHandler);
+    
+    // Create new handlers based on the game type
+    this.keyDownHandler = (e: KeyboardEvent) => {
+      if (this.gameMode === 'remote') {
+        // For remote play, only use arrow keys regardless of side
+        if (['ArrowUp', 'ArrowDown'].includes(e.key)) {
+          e.preventDefault();
+          this.keysPressed[e.key] = true;
+          console.log('Remote game - After keyDown, keysPressed:', {...this.keysPressed});
+        }
+      } else {
+        // For local play, use both W/S and Arrow keys
+        if (['w', 'W', 's', 'S', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+          e.preventDefault();
+          this.keysPressed[e.key] = true;
+          console.log('Local game - After keyDown, keysPressed:', {...this.keysPressed});
+        }
+      }
+    };
+    
+    this.keyUpHandler = (e: KeyboardEvent) => {
+      if (this.gameMode === 'remote') {
+        // For remote play, only use arrow keys
+        if (['ArrowUp', 'ArrowDown'].includes(e.key)) {
+          this.keysPressed[e.key] = false;
+        }
+      } else {
+        // For local play, use both W/S and Arrow keys
+        if (['w', 'W', 's', 'S', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+          this.keysPressed[e.key] = false;
+        }
+      }
+    };
+    
+    // Add event listeners with the new key handlers
     window.addEventListener('keyup', this.keyUpHandler);
     window.addEventListener('keydown', this.keyDownHandler);
     
     const buttonActions = {
-        'create-game-btn': () => this.createGame(),
-        'start-game-btn': () => this.startGame(),
-        'pause-game-btn': () => this.pauseGame()
-      };
-      
+      'create-game-btn': () => this.createGame(),
+      'start-game-btn': () => this.startGame(),
+      'pause-game-btn': () => this.pauseGame()
+    };
+    
     Object.entries(buttonActions).forEach(([id, handler]) => {
-        document.getElementById(id)?.addEventListener('click', () => {
-          console.log(`${id} clicked`);
-          handler(); 
-        });
+      document.getElementById(id)?.addEventListener('click', () => {
+        console.log(`${id} clicked`);
+        handler(); 
       });
+    });
   }
 
   private handleKeyDown(e: KeyboardEvent): void {
@@ -152,13 +198,15 @@ export class PongGamePage implements Page {
         this.keysPressed[e.key] = true;
         console.log('After keyDown, keysPressed:', {...this.keysPressed}); // Spread to get a copy
     }
-}
+  }
   
   private handleKeyUp(e: KeyboardEvent): void {
     if (['w', 'W', 's', 'S', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
         this.keysPressed[e.key] = false;
     }
   }
+
+  /*---------------------------SETUP PONG CANVAS----------------------------*/
 
   private setupCanvas(): void {
     const canvas = this.element?.querySelector('#pong-canvas') as HTMLCanvasElement;
@@ -170,10 +218,12 @@ export class PongGamePage implements Page {
     }
   }
 
+  /*------------------------------CREATE GAME-------------------------------*/
+
   private async createGame(): Promise<void> {
     this.resetGame();
 
-    const response = await this.pongService.createGame();
+    const response = await this.pongService.createGame(this.gameMode);
 
     if (!response.success) {
       console.error('Server returned error:', response.error);
@@ -190,6 +240,8 @@ export class PongGamePage implements Page {
     
     this.updateGameStatusUI('Game created! Press Start to begin.');
   }
+
+  /*------------------------------START GAME--------------------------------*/
 
   private async startGame(): Promise<void> {
     if (!this.gameId) {
@@ -229,6 +281,7 @@ export class PongGamePage implements Page {
     this.gameLoopId = requestAnimationFrame(gameLoop);
   }
 
+  /*------------------------------GAME STATE--------------------------------*/
 
   private async pollGameState(): Promise<void> {
     this.updateInputState();
@@ -281,6 +334,8 @@ export class PongGamePage implements Page {
     }
   }
 
+  /*----------------------------=RECORD RESULT------------------------------*/
+
   private async recordMatchResult(): Promise<void> {
     if (!this.gameId || !this.state) return;
     
@@ -314,6 +369,8 @@ export class PongGamePage implements Page {
     console.log('Match recorded successfully');
   }
 
+  /*-------------------=-----------PAUSE GAME-------------------------------*/
+
   private async pauseGame(): Promise<void> {
     if (!this.gameId || !this.state) return;
   
@@ -335,6 +392,8 @@ export class PongGamePage implements Page {
     }
   }
 
+  /*----------------------------UPDATE GAME UI------------------------------*/
+
   private updateGameStatusUI(statusMessage?: string): void {
     if (!this.state) return;
     const statusElement = this.element?.querySelector('#game-status');
@@ -355,6 +414,8 @@ export class PongGamePage implements Page {
       statusElement.textContent= `Game over! ${winner} player wins ${winningScore}-${losingScore}!`;
     }
   }
+
+  /*-------------------------------DRAW GAME--------------------------------*/
 
   private drawGame(): void {
     if (!this.state || !this.ctx) return;
@@ -426,6 +487,8 @@ export class PongGamePage implements Page {
     this.ctx.fillText(this.state.scoreLeft.toString(), this.gameWidth / 4, 50);
     this.ctx.fillText(this.state.scoreRight.toString(), (this.gameWidth / 4) * 3, 50);
   }
+
+  /*------------------------------DESTROY GAME------------------------------*/
 
   public destroy(): void {
     console.log("Pong game destroy method called");

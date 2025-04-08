@@ -153,4 +153,9 @@ export class Router {
   public getControlAccess(): ControlAccess {
     return this.controlAccess;
   }
+
+  // Getter for WebSocket Manager
+  public getWebSocketManager(): WebSocketManager {
+    return this.wss;
+  }
 }

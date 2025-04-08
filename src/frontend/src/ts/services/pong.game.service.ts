@@ -5,13 +5,12 @@ export class PongGameService extends BaseApiService {
   /**
    * Create a new pong game
    */
-  public async createGame(): Promise<{success: boolean, gameId?: string, error?: string}> {
+  public async createGame(mode: 'local' | 'remote'): Promise<{success: boolean, gameId?: string, error?: string}> {
     return this.request<{gameId?: string}>(
       '/createGame',
       'POST',
-      undefined,
-      true,
-      { omitContentType: true}
+      { mode },
+      true
     );
   }
 

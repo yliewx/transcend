@@ -1,24 +1,56 @@
 export class WebSocketManager {
-  private socket: WebSocket | null = null;
-  private url: string;
+  private onlineSocket: WebSocket | null = null;
+  private gameSocket: WebSocket | null = null;
+  private baseUrl: string;
 
-  constructor(url: string) {
-    this.url = url;
+  constructor(baseUrl: string) {
+    this.baseUrl = baseUrl;
   }
 
-  /*----------------------------INIT CONNECTION-----------------------------*/
+  /*------------------------------GAME SOCKET-------------------------------*/
 
-  // Initialize the WebSocket connection
+  // Join a specific room by game ID
+  joinGame(gameId: string) {
+    this.gameSocket = new WebSocket(`${this.baseUrl}/pong/${gameId}`);
+
+    // Handle WebSocket messages for the game room
+    this.gameSocket.onmessage = (event) => {
+      let message;
+      try {
+        message = JSON.parse(event.data);
+      } catch (error) {
+        console.log('Non-JSON message received:', event.data);
+        return;
+      }
+      const { type, data } = message;
+      console.log(`Message received: type: ${type}; data: ${data}`);
+      this.handleGameMessages(type, data);
+    };
+
+    this.gameSocket.onopen = () => {
+      console.log("Joined the game room:", gameId);
+    };
+
+    this.gameSocket.onerror = (error) => {
+      console.error("WebSocket error:", error);
+    };
+
+    this.gameSocket.onclose = () => {
+      console.log("Game room connection closed");
+    };
+  }
+
+  /*-----------------------------ONLINE SOCKET------------------------------*/
+
+  // Initialize general socket for tracking online status
   connect(): void {
-    this.socket = new WebSocket(this.url);
+    this.onlineSocket = new WebSocket(this.baseUrl);
 
-    // Event handler when the connection is open
-    this.socket.onopen = () => {
+    this.onlineSocket.onopen = () => {
       console.log("WebSocket connection established");
     };
 
-    // Event handler when a message is received
-    this.socket.onmessage = (event) => {
+    this.onlineSocket.onmessage = (event) => {
       let message;
       try {
         message = JSON.parse(event.data);
@@ -32,12 +64,12 @@ export class WebSocketManager {
     };
 
     // Event handler when the connection is closed
-    this.socket.onclose = () => {
+    this.onlineSocket.onclose = () => {
       console.log("WebSocket connection closed");
     };
 
     // Event handler when an error occurs
-    this.socket.onerror = (error) => {
+    this.onlineSocket.onerror = (error) => {
       console.error("WebSocket error:", error);
     };
   }
@@ -49,25 +81,50 @@ export class WebSocketManager {
       case 'online-status':
         this.handleOnlineStatus(data);
         break;
-      // case 'tournament-update':
-      //   this.handleTournamentUpdate(data);
-      //   break;
-      // case 'game-state':
-      //   this.handleGameState(data);
-      //   break;
       default:
         console.warn(`Unhandled message type: ${type}`);
     }
   }
 
+  private handleGameMessages(type: string, data: any): void {
+    switch (type) {
+      case 'game-start':
+        this.handleGameStart();
+        break;
+      case 'game-end':
+        this.handleGameEnd(data.winner);
+        break;
+      case 'state':
+        this.handleGameState(data);
+        break;
+      default:
+        console.warn(`Unhandled game message type: ${type}`);
+    }
+  }
+
   private handleOnlineStatus(data: any): void {
-    // console.log('Online status updated:', data);
+    console.log('Online status updated:', data);
+  }
+
+  private handleGameStart() {
+    console.log("Game has started.");
+    // Handle game start event on the frontend (e.g., show game state)
+  }
+
+  private handleGameEnd(winner: 'left' | 'right') {
+    console.log(`Game over! Winner: ${winner}`);
+    // Show game-over screen and winner on the frontend
+  }
+
+  private handleGameState(state: any) {
+    console.log("Game state:", state);
+    // Update game state on the frontend (e.g., update paddles, ball position)
   }
 
   // Send a message to the server
   sendMessage(type: string, data: any): void {
-    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-      this.socket.send(JSON.stringify({ type, data }));
+    if (this.gameSocket && this.gameSocket.readyState === WebSocket.OPEN) {
+      this.gameSocket.send(JSON.stringify({ type, data }));
     } else {
       console.error("WebSocket connection is not open.");
     }
@@ -76,9 +133,8 @@ export class WebSocketManager {
   /*----------------------------CLOSE CONNECTION----------------------------*/
 
   close(): void {
-    if (this.socket) {
-      this.socket.close();
-      console.log('WebSocket connection closed');
-    }
+    this.onlineSocket?.close();
+    this.gameSocket?.close();
+    console.log('WebSocket connections closed');
   }
 }

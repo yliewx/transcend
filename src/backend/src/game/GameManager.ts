@@ -1,79 +1,110 @@
 import { PongGame, GameState } from './PongGame';
+import { GameRoom } from './GameRoom';
+import { WebSocket } from 'ws';
 import { v4 as uuidv4 } from 'uuid';
 
 export class GameManager {
-  private games: Map<string, PongGame> = new Map();
+  private sessions: Map<string, GameRoom> = new Map();
   
   constructor() {
-    // Cleanup inactive games periodically (every hour)
+    // Cleanup inactive sessions periodically (every hour)
     setInterval(() => {
       this.cleanupInactiveGames();
     }, 60 * 60 * 1000);
   }
 
-  public getGame(gameId: string): PongGame | undefined {
+  public getRoom(gameId: string): GameRoom | undefined {
     console.log(`Fetching game with ID: ${gameId}`);
-    console.log(`Current games: ${Array.from(this.games.keys())}`);
-    return this.games.get(gameId);
+    console.log(`Current sessions: ${Array.from(this.sessions.keys())}`);
+    return this.sessions.get(gameId);
   }
 
-  public createGame(): string {
+  public getGame(gameId: string): PongGame | undefined {
+    const room = this.getRoom(gameId);
+    return room ? room.game : undefined;
+  }
+
+  public createGame(mode: 'local' | 'remote'): string {
     const gameId = uuidv4();
     console.log(`Creating game with ID: ${gameId}`);
-    const game = new PongGame(gameId);
-    this.games.set(gameId, game);
+    const room = new GameRoom(gameId, mode);
+    this.sessions.set(gameId, room);
     return gameId;
   }
 
-  public startGame(gameId: string): boolean {
-    const game = this.games.get(gameId);
-    if (!game) return false;
-    
-    game.startGame();
-    return true;
-  }
-
-  public pauseGame(gameId: string): boolean {
-    const game = this.games.get(gameId);
-    if (!game) return false;
-    
-    game.pauseGame();
-    return true;
-  }
-  
   public deleteGame(gameId: string): boolean {
-    const game = this.games.get(gameId);
-    if (game) {
-      game.cleanup(); // Clean up resources before deleting
+    const room = this.sessions.get(gameId);
+    if (room && room.game) {
+      room.game.cleanup(); // Clean up resources before deleting
     }
-    return this.games.delete(gameId);
+    return this.sessions.delete(gameId);
   }
 
   private cleanupInactiveGames(): void {
     const inactiveThreshold = 3 * 60 * 60 * 1000; // 3 hours
     const now = Date.now();
     
-    this.games.forEach((game, gameId) => {
-      const state = game.getState();
+    this.sessions.forEach((room, gameId) => {
+      const state = room.game.getState();
       
       if (now - state.lastUpdateTime > inactiveThreshold) {
-        this.games.delete(gameId);
+        this.sessions.delete(gameId);
       }
     });
   }
+  // public joinGame(data: { gameId: string; playerId: string }, socket: WebSocket): boolean {
+  //   const room = this.sessions.get(data.gameId);
+  //   if (!room) {
+  //     socket.send(JSON.stringify({ type: 'error', message: 'Game not found' }));
+  //     return false;
+  //   }
 
-  public updatePaddleInput(gameId: string, input: {
-    leftPaddleUp: boolean;
-    leftPaddleDown: boolean;
-    rightPaddleUp: boolean;
-    rightPaddleDown: boolean;
-  }): boolean {
-    const game = this.games.get(gameId);
-    if (!game) return false;
+  //   if (!room.addPlayer(data, socket)) return false;
+  //   if (room.isFull()) {
+  //     room.game.startGame();
+  //   }
+  //   return true;
+  // }
+
+  // public startGame(gameId: string): boolean {
+  //   const room = this.sessions.get(gameId);
+  //   if (!room) return false;
     
-    game.updatePaddleInput(input);
-    return true;
-  }
+  //   if (room.isFull()) {
+  //     room.game.startGame();
+  //   }
+  //   return true;
+  // }
+
+  // public handleInput(data: InputMessage, connection: WebSocket) {
+  //   const room = this.sessions.get(data.gameId);
+  //   if (!room) {
+  //     connection.send(JSON.stringify({ type: 'error', message: 'Game not found' }));
+  //     return;
+  //   }
+  //   room.handleInput(data, connection);
+  // }
+
+  // public pauseGame(gameId: string): boolean {
+  //   const room = this.sessions.get(gameId);
+  //   if (!room) return false;
+    
+  //   room.game.pauseGame();
+  //   return true;
+  // }
+
+  // public updatePaddleInput(gameId: string, input: {
+  //   leftPaddleUp: boolean;
+  //   leftPaddleDown: boolean;
+  //   rightPaddleUp: boolean;
+  //   rightPaddleDown: boolean;
+  // }): boolean {
+  //   const room = this.sessions.get(gameId);
+  //   if (!room) return false;
+    
+  //   room.game.updatePaddleInput(input);
+  //   return true;
+  // }
 }
 
 export const gameManager = new GameManager();
