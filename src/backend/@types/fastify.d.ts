@@ -70,3 +70,31 @@ export interface AuthenticatedRequest extends FastifyRequest {
     [key: string]: string | undefined;
   };
 }
+
+// export interface AuthenticatedRequest extends FastifyRequest {
+//   user: {
+//     id: number;
+//     username: string;
+//     email: string;
+//   };
+//   body: any;
+//   query: SearchQuery | LeaderboardQuery | OtherQuery;
+//   params: {
+//     id?: string;
+//     [key: string]: any;
+//   };
+// }
+
+// interface SearchQuery {
+//   q: string;
+//   [key: string]: any;
+// }
+
+// interface LeaderboardQuery {
+//   offset: number;
+//   [key: string]: any;
+// }
+
+// interface OtherQuery {
+//   [key: string]: any;
+// }
