@@ -1,5 +1,5 @@
 import { WebSocket } from 'ws';
-import { PongGame } from "./PongGame";
+import { GameState, PongGame } from "./PongGame";
 import { InputMessage } from './routes/ws.routes';
 import { sendError } from './message.types';
 
@@ -19,7 +19,6 @@ export class GameRoom {
     left: Player | null;
     right: Player | null;
   } = { left: null, right: null};
-  private gameLoopInterval: NodeJS.Timeout;
 
   /*------------------------------CONSTRUCTOR-------------------------------*/
 
@@ -27,14 +26,10 @@ export class GameRoom {
     this.id = id;
     this.mode = mode;
     this.game = new PongGame(id);
-    // Set up the game to notify GameRoom when the game ends
-    this.game.onGameEnd((winner) => {
-      this.endGame(winner);
+    // Set up game to broadcast updates in the game loop
+    this.game.onGameUpdate(() => {
+      this.broadcastGameState('update');
     });
-
-    this.gameLoopInterval = setInterval(() => {
-      this.broadcastGameState();
-    }, 1000 / 60);
   }
 
   /*--------------------------BROADCAST GAME STATE--------------------------*/
@@ -61,9 +56,9 @@ export class GameRoom {
     }
   }
 
-  private broadcastGameState() {
+  private broadcastGameState(type: 'update' | 'start' | 'pause' | 'resume') {
     const state = this.game.getState();
-    const message = JSON.stringify({ type: 'state', data: state });
+    const message = JSON.stringify({ type, data: state });
   
     this.broadcast(message);
   }
@@ -77,7 +72,7 @@ export class GameRoom {
 
   /*-------------------------------JOIN GAME--------------------------------*/
 
-  public addPlayer(data: { gameId: string; playerId: string }, socket: WebSocket) {
+  public addPlayer(data: { gameId: string; playerId: string }, socket: WebSocket): boolean {
     if (this.mode === 'local') {
       // Local: Only one socket
       if (this.localSocket) {
@@ -86,31 +81,40 @@ export class GameRoom {
         return false;
       }
       this.localSocket = socket;
-      this.players.left = { id: `${data.playerId}_L`, socket };
-      this.players.right = { id: `${data.playerId}_R`, socket };
-      this.assignSide(socket, 'both');
+      // this.assignSide(socket, 'both');
     } else {
       // Remote: Assign player side depending on availability
       if (!this.players.left) {
         this.players.left = { id: data.playerId, socket };
-        this.assignSide(socket, 'left');
+        // this.assignSide(socket, 'left');
       } else if (!this.players.right) {
         this.players.right = { id: data.playerId, socket };
-        this.assignSide(socket, 'right');
+        // this.assignSide(socket, 'right');
       } else {
         sendError(socket, 'Game is full');
         socket.close();
-        return;
+        return false;
       }
     }
 
-    // Message handler
+    // Set message handler
+    this.handlePlayerMessages(socket);
+
+    return true;
+  }
+
+  /*-----------------------------MESSAGE HANDLER----------------------------*/
+
+  // Handle messages after player has joined
+  private handlePlayerMessages(socket: WebSocket): void {
+    socket.removeAllListeners('message');
     socket.on('message', (msg: any) => {
-      const data = JSON.parse(msg.toString());
+      const message = JSON.parse(msg.toString());
+      console.log('[GameRoom] Full message:', message.type, JSON.stringify(message.data, null, 2));
     
-      switch (data.type) {
+      switch (message.type) {
         case 'input':
-          this.handleInput(data, socket);
+          this.handleInput(message.data, socket);
           break;
         case 'start':
           this.startGame(socket);
@@ -133,7 +137,7 @@ export class GameRoom {
     });
   }
 
-  /*----------------------------INPUT HANDLER-------------------------------*/
+  /*------------------------------INPUT HANDLER-----------------------------*/
 
   private getPlayerSide(playerId: string): 'left' | 'right' | null {
     if (this.players.left?.id === playerId) return 'left';
@@ -143,7 +147,6 @@ export class GameRoom {
 
   /*
   InputMessage {
-    type: 'input';
     gameId: string;
     playerId: string;
     side?: 'left' | 'right'; // local play only
@@ -162,40 +165,40 @@ export class GameRoom {
       }
       side = data.side;
     } else {
-      // Remote: Match socket to the player
-      side = this.getPlayerSide(socket);
+      // Remote: Match player ID to get the side
+      side = this.getPlayerSide(data.playerId);
       if (!side) {
         sendError(socket, 'Unrecognized player.');
         return;
       }
     }
     this.game.updatePaddleInput(side, data.input);
+    this.broadcastGameState('update');
   }
 
   /*-----------------------------STATE HANDLERS-----------------------------*/
 
   private startGame(socket: WebSocket) {
-    if (!this.isFull()) {
+    if (this.mode === 'local' && !this.localSocket) {
+      sendError(socket, 'Player has not joined the game.');
+    } else if (this.mode === 'remote' && !this.isFull()) {
       sendError(socket, 'Game requires 2 players to start.');
       return;
     }
+
+    // Check if game has already started
+    if (this.game.getState().status !== 'waiting') return;
+
     // Start pong game and notify players
     this.game.startGame();
-    this.broadcast(JSON.stringify({ type: 'game-start' }));
+    this.broadcastGameState('start');
   }
 
   private pauseGame(socket: WebSocket) {
     const status = this.game.pauseGame();
-    if (status === 'paused') {
-      this.broadcast(JSON.stringify({ type: 'game-start' }));
-    } else if (status === 'playing') {
-      this.broadcast(JSON.stringify({ type: 'game-resume' }));
+    if (status === 'paused' || status === 'playing') {
+      this.broadcastGameState('update');
     }
-  }
-
-  // End the game and broadcast results
-  public endGame(winner: 'left' | 'right'): void {
-    this.broadcast(JSON.stringify({ type: 'game-end', winner }));
   }
 
   public isFull() {

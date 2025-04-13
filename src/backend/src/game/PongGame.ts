@@ -30,7 +30,18 @@ export class PongGame {
 
   private state: GameState;
   private updateInterval: NodeJS.Timeout | null = null;
-  private endGameCallback: ((winner: 'left' | 'right') => void) | null = null;
+
+  /*----------------------------CALLBACK METHODS----------------------------*/
+
+  // GameRoom callback method
+  private updateCallback: (() => void) | null = null;
+
+  // Set the callback to send game state updates to players
+  public onGameUpdate(callback: () => void): void {
+    this.updateCallback = callback;
+  }
+
+  /*------------------------------CONSTRUCTOR-------------------------------*/
 
   constructor(gameId: string) {
       this.state = {
@@ -46,25 +57,33 @@ export class PongGame {
         lastUpdateTime: Date.now()
       };
   }
-  
+
+  /*------------------------------START GAME--------------------------------*/
+
   public startGame(): void {
-      if (this.state.status !== 'waiting' )
-          return;
-     
-      this.state.status = 'playing';
+    if (this.state.status !== 'waiting' )
+      return;
+    
+    this.state.status = 'playing';
 
-      if (this.updateInterval !== null)
-          clearInterval(this.updateInterval);
+    if (this.updateInterval !== null)
+      clearInterval(this.updateInterval);
 
-      this.updateInterval = setInterval(() => {
-          if (this.state.status === 'playing') 
-          {
-              this.moveBall(); 
-              this.movePaddles();
-              this.state.lastUpdateTime = Date.now();
-          }
-      }, 16);   
+    this.updateInterval = setInterval(() => {
+      if (this.state.status === 'playing') {
+        this.moveBall(); 
+        this.movePaddles();
+        this.state.lastUpdateTime = Date.now();
+        
+        // Send game state updates to players
+        if (this.updateCallback) {
+          this.updateCallback();
+        }
+      }
+    }, 16);   
   }
+
+  /*------------------------------GAME STATE--------------------------------*/
 
   private moveBall(): void {
     this.state.ballX += this.ballSpeedX;
@@ -179,27 +198,27 @@ export class PongGame {
       this.ballSpeedY = Math.random() > 0.5 ? 5 : -5;
   }
 
+  /*-------------------------------PAUSE GAME-------------------------------*/
+
   public pauseGame(): string {
+    console.log(`[pauseGame] initial status: ${this.state.status}`);
       if (this.state.status === 'playing' || this.state.status === 'paused') {
         this.state.status = this.state.status === 'playing' ? 'paused' : 'playing';
       }
+      console.log(`[pauseGame] after: ${this.state.status}`);
       return this.state.status;
   }
 
-  // Method to set the callback to notify GameRoom when the game has ended
-  public onGameEnd(callback: (winner: 'left' | 'right') => void) {
-    this.endGameCallback = callback;
-  }
+  /*--------------------------------END GAME--------------------------------*/
 
-  // Method to end game
   private endGame(winner: 'left' | 'right'): void {
     this.state.status = 'finished';
     this.state.winner = winner;
     this.cleanup();
 
     // Notify GameRoom of the winner
-    if (this.endGameCallback) {
-      this.endGameCallback(winner);
+    if (this.updateCallback) {
+      this.updateCallback();
     }
   }
 

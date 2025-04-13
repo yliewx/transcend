@@ -5,8 +5,8 @@ import { gameManager } from "../GameManager";
 import fp from 'fastify-plugin';
 import { sendError } from "../message.types";
 
+// type: 'input';
 export interface InputMessage {
-  type: 'input';
   gameId: string;
   playerId: string;
   side?: 'left' | 'right'; // local play only
@@ -15,6 +15,10 @@ export interface InputMessage {
     paddleDown: boolean;
   };
 };
+
+interface PongParams {
+  gameId: string;
+}
 
 // key: user ID, value: client socket
 const onlineUsers = new Map<number, WebSocket>();
@@ -54,7 +58,7 @@ async function websocketRoutes(server: FastifyInstance) {
 
   /*-----------------------------GAME SESSION-------------------------------*/
   
-  server.get('/pong/:gameId', { websocket: true }, async (connection: WebSocket, request: FastifyRequest) => {
+  server.get('/pong/:gameId', { websocket: true }, async (connection: WebSocket, request: FastifyRequest<{ Params: PongParams }>) => {
     // On connection: Extract game ID and get game instance
     const gameId = request.params.gameId;
     const room = gameManager.getRoom(gameId);
@@ -65,12 +69,16 @@ async function websocketRoutes(server: FastifyInstance) {
     connection.send(`Connected to game ID: ${gameId}`);
 
     // Message handler
-    connection.on('message', (msg: any) => {
-      const data = JSON.parse(msg.toString());
+    connection.on('message', function onFirstMessage (msg: any) {
+      const message = JSON.parse(msg.toString());
+      console.log('[ws.routes] Full message:', message.type, JSON.stringify(message.data, null, 2));
 
-      switch (data.type) {
+      switch (message.type) {
         case 'join':
-          room.addPlayer(data, connection);
+          const joinSuccess = room.addPlayer(message.data, connection);
+          if (joinSuccess) {
+            connection.off('message', onFirstMessage);
+          }
           break ;
         case 'delete':
           gameManager.deleteGame(gameId);
