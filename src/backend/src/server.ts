@@ -13,7 +13,7 @@ import setupMailer from './plugins/mailer';
 import setupTwilio from './plugins/twilio';
 import setupGoogleAuth from './plugins/oauth2';
 import authRoutes from './auth/routes/auth.routes';
-import setupWebSocket from './websocket/routes/ws.routes'
+import setupWebSocket from './game/routes/ws.routes'
 
 // Initialize database
 setupDbConnection();

@@ -1,16 +1,28 @@
+import { GameState } from "../types";
+
 export class WebSocketManager {
+  private baseUrl: string;
   private onlineSocket: WebSocket | null = null;
   private gameSocket: WebSocket | null = null;
-  private baseUrl: string;
+  private gameId: string | null = null;
+  private playerId: number | null = null;
+  private gameEventCallbacks: Map<string, (data: any) => void> = new Map();
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
   }
 
+  // Register handler functions from PongGamePage
+  public onGameEvent(type: string, callback: (data: any) => void): void {
+    this.gameEventCallbacks.set(type, callback);
+  }  
+
   /*------------------------------GAME SOCKET-------------------------------*/
 
   // Join a specific room by game ID
-  joinGame(gameId: string) {
+  public connectGame(gameId: string, userId: number) {
+    this.gameId = gameId;
+    this.playerId = userId;
     this.gameSocket = new WebSocket(`${this.baseUrl}/pong/${gameId}`);
 
     // Handle WebSocket messages for the game room
@@ -23,12 +35,13 @@ export class WebSocketManager {
         return;
       }
       const { type, data } = message;
-      console.log(`Message received: type: ${type}; data: ${data}`);
       this.handleGameMessages(type, data);
     };
 
     this.gameSocket.onopen = () => {
-      console.log("Joined the game room:", gameId);
+      console.log("Connected to the game room:", gameId);
+      // Join game
+      this.sendMessage('join', { gameId, playerId: userId });
     };
 
     this.gameSocket.onerror = (error) => {
@@ -43,7 +56,7 @@ export class WebSocketManager {
   /*-----------------------------ONLINE SOCKET------------------------------*/
 
   // Initialize general socket for tracking online status
-  connect(): void {
+  public connect(): void {
     this.onlineSocket = new WebSocket(this.baseUrl);
 
     this.onlineSocket.onopen = () => {
@@ -81,53 +94,60 @@ export class WebSocketManager {
       case 'online-status':
         this.handleOnlineStatus(data);
         break;
+      case 'error':
+        console.error('Error:', ...data);
+        break;
       default:
         console.warn(`Unhandled message type: ${type}`);
     }
   }
 
+  // Types: start, update state (also handles pause, resume, end)
   private handleGameMessages(type: string, data: any): void {
-    switch (type) {
-      case 'game-start':
-        this.handleGameStart();
-        break;
-      case 'game-end':
-        this.handleGameEnd(data.winner);
-        break;
-      case 'state':
-        this.handleGameState(data);
-        break;
-      default:
-        console.warn(`Unhandled game message type: ${type}`);
+    // console.log('[WebSocketManager] Received from server:', type, JSON.stringify(data, null, 2));
+
+    const callback = this.gameEventCallbacks.get(type);
+    if (!callback) {
+      console.warn(`Unhandled game message type: ${type}`);
+      return;
     }
+    callback(data);
   }
 
   private handleOnlineStatus(data: any): void {
-    console.log('Online status updated:', data);
+    console.log('Online status:', data);
   }
-
-  private handleGameStart() {
-    console.log("Game has started.");
-    // Handle game start event on the frontend (e.g., show game state)
-  }
-
-  private handleGameEnd(winner: 'left' | 'right') {
-    console.log(`Game over! Winner: ${winner}`);
-    // Show game-over screen and winner on the frontend
-  }
-
-  private handleGameState(state: any) {
-    console.log("Game state:", state);
-    // Update game state on the frontend (e.g., update paddles, ball position)
-  }
-
+  
   // Send a message to the server
-  sendMessage(type: string, data: any): void {
+  public sendMessage(type: string, data: any): void {
+    console.log('[WebSocketManager] Sending message to server:', type);
     if (this.gameSocket && this.gameSocket.readyState === WebSocket.OPEN) {
       this.gameSocket.send(JSON.stringify({ type, data }));
     } else {
       console.error("WebSocket connection is not open.");
     }
+  }
+
+  /*
+  InputMessage {
+    type: 'input';
+    gameId: string;
+    playerId: string;
+    side?: 'left' | 'right'; // local play only
+    input: {
+      paddleUp: boolean;
+      paddleDown: boolean;
+    };
+  }; */
+  public sendInput(input: { paddleUp: boolean, paddleDown: boolean },
+    side?: 'left' | 'right'
+  ): void {
+    this.sendMessage('input', {
+      gameId: this.gameId,
+      playerId: this.playerId,
+      input: input,
+      side: side
+    });
   }
 
   /*----------------------------CLOSE CONNECTION----------------------------*/

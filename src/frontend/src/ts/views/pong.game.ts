@@ -2,9 +2,11 @@ import { Page } from '../types';
 import { Router } from '../router';
 import { GameState } from '../types';
 import { PongGameService } from '../services/pong.game.service';
+import { WebSocketManager } from '../services/websocket.manager';
 
 export class PongGamePage implements Page {
   private router: Router;
+  private wss: WebSocketManager;
   private pongService: PongGameService;
   private element: HTMLElement | null = null;
   // For rendering game
@@ -15,20 +17,13 @@ export class PongGamePage implements Page {
   private paddleWidth: number = 10;
   private ballSize: number = 30;
   // For handling game modes
-  private gameMode: 'local' | 'remote' = 'remote';
+  private gameMode: 'local' | 'remote' = 'local';
   // Game data
   private gameId: string | null = null;
+  private userId: number | null = null;
   private state: GameState | null = null;
   private gameLoopId: number | null = null;
-  private inputState = {
-    leftPaddleUp: false,
-    leftPaddleDown: false,
-    rightPaddleUp: false,
-    rightPaddleDown: false
-  };
-  private lastInputStateJson: string | null = null;
-  private inputChanged = false;
-  private stateHash: string | null = null;
+  private buttonHandlers: Record<string, EventListener> = {};
   private keysPressed: { [key: string]: boolean } = {};
 
   private keyDownHandler = (e: KeyboardEvent) => {
@@ -41,11 +36,21 @@ export class PongGamePage implements Page {
     this.handleKeyUp(e);
   };
 
+  /*------------------------------CONSTRUCTOR-------------------------------*/
+
   constructor(router: Router, pongService: PongGameService) {
     this.router = router;
     this.pongService = pongService;
+    this.wss = this.router.getWsManager();
+    this.setupMessageHandlers();
+
+    // Get user ID from session storage
+    const userIdString = sessionStorage.getItem('userId');
+    this.userId = userIdString ? parseInt(userIdString, 10) : null;
   }
-  
+
+  /*-----------------------------RENDER ELEMENT-----------------------------*/
+
   render(): HTMLElement {
     // Return cached element if it exists
     if (this.element) {
@@ -70,6 +75,26 @@ export class PongGamePage implements Page {
             <button id="create-game-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded mx-2">
               Create New Game
             </button>
+            <button id="join-game-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mx-2">
+              Join Game
+            </button>
+          </div>
+          
+          <div id="join-game-form" class="mb-6 text-center hidden">
+            <div class="flex justify-center items-center">
+              <input 
+                type="text" 
+                id="game-invite-code" 
+                placeholder="Enter invite code" 
+                class="border rounded py-2 px-3 text-gray-700 focus:outline-none focus:shadow-outline w-64"
+              />
+              <button id="submit-join-game-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded ml-2">
+                Join
+              </button>
+              <button id="cancel-join-game-btn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded ml-2">
+                Cancel
+              </button>
+            </div>
           </div>
           
           <div id="game-info" class="mb-4 text-center">
@@ -130,11 +155,41 @@ export class PongGamePage implements Page {
       if (gameStatusElement) gameStatusElement.textContent = '';
       
       // Re-setup canvas
+      this.setupEventHandlers();
       this.setupCanvas();
     }
   }
 
   /*-----------------------------EVENT HANDLERS-----------------------------*/
+
+  // Set up handlers for receiving websocket messages
+  private setupMessageHandlers(): void {
+    this.wss.onGameEvent('start', (state: GameState) => this.handleStartGame(state));
+    this.wss.onGameEvent('update', (state: GameState) => this.handleUpdateState(state));
+  }
+
+  // Called by websocket manager on 'start' message
+  private handleStartGame(state: GameState): void {
+    console.log('[handleStartGame] Starting game');
+    this.state = state;
+    this.startGameLoop();
+    this.updateGameStatusUI();
+  }
+
+  // Called by websocket manager on 'update' message
+  private handleUpdateState(state: GameState): void {
+    const prevState = this.state;
+    this.state = state;
+  
+    // Handle game end
+    if (prevState?.status === 'playing' && this.state.status === 'finished') {
+      console.log('[handleUpdateState] Game has ended');
+      this.drawGame();
+      this.recordMatchResult();
+      this.stopGameLoop();
+    }
+    this.updateGameStatusUI();
+  }
 
   private setupEventHandlers(): void {
     // Remove any existing event listeners first
@@ -142,79 +197,98 @@ export class PongGamePage implements Page {
     window.removeEventListener('keydown', this.keyDownHandler);
     
     // Create new handlers based on the game type
-    this.keyDownHandler = (e: KeyboardEvent) => {
-      if (this.gameMode === 'remote') {
-        // For remote play, only use arrow keys regardless of side
-        if (['ArrowUp', 'ArrowDown'].includes(e.key)) {
-          e.preventDefault();
-          this.keysPressed[e.key] = true;
-          console.log('Remote game - After keyDown, keysPressed:', {...this.keysPressed});
-        }
-      } else {
-        // For local play, use both W/S and Arrow keys
-        if (['w', 'W', 's', 'S', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
-          e.preventDefault();
-          this.keysPressed[e.key] = true;
-          console.log('Local game - After keyDown, keysPressed:', {...this.keysPressed});
-        }
-      }
-    };
-    
-    this.keyUpHandler = (e: KeyboardEvent) => {
-      if (this.gameMode === 'remote') {
-        // For remote play, only use arrow keys
-        if (['ArrowUp', 'ArrowDown'].includes(e.key)) {
-          this.keysPressed[e.key] = false;
-        }
-      } else {
-        // For local play, use both W/S and Arrow keys
-        if (['w', 'W', 's', 'S', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
-          this.keysPressed[e.key] = false;
-        }
-      }
-    };
+    this.keyDownHandler = this.handleKeyDown.bind(this);
+    this.keyUpHandler = this.handleKeyUp.bind(this);
     
     // Add event listeners with the new key handlers
     window.addEventListener('keyup', this.keyUpHandler);
     window.addEventListener('keydown', this.keyDownHandler);
     
-    const buttonActions = {
+    // Add event listeners for the buttons
+    const buttonActions: Record<string, () => void> = {
       'create-game-btn': () => this.createGame(),
+      'join-game-btn': () => this.joinGame(),
       'start-game-btn': () => this.startGame(),
       'pause-game-btn': () => this.pauseGame()
     };
-    
-    Object.entries(buttonActions).forEach(([id, handler]) => {
-      document.getElementById(id)?.addEventListener('click', () => {
+
+    Object.entries(buttonActions).forEach(([id, action]) => {
+      const button = document.getElementById(id);
+      if (!button) return;
+
+      // If there's already a stored handler, remove it
+      if (this.buttonHandlers[id]) {
+        button.removeEventListener('click', this.buttonHandlers[id]);
+      }
+
+      // Create and store a new handler
+      const clickHandler = () => {
         console.log(`${id} clicked`);
-        handler(); 
-      });
+        action();
+      };
+      this.buttonHandlers[id] = clickHandler;
+      button.addEventListener('click', clickHandler);
     });
   }
 
+  /*------------------------------KEY HANDLERS------------------------------*/
+
+  private getPlayerSide(key: string): 'left' | 'right' {
+    return ['ArrowUp', 'ArrowDown'].includes(key) ? 'right' : 'left';
+  }
+  
+  private sendInput(side: 'left' | 'right'): void {
+    if (side === 'left') {
+      this.wss.sendInput({
+        paddleUp: this.keysPressed['w'] || this.keysPressed['W'] || false,
+        paddleDown: this.keysPressed['s'] || this.keysPressed['S'] || false
+      }, 'left');
+    } else {
+      this.wss.sendInput({
+        paddleUp: this.keysPressed['ArrowUp'] || false,
+        paddleDown: this.keysPressed['ArrowDown'] || false
+      }, 'right');
+    }
+  }
+  
   private handleKeyDown(e: KeyboardEvent): void {
-    if (['w', 'W', 's', 'S', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
-        e.preventDefault();
-        this.keysPressed[e.key] = true;
-        console.log('After keyDown, keysPressed:', {...this.keysPressed}); // Spread to get a copy
+    const key = e.key;
+    const isRemote = this.gameMode === 'remote';
+  
+    if (
+      (isRemote && ['ArrowUp', 'ArrowDown'].includes(key)) ||
+      (!isRemote && ['w', 'W', 's', 'S', 'ArrowUp', 'ArrowDown'].includes(key))
+    ) {
+      e.preventDefault();
+      if (!this.keysPressed[key]) {
+        this.keysPressed[key] = true;
+  
+        if (isRemote) {
+          this.sendInput('right'); // remote: server handles player side
+        } else {
+          this.sendInput(this.getPlayerSide(key));
+        }
+      }
     }
   }
   
   private handleKeyUp(e: KeyboardEvent): void {
-    if (['w', 'W', 's', 'S', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
-        this.keysPressed[e.key] = false;
-    }
-  }
-
-  /*---------------------------SETUP PONG CANVAS----------------------------*/
-
-  private setupCanvas(): void {
-    const canvas = this.element?.querySelector('#pong-canvas') as HTMLCanvasElement;
-    this.ctx = canvas?.getContext('2d') || null;
-    
-    if (this.ctx) {
-      this.ctx.fillStyle = '#000000';
-      this.ctx.fillRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
+    const key = e.key;
+    const isRemote = this.gameMode === 'remote';
+  
+    if (
+      (isRemote && ['ArrowUp', 'ArrowDown'].includes(key)) ||
+      (!isRemote && ['w', 'W', 's', 'S', 'ArrowUp', 'ArrowDown'].includes(key))
+    ) {
+      if (this.keysPressed[key]) {
+        this.keysPressed[key] = false;
+  
+        if (isRemote) {
+          this.sendInput('right'); // remote: server handles player side
+        } else {
+          this.sendInput(this.getPlayerSide(key));
+        }
+      }
     }
   }
 
@@ -222,6 +296,10 @@ export class PongGamePage implements Page {
 
   private async createGame(): Promise<void> {
     this.resetGame();
+
+    // Hide join button + input field if "create game" is selected
+    const joinSection = this.element?.querySelector('#join-section');
+    if (joinSection) joinSection.classList.add('hidden');
 
     const response = await this.pongService.createGame(this.gameMode);
 
@@ -231,6 +309,8 @@ export class PongGamePage implements Page {
     }
     
     this.gameId = response.gameId!;
+    // Connect to game room
+    this.wss.connectGame(this.gameId, this.userId!);
     
     const gameIdElement = this.element?.querySelector('#game-id');
     if (gameIdElement) gameIdElement.textContent = this.gameId;
@@ -239,6 +319,12 @@ export class PongGamePage implements Page {
     if (gameControlsElement) gameControlsElement.classList.remove('hidden');
     
     this.updateGameStatusUI('Game created! Press Start to begin.');
+  }
+
+  /*------------------------------JOIN GAME---------------------------------*/
+
+  private async joinGame(): Promise<void> {
+    console.log('Join game button pressed');
   }
 
   /*------------------------------START GAME--------------------------------*/
@@ -254,79 +340,48 @@ export class PongGamePage implements Page {
       return;
     }
     
-    console.log(`Starting game with ID: ${this.gameId}`);
-    const response = await this.pongService.startGame(this.gameId);
-    
-    if (!response.success) {
-      console.error('Server returned error:', response.error);
-      return;
-    }
-    
-    this.startGameLoop();
-    this.updateGameStatusUI();
+    // Notify server to start game
+    console.log(`Messaging server to start game ID: ${this.gameId}`);
+    this.wss.sendMessage('start', {
+      gameId: this.gameId,
+      playerId: this.userId
+    });
+    // handleStartGame() will start the game loop when the server responds
   }
 
+  /*-------------------=-----------PAUSE GAME-------------------------------*/
+
+  private async pauseGame(): Promise<void> {
+    if (!this.gameId || !this.state) return;
+  
+    if (this.state.status === 'finished') {
+      console.log("Cannot pause game: game is already finished");
+      return;
+    }
+
+    console.log(`Messaging server to pause game ID: ${this.gameId}`);
+    this.wss.sendMessage('pause', {
+      gameId: this.gameId,
+      playerId: this.userId
+    });
+  }
+
+  /*------------------------------GAME STATE--------------------------------*/
+  
   private startGameLoop(): void {
     this.stopGameLoop();
 
-    const gameLoop = async () => {
+    const gameLoop = () => {
       if (!this.gameId || this.state?.status === 'finished') 
         return;
-    
-      await this.pollGameState();
 
+      this.drawGame();
       this.gameLoopId = requestAnimationFrame(gameLoop);
     };
 
     this.gameLoopId = requestAnimationFrame(gameLoop);
   }
 
-  /*------------------------------GAME STATE--------------------------------*/
-
-  private async pollGameState(): Promise<void> {
-    this.updateInputState();
-    
-    const requestBody = (this.inputChanged && (this.state?.status === 'playing' || this.state?.status === 'paused'))
-      ? { input: this.inputState }
-      : undefined;
-    const url = `/games/${this.gameId}/poll${this.stateHash ? `?hash=${this.stateHash}` : ''}`;
-    const response = await this.pongService.pollGameState(url,requestBody);
-
-    if (!response.success) {
-      console.error("Error polling game state");
-      return;
-    }
-    
-    if (!response.state) {
-      return;  // This is a 304 response - the state hasn't changed, no action needed
-    }
-
-    const previousState = this.state;
-    this.state = response.state;
-    this.stateHash = response.hash || null;
-    
-    this.drawGame();
-    
-    // Handle game end
-    if (previousState?.status === 'playing' && this.state?.status === 'finished') {
-      this.recordMatchResult();
-      this.stopGameLoop(); 
-    }
-
-    this.updateGameStatusUI();
-  }
-
-  private updateInputState(): void {
-    this.inputState.leftPaddleUp = this.keysPressed['w'] || this.keysPressed['W'] || false;
-    this.inputState.leftPaddleDown = this.keysPressed['s'] || this.keysPressed['S'] || false;
-    this.inputState.rightPaddleUp = this.keysPressed['ArrowUp'] || false;
-    this.inputState.rightPaddleDown = this.keysPressed['ArrowDown'] || false;
-    
-    const currentInputStateJson = JSON.stringify(this.inputState);
-    this.inputChanged = this.lastInputStateJson === null || currentInputStateJson !== this.lastInputStateJson;
-    this.lastInputStateJson = this.inputChanged ? currentInputStateJson : this.lastInputStateJson;
-  }
-  
   private stopGameLoop(): void {
     if (this.gameLoopId !== null) {
       cancelAnimationFrame(this.gameLoopId);
@@ -334,16 +389,13 @@ export class PongGamePage implements Page {
     }
   }
 
-  /*----------------------------=RECORD RESULT------------------------------*/
+  /*-----------------------------RECORD RESULT------------------------------*/
 
   private async recordMatchResult(): Promise<void> {
     if (!this.gameId || !this.state) return;
     
     // Get user ID from session storage
-    const userIdString = sessionStorage.getItem('userId');
-    const userId: number | null = userIdString ? parseInt(userIdString, 10) : null;
-    
-    if (!userId) {
+    if (!this.userId) {
       console.log('User not logged in, not recording match');
       return;
     }
@@ -354,7 +406,7 @@ export class PongGamePage implements Page {
     // Call the API to record the match
     const response = await this.pongService.recordMatchResult({
       gameId: this.gameId,
-      userId: userId,
+      userId: this.userId,
       // For simplicity, we'll assume the logged-in user is always the left player
       userSide: 'left',
       leftScore: this.state.scoreLeft,
@@ -369,26 +421,15 @@ export class PongGamePage implements Page {
     console.log('Match recorded successfully');
   }
 
-  /*-------------------=-----------PAUSE GAME-------------------------------*/
+  /*---------------------------SETUP PONG CANVAS----------------------------*/
 
-  private async pauseGame(): Promise<void> {
-    if (!this.gameId || !this.state) return;
-  
-    if (this.state.status === 'finished') {
-      console.log("Cannot pause game: game is already finished");
-      return;
-    }
+  private setupCanvas(): void {
+    const canvas = this.element?.querySelector('#pong-canvas') as HTMLCanvasElement;
+    this.ctx = canvas?.getContext('2d') || null;
     
-    const response = await this.pongService.pauseGame(this.gameId);
-    
-    if (!response.success) {
-      console.error('Error pausing/resuming game:', response.error);
-      return;
-    }
-    
-    if (response.status) {
-      this.state.status = response.status as GameState['status'];
-      this.updateGameStatusUI();
+    if (this.ctx) {
+      this.ctx.fillStyle = '#000000';
+      this.ctx.fillRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
     }
   }
 

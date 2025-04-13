@@ -155,7 +155,7 @@ export class Router {
   }
 
   // Getter for WebSocket Manager
-  public getWebSocketManager(): WebSocketManager {
+  public getWsManager(): WebSocketManager {
     return this.wss;
   }
 }
