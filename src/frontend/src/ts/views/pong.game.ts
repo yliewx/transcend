@@ -17,10 +17,11 @@ export class PongGamePage implements Page {
   private paddleWidth: number = 10;
   private ballSize: number = 30;
   // For handling game modes
-  private gameMode: 'local' | 'remote' = 'local';
+  private gameMode: 'local' | 'remote' = 'remote';
   // Game data
   private gameId: string | null = null;
   private userId: number | null = null;
+  private isCreator: boolean = false;
   private state: GameState | null = null;
   private gameLoopId: number | null = null;
   private buttonHandlers: Record<string, EventListener> = {};
@@ -144,15 +145,19 @@ export class PongGamePage implements Page {
     this.stopGameLoop();
     // Reset game state
     this.state = null;
+    this.isCreator = false;
     // Reset UI elements
     if (this.element) {
       const gameIdElement = this.element.querySelector('#game-id');
       const gameControlsElement = this.element.querySelector('#game-controls');
       const gameStatusElement = this.element.querySelector('#game-status');
+      const joinButton = this.element?.querySelector('#join-game-btn');
       
       if (gameIdElement) gameIdElement.textContent = '-';
       if (gameControlsElement) gameControlsElement.classList.add('hidden');
       if (gameStatusElement) gameStatusElement.textContent = '';
+      if (joinButton) joinButton.classList.remove('hidden');
+
       
       // Re-setup canvas
       this.setupEventHandlers();
@@ -160,11 +165,12 @@ export class PongGamePage implements Page {
     }
   }
 
-  /*-----------------------------EVENT HANDLERS-----------------------------*/
+  /*--------------------------GAME MESSAGE HANDLERS-------------------------*/
 
   // Set up handlers for receiving websocket messages
   private setupMessageHandlers(): void {
     this.wss.onGameEvent('start', (state: GameState) => this.handleStartGame(state));
+    this.wss.onGameEvent('player-joined', (data: any) => this.handleJoinedGame(data));
     this.wss.onGameEvent('update', (state: GameState) => this.handleUpdateState(state));
   }
 
@@ -174,6 +180,27 @@ export class PongGamePage implements Page {
     this.state = state;
     this.startGameLoop();
     this.updateGameStatusUI();
+  }
+
+  // Called by websocket manager on 'player-joined' message
+  private handleJoinedGame(data: any): void {
+    if (data.state) this.state = data.state;
+
+    // Update UI
+    const gameIdElement = this.element?.querySelector('#game-id');
+    if (gameIdElement) gameIdElement.textContent = this.gameId;
+    
+    const gameControlsElement = this.element?.querySelector('#game-controls');
+    if (gameControlsElement) gameControlsElement.classList.remove('hidden');
+    
+    this.hideJoinGameForm();
+    if (this.isCreator && data.ready) {
+      this.updateGameStatusUI('Game created! Press Start to begin.');
+    } else if (this.isCreator && !data.ready) {
+      this.updateGameStatusUI('Game created! Waiting for opponent to join.');
+    } else {
+      this.updateGameStatusUI('Joined game! Waiting for start.');
+    }
   }
 
   // Called by websocket manager on 'update' message
@@ -191,6 +218,8 @@ export class PongGamePage implements Page {
     this.updateGameStatusUI();
   }
 
+  /*-----------------------------EVENT HANDLERS-----------------------------*/
+
   private setupEventHandlers(): void {
     // Remove any existing event listeners first
     window.removeEventListener('keyup', this.keyUpHandler);
@@ -207,7 +236,9 @@ export class PongGamePage implements Page {
     // Add event listeners for the buttons
     const buttonActions: Record<string, () => void> = {
       'create-game-btn': () => this.createGame(),
-      'join-game-btn': () => this.joinGame(),
+      'join-game-btn': () => this.showJoinGameForm(),
+      'submit-join-game-btn': () => this.joinGame(),
+      'cancel-join-game-btn': () => this.hideJoinGameForm(),
       'start-game-btn': () => this.startGame(),
       'pause-game-btn': () => this.pauseGame()
     };
@@ -221,7 +252,7 @@ export class PongGamePage implements Page {
         button.removeEventListener('click', this.buttonHandlers[id]);
       }
 
-      // Create and store a new handler
+      // Create and store new handler
       const clickHandler = () => {
         console.log(`${id} clicked`);
         action();
@@ -254,7 +285,6 @@ export class PongGamePage implements Page {
   private handleKeyDown(e: KeyboardEvent): void {
     const key = e.key;
     const isRemote = this.gameMode === 'remote';
-  
     if (
       (isRemote && ['ArrowUp', 'ArrowDown'].includes(key)) ||
       (!isRemote && ['w', 'W', 's', 'S', 'ArrowUp', 'ArrowDown'].includes(key))
@@ -275,7 +305,6 @@ export class PongGamePage implements Page {
   private handleKeyUp(e: KeyboardEvent): void {
     const key = e.key;
     const isRemote = this.gameMode === 'remote';
-  
     if (
       (isRemote && ['ArrowUp', 'ArrowDown'].includes(key)) ||
       (!isRemote && ['w', 'W', 's', 'S', 'ArrowUp', 'ArrowDown'].includes(key))
@@ -298,33 +327,71 @@ export class PongGamePage implements Page {
     this.resetGame();
 
     // Hide join button + input field if "create game" is selected
-    const joinSection = this.element?.querySelector('#join-section');
-    if (joinSection) joinSection.classList.add('hidden');
+    const joinButton = this.element?.querySelector('#join-game-btn');
+    if (joinButton) joinButton.classList.add('hidden');
 
+    const joinGameFormElement = this.element?.querySelector('#join-game-form');
+    if (joinGameFormElement) joinGameFormElement.classList.add('hidden');
+
+    // API call to create game
     const response = await this.pongService.createGame(this.gameMode);
-
     if (!response.success) {
       console.error('Server returned error:', response.error);
       return;
     }
     
+    // Connect to game room with the ID returned by the server
     this.gameId = response.gameId!;
-    // Connect to game room
+    this.isCreator = true;
     this.wss.connectGame(this.gameId, this.userId!);
-    
-    const gameIdElement = this.element?.querySelector('#game-id');
-    if (gameIdElement) gameIdElement.textContent = this.gameId;
-    
-    const gameControlsElement = this.element?.querySelector('#game-controls');
-    if (gameControlsElement) gameControlsElement.classList.remove('hidden');
-    
-    this.updateGameStatusUI('Game created! Press Start to begin.');
   }
 
   /*------------------------------JOIN GAME---------------------------------*/
 
+  // On join game button
+  private showJoinGameForm(): void {
+    const joinGameFormElement = this.element?.querySelector('#join-game-form');
+    if (joinGameFormElement) {
+      joinGameFormElement.classList.remove('hidden');
+      
+      // Focus the input field
+      const inputElement = joinGameFormElement.querySelector('#game-invite-code') as HTMLInputElement;
+      if (inputElement) {
+        inputElement.focus();
+      }
+    }
+  }
+
+  // On submit or cancel button
+  private hideJoinGameForm(): void {
+    const joinGameFormElement = this.element?.querySelector('#join-game-form');
+    if (joinGameFormElement) {
+      joinGameFormElement.classList.add('hidden');
+      
+      // Clear the input field
+      const inputElement = joinGameFormElement.querySelector('#game-invite-code') as HTMLInputElement;
+      if (inputElement) {
+        inputElement.value = '';
+      }
+    }
+  }
+
+  // On submit-join-game button
   private async joinGame(): Promise<void> {
-    console.log('Join game button pressed');
+    const inputElement = this.element?.querySelector('#game-invite-code') as HTMLInputElement;
+    if (!inputElement) return;
+    
+    const gameCode = inputElement.value.trim();
+    if (!gameCode) {
+      alert('Please enter a valid invite code');
+      return;
+    }
+    
+    this.resetGame();
+    this.gameId = gameCode;
+    this.isCreator = false;
+    this.wss.connectGame(gameCode, this.userId!);
+    // handleJoinedGame() when the server responds
   }
 
   /*------------------------------START GAME--------------------------------*/
@@ -339,7 +406,12 @@ export class PongGamePage implements Page {
       console.log("Cannot start game: game is already finished or already has been started");
       return;
     }
-    
+
+    if (!this.isCreator) {
+      console.log('Cannot start game: Player who created the game must start!');
+      return ;
+    }
+
     // Notify server to start game
     console.log(`Messaging server to start game ID: ${this.gameId}`);
     this.wss.sendMessage('start', {
