@@ -45,16 +45,22 @@ export async function refreshAccessHandler(request: FastifyRequest, reply: Fasti
 
 /*---------------------------CHECK TOKEN EXPIRY-----------------------------*/
 
-async function getTokenExpiry(token: any, secret: string, request: FastifyRequest) {
+async function decodeJwt(token: any, secret: string, request: FastifyRequest) {
   if (!token || !secret) return null;
 
   try {
-    const decoded = await request.server.jwtVerify(token, secret) as AuthTokenPayload;
-
-    return decoded.exp ? new Date(decoded.exp * 1000) : null;
-  } catch (error) {
+    return await request.server.jwtVerify(token, secret) as AuthTokenPayload;
+  } catch {
     return null;
   }
+}
+
+async function getTokenExpiry(token: any, secret: string, request: FastifyRequest) {
+  const decoded = await decodeJwt(token, secret, request);
+  if (!decoded || !decoded.exp) {
+    return null;
+  }
+  return new Date(decoded.exp * 1000);
 }
 
 // Route: /api/auth/refresh/status
@@ -63,11 +69,15 @@ export async function getTokenStatus(request: FastifyRequest, reply: FastifyRepl
   const accessToken = request.cookies.accessToken;
   const refreshToken = request.cookies.refreshToken;
 
+  const accessDecoded = await decodeJwt(accessToken, process.env.ACCESS_TOKEN_SECRET as string, request);
+  const refreshDecoded = await decodeJwt(refreshToken, process.env.REFRESH_TOKEN_SECRET as string, request);
+
   return reply.send({
     success: true,
     status: {
-      accessTokenExpiry: await getTokenExpiry(accessToken, process.env.ACCESS_TOKEN_SECRET as string, request),
-      refreshTokenExpiry: await getTokenExpiry(refreshToken, process.env.REFRESH_TOKEN_SECRET as string, request)
+      userId: accessDecoded?.id ?? null,
+      accessTokenExpiry: accessDecoded?.exp ? new Date(accessDecoded.exp * 1000) : null,
+      refreshTokenExpiry: refreshDecoded?.exp ? new Date(refreshDecoded.exp * 1000) : null,
     }
   });
 }

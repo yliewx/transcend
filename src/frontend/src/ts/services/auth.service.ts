@@ -1,6 +1,7 @@
 import { BaseApiService } from "./base.api";
 
 interface TokenStatusResponse {
+  userId: number | null;
   accessTokenExpiry: Date | null;
   refreshTokenExpiry: Date | null;
 }
