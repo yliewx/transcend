@@ -83,7 +83,7 @@ export class GameRoom {
 
   /*-------------------------------JOIN GAME--------------------------------*/
 
-  public addPlayer(data: { gameId: string; playerId: string }, socket: WebSocket): boolean {
+  private addPlayer(data: { gameId: string; playerId: string }, socket: WebSocket): boolean {
     if (this.mode === 'local') {
       // Local: Only one socket
       if (this.localSocket) {
@@ -92,12 +92,15 @@ export class GameRoom {
         return false;
       }
       this.localSocket = socket;
+      this.players.left = { id: data.playerId, socket };
     } else {
       // Remote: Assign player side depending on availability
       if (!this.players.left) {
+        // Assign left
         this.players.left = { id: data.playerId, socket };
         this.announceJoin(data.playerId, 'left');
       } else if (!this.players.right) {
+        // Assign right
         this.players.right = { id: data.playerId, socket };
         this.announceJoin(data.playerId, 'right');
       } else {
@@ -106,10 +109,41 @@ export class GameRoom {
         return false;
       }
     }
+    return true;
+  }
+ 
+  public handleJoin(data: { gameId: string; playerId: string }, socket: WebSocket): boolean {
+    const { playerId } = data;
 
-    // Set message handler
+    // Check if join attempt is from a disconnected player (trying to reconnect) or a new player
+    const side = this.getPlayerSide(playerId);
+  
+    if (this.mode === 'local') {
+      if (side === 'left' && this.players.left) {
+        // Local reconnect
+        this.localSocket = socket;
+        this.players.left.socket = socket;
+      } else {
+        // New local join attempt
+        const success = this.addPlayer(data, socket);
+        if (!success) return false;
+      }
+    } else {
+      // Handle remote reconnect
+      if (side === 'left' && this.players.left) {
+        this.players.left.socket = socket;
+        this.announceJoin(playerId, 'left');
+      } else if (side === 'right' && this.players.right) {
+        this.players.right.socket = socket;
+        this.announceJoin(playerId, 'right');
+      } else {
+        // New remote join attempt
+        const success = this.addPlayer(data, socket);
+        if (!success) return false;
+      }
+    }
+  
     this.handlePlayerMessages(socket);
-
     return true;
   }
 

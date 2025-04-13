@@ -98,6 +98,11 @@ export class ControlAccess {
         throw new Error('Token status is missing in response');
       }
 
+      // Set user ID in session storage if it doesn't exist
+      if (result.status.userId !== null && sessionStorage.getItem('userId') === null) {
+        sessionStorage.setItem('userId', String(result.status.userId));
+      }      
+
       // Set token expiry
       this.accessTokenExpiry = result.status.accessTokenExpiry ? new Date(result.status.accessTokenExpiry) : null;
       this.refreshTokenExpiry = result.status.refreshTokenExpiry ? new Date(result.status.refreshTokenExpiry) : null;

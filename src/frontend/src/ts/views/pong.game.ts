@@ -194,6 +194,7 @@ export class PongGamePage implements Page {
     if (gameControlsElement) gameControlsElement.classList.remove('hidden');
     
     this.hideJoinGameForm();
+    
     if (this.isCreator && data.ready) {
       this.updateGameStatusUI('Game created! Press Start to begin.');
     } else if (this.isCreator && !data.ready) {
