@@ -52,59 +52,6 @@ export class GameManager {
       }
     });
   }
-  // public joinGame(data: { gameId: string; playerId: string }, socket: WebSocket): boolean {
-  //   const room = this.sessions.get(data.gameId);
-  //   if (!room) {
-  //     socket.send(JSON.stringify({ type: 'error', message: 'Game not found' }));
-  //     return false;
-  //   }
-
-  //   if (!room.addPlayer(data, socket)) return false;
-  //   if (room.isFull()) {
-  //     room.game.startGame();
-  //   }
-  //   return true;
-  // }
-
-  // public startGame(gameId: string): boolean {
-  //   const room = this.sessions.get(gameId);
-  //   if (!room) return false;
-    
-  //   if (room.isFull()) {
-  //     room.game.startGame();
-  //   }
-  //   return true;
-  // }
-
-  // public handleInput(data: InputMessage, connection: WebSocket) {
-  //   const room = this.sessions.get(data.gameId);
-  //   if (!room) {
-  //     connection.send(JSON.stringify({ type: 'error', message: 'Game not found' }));
-  //     return;
-  //   }
-  //   room.handleInput(data, connection);
-  // }
-
-  // public pauseGame(gameId: string): boolean {
-  //   const room = this.sessions.get(gameId);
-  //   if (!room) return false;
-    
-  //   room.game.pauseGame();
-  //   return true;
-  // }
-
-  // public updatePaddleInput(gameId: string, input: {
-  //   leftPaddleUp: boolean;
-  //   leftPaddleDown: boolean;
-  //   rightPaddleUp: boolean;
-  //   rightPaddleDown: boolean;
-  // }): boolean {
-  //   const room = this.sessions.get(gameId);
-  //   if (!room) return false;
-    
-  //   room.game.updatePaddleInput(input);
-  //   return true;
-  // }
 }
 
 export const gameManager = new GameManager();

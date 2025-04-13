@@ -53,6 +53,48 @@ export class WebSocketManager {
     };
   }
 
+  /*--------------------------GAME MESSAGE HANDLERS-------------------------*/
+
+  // Types: start, player-joined, update (update also handles pause/resume/end)
+  private handleGameMessages(type: string, data: any): void {
+    if (type === 'error') {
+      console.error('[WebSocketManager] Error from server:', JSON.stringify(data, null, 2));
+      return;
+    }
+    if (type !== 'update') {
+      console.log('[WebSocketManager] Received from server:', type, JSON.stringify(data, null, 2));
+    }
+
+    const callback = this.gameEventCallbacks.get(type);
+    if (!callback) {
+      console.warn(`Unhandled game message type: ${type}`);
+      return;
+    }
+    callback(data);
+  }
+
+  // Send a message to the server
+  public sendMessage(type: string, data: any): void {
+    console.log('[WebSocketManager] Sending message to server:', type);
+    if (this.gameSocket && this.gameSocket.readyState === WebSocket.OPEN) {
+      this.gameSocket.send(JSON.stringify({ type, data }));
+    } else {
+      console.error("WebSocket connection is not open.");
+    }
+  }
+
+  // Send paddle input to the server
+  public sendInput(input: { paddleUp: boolean, paddleDown: boolean },
+    side?: 'left' | 'right'
+  ): void {
+    this.sendMessage('input', {
+      gameId: this.gameId,
+      playerId: this.playerId,
+      input: input,
+      side: side // for local mode
+    });
+  }
+
   /*-----------------------------ONLINE SOCKET------------------------------*/
 
   // Initialize general socket for tracking online status
@@ -92,7 +134,7 @@ export class WebSocketManager {
   private handleMessages(type: string, data: any): void {
     switch (type) {
       case 'online-status':
-        this.handleOnlineStatus(data);
+        // this.handleOnlineStatus(data);
         break;
       case 'error':
         console.error('Error:', ...data);
@@ -100,54 +142,6 @@ export class WebSocketManager {
       default:
         console.warn(`Unhandled message type: ${type}`);
     }
-  }
-
-  // Types: start, update state (also handles pause, resume, end)
-  private handleGameMessages(type: string, data: any): void {
-    // console.log('[WebSocketManager] Received from server:', type, JSON.stringify(data, null, 2));
-
-    const callback = this.gameEventCallbacks.get(type);
-    if (!callback) {
-      console.warn(`Unhandled game message type: ${type}`);
-      return;
-    }
-    callback(data);
-  }
-
-  private handleOnlineStatus(data: any): void {
-    console.log('Online status:', data);
-  }
-  
-  // Send a message to the server
-  public sendMessage(type: string, data: any): void {
-    console.log('[WebSocketManager] Sending message to server:', type);
-    if (this.gameSocket && this.gameSocket.readyState === WebSocket.OPEN) {
-      this.gameSocket.send(JSON.stringify({ type, data }));
-    } else {
-      console.error("WebSocket connection is not open.");
-    }
-  }
-
-  /*
-  InputMessage {
-    type: 'input';
-    gameId: string;
-    playerId: string;
-    side?: 'left' | 'right'; // local play only
-    input: {
-      paddleUp: boolean;
-      paddleDown: boolean;
-    };
-  }; */
-  public sendInput(input: { paddleUp: boolean, paddleDown: boolean },
-    side?: 'left' | 'right'
-  ): void {
-    this.sendMessage('input', {
-      gameId: this.gameId,
-      playerId: this.playerId,
-      input: input,
-      side: side
-    });
   }
 
   /*----------------------------CLOSE CONNECTION----------------------------*/

@@ -2,6 +2,8 @@ import { WebSocket } from 'ws';
 import { GameState, PongGame } from "./PongGame";
 import { InputMessage } from './routes/ws.routes';
 import { sendError } from './message.types';
+import { getDb } from '../db';
+import User from '../models/user';
 
 export interface Player {
   id: string;
@@ -56,18 +58,27 @@ export class GameRoom {
     }
   }
 
-  private broadcastGameState(type: 'update' | 'start' | 'pause' | 'resume') {
+  private broadcastGameState(type: 'update' | 'start') {
     const state = this.game.getState();
     const message = JSON.stringify({ type, data: state });
   
     this.broadcast(message);
   }
 
-  // Notify players that just joined
-  private assignSide(socket: WebSocket, side: 'left' | 'right' | 'both') {
-    if (socket.readyState === socket.OPEN) {
-      socket.send(JSON.stringify({ type: 'side', side }));
-    }
+  // Broadcast message when a player joins the room
+  private async announceJoin(playerId: string, side: 'left' | 'right') {
+    const db = await getDb();
+    const user = await User.findById(db, Number(playerId));
+    
+    this.broadcast(JSON.stringify({
+      type: 'player-joined',
+      data: {
+        message: `Player ${user.username} joined!`,
+        side: side,
+        ready: this.roomIsFull(),
+        state: this.game.getState()
+      }
+    }));
   }
 
   /*-------------------------------JOIN GAME--------------------------------*/
@@ -81,15 +92,14 @@ export class GameRoom {
         return false;
       }
       this.localSocket = socket;
-      // this.assignSide(socket, 'both');
     } else {
       // Remote: Assign player side depending on availability
       if (!this.players.left) {
         this.players.left = { id: data.playerId, socket };
-        // this.assignSide(socket, 'left');
+        this.announceJoin(data.playerId, 'left');
       } else if (!this.players.right) {
         this.players.right = { id: data.playerId, socket };
-        // this.assignSide(socket, 'right');
+        this.announceJoin(data.playerId, 'right');
       } else {
         sendError(socket, 'Game is full');
         socket.close();
@@ -179,10 +189,8 @@ export class GameRoom {
   /*-----------------------------STATE HANDLERS-----------------------------*/
 
   private startGame(socket: WebSocket) {
-    if (this.mode === 'local' && !this.localSocket) {
-      sendError(socket, 'Player has not joined the game.');
-    } else if (this.mode === 'remote' && !this.isFull()) {
-      sendError(socket, 'Game requires 2 players to start.');
+    if (!this.roomIsFull()) {
+      sendError(socket, 'Not enough players to start the game.');
       return;
     }
 
@@ -201,8 +209,12 @@ export class GameRoom {
     }
   }
 
-  public isFull() {
-    // Check if both players are present
-    return this.players.left && this.players.right;
+  // Local: Check if local socket is set
+  // Remote: Check if both players are present
+  private roomIsFull(): boolean {
+    return (
+      (this.mode === 'local' && !!this.localSocket) ||
+      (this.mode === 'remote' && !!this.players?.left && !!this.players?.right)
+    );    
   }
 }
