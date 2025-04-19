@@ -1,4 +1,4 @@
-import { Page, GameStats, MatchHistoryItem } from '../types';
+import { Page, GameStats, MatchHistoryItem, LeaderboardPlayer } from '../types';
 import { Router } from '../router';
 import { GameStatsService } from '../services/game.stats.service';
 
@@ -8,9 +8,11 @@ export class StatsPage implements Page {
   private userId: number | null = null;
   private stats: GameStats | null = null;
   private matchHistory: MatchHistoryItem[] = [];
+  private leaderboard: any[] = [];
   private currentPage: number = 1;
   private itemsPerPage: number = 10;
   private totalPages: number = 1;
+  private activeTab: 'stats' | 'leaderboard' = 'stats';
   
   // Element caching
   private element: HTMLElement | null = null;
@@ -45,34 +47,75 @@ export class StatsPage implements Page {
             <p class="mt-2 text-gray-600 mb-4">View your performance and match history</p>
           </div>
           
+          <!-- Tab navigation -->
+          <div class="border-b border-gray-200 mb-6">
+            <nav class="flex space-x-8">
+              <button id="stats-tab" class="px-3 py-2 text-sm font-medium border-b-2 border-indigo-500 text-indigo-600">
+                Statistics & Match History
+              </button>
+              <button id="leaderboard-tab" class="px-3 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 border-b-2 border-transparent">
+                Leaderboard
+              </button>
+            </nav>
+          </div>
+          
           <div id="stats-loading" class="text-center py-10">
             <p class="text-lg text-gray-600">Loading statistics...</p>
           </div>
           
+          <!-- Stats content tab -->
           <div id="stats-content" class="hidden">
-            <!-- Stats boxes are now part of the initial HTML -->
-            <div id="stats-boxes" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-              <!-- Games Played Box -->
-              <div id="games-played-box" class="bg-indigo-50 rounded-lg p-6 text-center">
-                <h2 class="text-xl font-bold text-indigo-800 mb-2">Games Played</h2>
-                <p id="games-played-value" class="text-4xl font-bold text-indigo-600">0</p>
-                <p id="games-played-details" class="mt-2 text-gray-600 text-sm">
-                  0 wins, 0 losses
-                </p>
+            <!-- Stats in a single row -->
+            <div id="stats-row" class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8 border rounded-lg p-4 bg-gray-50">
+              <!-- Rank & ELO Rating -->
+              <div class="flex items-center space-x-4">
+                <div class="flex-shrink-0 h-12 w-12 rounded-full bg-purple-100 flex items-center justify-center">
+                  <span id="rank-value" class="text-lg font-bold text-purple-700">#0</span>
+                </div>
+                <div>
+                  <h3 class="text-sm font-medium text-gray-500">Rank & ELO</h3>
+                  <p id="elo-rating-value" class="text-lg font-bold text-gray-900">1200</p>
+                </div>
               </div>
               
-              <!-- Win Rate Box -->
-              <div id="win-rate-box" class="bg-green-50 rounded-lg p-6 text-center">
-                <h2 class="text-xl font-bold text-green-800 mb-2">Win Rate</h2>
-                <p id="win-rate-value" class="text-4xl font-bold text-green-600">0%</p>
-                <p id="win-rate-details" class="mt-2 text-gray-600 text-sm">
-                  Play games to see your win rate
-                </p>
+              <!-- Win Rate -->
+              <div class="flex items-center space-x-4">
+                <div class="flex-shrink-0 h-12 w-12 rounded-full bg-green-100 flex items-center justify-center">
+                  <span class="text-lg font-bold text-green-700">%</span>
+                </div>
+                <div>
+                  <h3 class="text-sm font-medium text-gray-500">Win Rate</h3>
+                  <p id="win-rate-value" class="text-lg font-bold text-gray-900">0%</p>
+                </div>
+              </div>
+              
+              <!-- Games Played -->
+              <div class="flex items-center space-x-4">
+                <div class="flex-shrink-0 h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
+                  <span class="text-lg font-bold text-blue-700">G</span>
+                </div>
+                <div>
+                  <h3 class="text-sm font-medium text-gray-500">Games Played</h3>
+                  <p id="games-played-value" class="text-lg font-bold text-gray-900">0</p>
+                  <p id="games-played-details" class="text-xs text-gray-500">0 wins, 0 losses</p>
+                </div>
+              </div>
+              
+              <!-- Win Streak -->
+              <div class="flex items-center space-x-4">
+                <div class="flex-shrink-0 h-12 w-12 rounded-full bg-amber-100 flex items-center justify-center">
+                  <span class="text-lg font-bold text-amber-700">🔥</span>
+                </div>
+                <div>
+                  <h3 class="text-sm font-medium text-gray-500">Win Streak</h3>
+                  <p id="win-streak-value" class="text-lg font-bold text-gray-900">0</p>
+                  <p id="win-streak-details" class="text-xs text-gray-500">Best: 0</p>
+                </div>
               </div>
             </div>
             
-            <!-- Match history table will be inserted here -->
-            <div id="match-history-container">
+            <!-- Match history section -->
+            <div id="match-history-container" class="mb-8">
               <h2 class="text-2xl font-bold text-gray-800 mb-4">Match History</h2>
               <div class="overflow-x-auto">
                 <table class="min-w-full bg-white rounded-lg overflow-hidden">
@@ -105,6 +148,29 @@ export class StatsPage implements Page {
                     Next
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Leaderboard content tab -->
+          <div id="leaderboard-content" class="hidden">
+            <div id="leaderboard-container">
+              <h2 class="text-2xl font-bold text-gray-800 mb-4">Global Leaderboard</h2>
+              <p class="text-gray-600 mb-6">See how you rank against other players</p>
+              <div class="overflow-x-auto">
+                <table class="min-w-full bg-white rounded-lg overflow-hidden table-fixed">
+                  <thead class="bg-gray-100">
+                    <tr>
+                      <th class="w-1/4 px-4 py-3 text-center text-sm font-medium text-gray-600">Rank</th>
+                      <th class="w-1/6 px-4 py-3 text-left text-sm font-medium text-gray-600">Player</th>
+                      <th class="w-1/4 px-4 py-3 text-center text-sm font-medium text-gray-600">ELO</th>
+                      <th class="w-1/4 px-4 py-3 text-center text-sm font-medium text-gray-600">Streak</th>
+                    </tr>
+                  </thead>
+                  <tbody id="leaderboard-table-body">
+                    <!-- Leaderboard rows will be inserted here -->
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
@@ -160,6 +226,67 @@ export class StatsPage implements Page {
         }
       });
     }
+    
+    // Set up tab navigation
+    const statsTab = this.element.querySelector('#stats-tab');
+    const leaderboardTab = this.element.querySelector('#leaderboard-tab');
+    
+    if (statsTab) {
+      statsTab.addEventListener('click', () => this.switchTab('stats'));
+    }
+    
+    if (leaderboardTab) {
+      leaderboardTab.addEventListener('click', () => this.switchTab('leaderboard'));
+    }
+  }
+  
+  private switchTab(tab: 'stats' | 'leaderboard'): void {
+    if (!this.element) return;
+    
+    this.activeTab = tab;
+    
+    const statsTab = this.element.querySelector('#stats-tab');
+    const leaderboardTab = this.element.querySelector('#leaderboard-tab');
+    const statsContent = this.element.querySelector('#stats-content');
+    const leaderboardContent = this.element.querySelector('#leaderboard-content');
+    
+    // Update tab styles
+    if (statsTab) {
+      if (tab === 'stats') {
+        statsTab.classList.add('border-indigo-500', 'text-indigo-600');
+        statsTab.classList.remove('border-transparent', 'text-gray-500');
+      } else {
+        statsTab.classList.remove('border-indigo-500', 'text-indigo-600');
+        statsTab.classList.add('border-transparent', 'text-gray-500');
+      }
+    }
+    
+    if (leaderboardTab) {
+      if (tab === 'leaderboard') {
+        leaderboardTab.classList.add('border-indigo-500', 'text-indigo-600');
+        leaderboardTab.classList.remove('border-transparent', 'text-gray-500');
+      } else {
+        leaderboardTab.classList.remove('border-indigo-500', 'text-indigo-600');
+        leaderboardTab.classList.add('border-transparent', 'text-gray-500');
+      }
+    }
+    
+    // Show/hide content based on active tab
+    if (statsContent) {
+      if (tab === 'stats') {
+        statsContent.classList.remove('hidden');
+      } else {
+        statsContent.classList.add('hidden');
+      }
+    }
+    
+    if (leaderboardContent) {
+      if (tab === 'leaderboard') {
+        leaderboardContent.classList.remove('hidden');
+      } else {
+        leaderboardContent.classList.add('hidden');
+      }
+    }
   }
   
   private async loadData(): Promise<void> {
@@ -167,12 +294,14 @@ export class StatsPage implements Page {
     
     // Get DOM elements
     const loadingElement = this.element.querySelector('#stats-loading');
-    const contentElement = this.element.querySelector('#stats-content');
+    const statsContent = this.element.querySelector('#stats-content');
+    const leaderboardContent = this.element.querySelector('#leaderboard-content');
     const errorElement = this.element.querySelector('#stats-error');
     
     // Show loading state
     if (loadingElement) loadingElement.classList.remove('hidden');
-    if (contentElement) contentElement.classList.add('hidden');
+    if (statsContent) statsContent.classList.add('hidden');
+    if (leaderboardContent) leaderboardContent.classList.add('hidden');
     if (errorElement) errorElement.classList.add('hidden');
 
     const userIdStr = sessionStorage.getItem('userId');
@@ -183,21 +312,24 @@ export class StatsPage implements Page {
         throw new Error('User ID not found');
       }
       
-      // Load game stats using the service
-      const statsResponse = await this.gameStatsService.getGameStats(this.userId);
+      // Load all data in parallel for better performance
+      const [statsResponse, historyResponse, leaderboardResponse] = await Promise.all([
+        this.gameStatsService.getGameStats(),
+        this.gameStatsService.getMatchHistory(),
+        this.gameStatsService.getLeaderboard()
+      ]);
+      
       if (!statsResponse.success) {
         throw new Error('Failed to fetch game stats');
       }
       
-      this.stats = statsResponse.stats || null;
-      
-      // Load match history using the service
-      const historyResponse = await this.gameStatsService.getMatchHistory(this.userId);
       if (!historyResponse.success) {
         throw new Error('Failed to fetch match history');
       }
       
+      this.stats = statsResponse.stats || null;
       this.matchHistory = historyResponse.matchHistory || [];
+      this.leaderboard = leaderboardResponse.success ? leaderboardResponse.leaderboard || [] : [];
       
       // Calculate total pages
       this.totalPages = Math.max(1, Math.ceil(this.matchHistory.length / this.itemsPerPage));
@@ -205,10 +337,16 @@ export class StatsPage implements Page {
       // Render data
       this.renderStats();
       this.renderMatchHistory();
+      this.renderLeaderboard();
       
-      // Hide loading, show content
+      // Hide loading, show content based on active tab
       if (loadingElement) loadingElement.classList.add('hidden');
-      if (contentElement) contentElement.classList.remove('hidden');
+      
+      if (this.activeTab === 'stats' && statsContent) {
+        statsContent.classList.remove('hidden');
+      } else if (this.activeTab === 'leaderboard' && leaderboardContent) {
+        leaderboardContent.classList.remove('hidden');
+      }
       
     } catch (error) {
       console.error('Error loading stats:', error);
@@ -222,30 +360,54 @@ export class StatsPage implements Page {
   private renderStats(): void {
     if (!this.element || !this.stats) return;
     
-    // Update Games Played Box content
+    // Update Games Played stats
     const gamesPlayedValue = this.element.querySelector('#games-played-value');
     const gamesPlayedDetails = this.element.querySelector('#games-played-details');
     
     if (gamesPlayedValue) {
-      gamesPlayedValue.textContent = this.stats.gamesPlayed.toString();
+      gamesPlayedValue.textContent = this.stats.games_played.toString();
     }
     
     if (gamesPlayedDetails) {
-      gamesPlayedDetails.textContent = `${this.stats.gamesWon} wins, ${this.stats.gamesLost} losses`;
+      gamesPlayedDetails.textContent = `${this.stats.games_won} wins, ${this.stats.games_lost} losses`;
     }
     
-    // Update Win Rate Box content
+    // Update Win Rate value
     const winRateValue = this.element.querySelector('#win-rate-value');
-    const winRateDetails = this.element.querySelector('#win-rate-details');
     
     if (winRateValue) {
-      winRateValue.textContent = `${this.stats.winRate}%`;
+      winRateValue.textContent = `${this.stats.win_percentage}%`;
     }
     
-    if (winRateDetails) {
-      winRateDetails.textContent = this.stats.gamesPlayed > 0 
-        ? 'Based on your match history' 
-        : 'Play games to see your win rate';
+    // Update Rank & ELO Rating value
+    const rankValue = this.element.querySelector('#rank-value');
+    const eloRatingValue = this.element.querySelector('#elo-rating-value');
+    
+    if (rankValue) {
+      rankValue.textContent = `#${this.stats.rank || 0}`;
+    }
+    
+    if (eloRatingValue) {
+      eloRatingValue.textContent = this.stats.elo_rating.toString();
+    }
+    
+    // Update Win Streak value
+    const winStreakValue = this.element.querySelector('#win-streak-value');
+    const winStreakDetails = this.element.querySelector('#win-streak-details');
+    
+    if (winStreakValue) {
+      winStreakValue.textContent = this.stats.current_win_streak.toString();
+      
+      // Add pulsing animation effect for impressive streaks
+      if (this.stats.current_win_streak >= 3) {
+        winStreakValue.classList.add('text-amber-700', 'animate-pulse');
+      } else {
+        winStreakValue.classList.remove('text-amber-700', 'animate-pulse');
+      }
+    }
+    
+    if (winStreakDetails) {
+      winStreakDetails.textContent = `Best: ${this.stats.max_win_streak}`;
     }
   }
   
@@ -260,8 +422,7 @@ export class StatsPage implements Page {
     const endIndex = Math.min(startIndex + this.itemsPerPage, this.matchHistory.length);
     const currentItems = this.matchHistory.slice(startIndex, endIndex);
     
-    // Clear existing content - since we're showing different matches on each page,
-    // and match results don't change, we can just rebuild the table completely
+    // Clear existing content
     tableBody.innerHTML = '';
     
     if (currentItems.length === 0) {
@@ -269,7 +430,7 @@ export class StatsPage implements Page {
       const emptyRow = document.createElement('tr');
       emptyRow.className = 'empty-row';
       emptyRow.innerHTML = `
-        <td colspan="4" class="px-4 py-6 text-center text-gray-500">
+        <td colspan="5" class="px-4 py-6 text-center text-gray-500">
           No match history found. Play some games to see your stats!
         </td>
       `;
@@ -334,5 +495,67 @@ export class StatsPage implements Page {
     `;
     
     return row;
+  }
+  
+  /**
+   * Renders the leaderboard
+   */
+  private renderLeaderboard(): void {
+    if (!this.element) return;
+    
+    const tableBody = this.element.querySelector('#leaderboard-table-body');
+    if (!tableBody) return;
+    
+    // Clear existing content
+    tableBody.innerHTML = '';
+    
+    if (this.leaderboard.length === 0) {
+      // No leaderboard data
+      const emptyRow = document.createElement('tr');
+      emptyRow.className = 'empty-row';
+      emptyRow.innerHTML = `
+        <td colspan="5" class="px-4 py-6 text-center text-gray-500">
+          No players with ratings found yet.
+        </td>
+      `;
+      tableBody.appendChild(emptyRow);
+    } else {
+      // Create rows for each player
+      this.leaderboard.forEach(player => {
+        const row = document.createElement('tr');
+        row.className = 'border-t border-gray-200 hover:bg-gray-50';
+        
+        // Highlight the current user
+        const isCurrentUser = player.id === this.userId;
+        if (isCurrentUser) {
+          row.classList.add('bg-blue-50');
+        }
+        
+        // Format the player name (use display_name, or "Player #ID" if null)
+        const playerName = player.display_name || `Player #${player.id}`;
+        
+        // Show win streak with fire emoji for 3+ streaks
+        const streakDisplay = player.current_win_streak >= 3 
+          ? `${player.current_win_streak} 🔥` 
+          : player.current_win_streak.toString();
+        
+        row.innerHTML = `
+          <td class="px-4 py-3 text-center text-sm ${isCurrentUser ? 'font-bold text-blue-800' : 'text-gray-600'}">
+            #${player.rank}
+          </td>
+          <td class="px-4 py-3 text-sm ${isCurrentUser ? 'font-bold text-blue-800' : 'text-gray-600'}">
+            ${isCurrentUser ? 'You' : playerName}
+          </td>
+          <td class="px-4 py-3 text-center text-sm ${isCurrentUser ? 'font-bold text-blue-800' : 'text-gray-600'}">
+            ${player.elo_rating}
+          </td>
+          <td class="px-4 py-3 text-center text-sm ${player.current_win_streak >= 3 ? 'font-bold text-amber-600' : isCurrentUser ? 'font-bold text-blue-800' : 'text-gray-600'}">
+            ${streakDisplay}
+          </td>
+        `;
+        
+        tableBody.appendChild(row);
+      });
+    }
   }
 }
