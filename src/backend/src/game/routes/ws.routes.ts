@@ -8,7 +8,7 @@ import { sendError } from "../message.types";
 // type: 'input';
 export interface InputMessage {
   gameId: string;
-  playerId: string;
+  playerId: number;
   side?: 'left' | 'right'; // local play only
   input: {
     paddleUp: boolean;

@@ -35,10 +35,15 @@ export class PongGame {
 
   // GameRoom callback method
   private updateCallback: (() => void) | null = null;
+  private endgameCallback: ((state: GameState) => void) | null = null;
 
   // Set the callback to send game state updates to players
   public onGameUpdate(callback: () => void): void {
     this.updateCallback = callback;
+  }
+
+  public onGameEnd(callback: (state: GameState) => void): void {
+    this.endgameCallback = callback;
   }
 
   /*------------------------------CONSTRUCTOR-------------------------------*/
@@ -217,8 +222,8 @@ export class PongGame {
     this.cleanup();
 
     // Notify GameRoom of the winner
-    if (this.updateCallback) {
-      this.updateCallback();
+    if (this.endgameCallback) {
+      this.endgameCallback(this.getState());
     }
   }
 
