@@ -212,7 +212,7 @@ export class PongGamePage implements Page {
     if (prevState?.status === 'playing' && this.state.status === 'finished') {
       console.log('[handleUpdateState] Game has ended');
       this.drawGame();
-      this.recordMatchResult();
+      // this.recordMatchResult();
       this.stopGameLoop();
     }
     this.updateGameStatusUI();
@@ -463,33 +463,31 @@ export class PongGamePage implements Page {
 
   /*-----------------------------RECORD RESULT------------------------------*/
 
-  private async recordMatchResult(): Promise<void> {
-    if (!this.gameId || !this.state) return;
+  // private async recordMatchResult(): Promise<void> {
+  //   if (!this.gameId || !this.state) return;
     
-    // Get user ID from session storage
-    if (!this.userId) {
-      console.log('User not logged in, not recording match');
-      return;
-    }
+  //   // Get user ID from session storage
+  //   if (!this.userId) {
+  //     console.log('User not logged in, not recording match');
+  //     return;
+  //   }
     
- 
+  //   // Call the API to record the match
+  //   const response = await this.pongService.recordMatchResult({
+  //     gameId: this.gameId,
+  //     userId: this.userId,
+  //     opponentId: 2, //hardcoded for now
+  //     winnerId: this.state.winner === 'left' ? this.userId : 2, //hardcoded for now
+  //     leftScore: this.state.scoreLeft,
+  //     rightScore: this.state.scoreRight,
+  //   });
     
-    // Call the API to record the match
-    const response = await this.pongService.recordMatchResult({
-      gameId: this.gameId,
-      userId: userId,
-      opponentId: 2, //hardcoded for now
-      winnerId: this.state.winner === 'left' ? userId : 2, //hardcoded for now
-      leftScore: this.state.scoreLeft,
-      rightScore: this.state.scoreRight,
-    });
-    
-    if (!response.success) {
-      console.error('Failed to record match:', response.error);
-      return;
-    }
-    console.log('Match recorded successfully');
-  }
+  //   if (!response.success) {
+  //     console.error('Failed to record match:', response.error);
+  //     return;
+  //   }
+  //   console.log('Match recorded successfully');
+  // }
 
   /*---------------------------SETUP PONG CANVAS----------------------------*/
 
