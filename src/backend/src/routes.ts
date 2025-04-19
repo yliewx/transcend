@@ -29,6 +29,7 @@ interface FriendRequestParams {
   id: string;
 }
 
+
 export default fp(async function setupRoutes(server: FastifyInstance) {
   // User registration
   server.post('/api/register', registerUser);
@@ -135,6 +136,9 @@ export default fp(async function setupRoutes(server: FastifyInstance) {
   
   server.get('/api/user/game-stats', { preHandler: server.authenticate }, GameController.getGameStats);
 
+  server.get('/api/user/leaderboard', { preHandler: server.authenticate }, GameController.getLeaderboard);
+  
+ 
 
   // Catch-all route for SPA
   server.setNotFoundHandler((request, reply) => {

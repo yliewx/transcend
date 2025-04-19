@@ -472,18 +472,16 @@ export class PongGamePage implements Page {
       return;
     }
     
-    // Determine which side won
-    const winner = this.state.winner;
+ 
     
     // Call the API to record the match
     const response = await this.pongService.recordMatchResult({
       gameId: this.gameId,
-      userId: this.userId,
-      // For simplicity, we'll assume the logged-in user is always the left player
-      userSide: 'left',
+      userId: userId,
+      opponentId: 2, //hardcoded for now
+      winnerId: this.state.winner === 'left' ? userId : 2, //hardcoded for now
       leftScore: this.state.scoreLeft,
       rightScore: this.state.scoreRight,
-      winner: winner
     });
     
     if (!response.success) {
