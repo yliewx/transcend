@@ -1,10 +1,10 @@
 module.exports = {
   content: [
-    "./src/**/*.{html,js,ts}",
+    "./src/**/*.{html,js,ts,css}",
     "./public/index.html"
   ],
   theme: {
     extend: {},
   },
-  plugins: [],
+  plugins: ["@tailwindcss/postcss"],
 }
