@@ -7,8 +7,10 @@ export class WebSocketManager {
   private gameId: string | null = null;
   private playerId: number | null = null;
   private gameEventCallbacks: Map<string, (data: any) => void> = new Map();
+  // Handle reconnection
   private retryCount: number = 0;
   private maxRetryCount: number = 5;
+  private isReconnecting: boolean = false;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
@@ -22,59 +24,88 @@ export class WebSocketManager {
   /*------------------------------GAME SOCKET-------------------------------*/
 
   // Join a specific room by game ID
-  public connectGame(gameId: string, userId: number) {
-    this.gameId = gameId;
-    this.playerId = userId;
-    this.gameSocket = new WebSocket(`${this.baseUrl}/pong/${gameId}`);
+  public async connectGame(gameId: string, userId: number): Promise<boolean> {
+    return new Promise((resolve, reject) => {
+      this.gameId = gameId;
+      this.playerId = userId;
+      this.gameSocket = new WebSocket(`${this.baseUrl}/pong/${gameId}`);
 
-    // Handle WebSocket messages for the game room
-    this.gameSocket.onmessage = (event) => {
-      let message;
-      try {
-        message = JSON.parse(event.data);
-      } catch (error) {
-        console.log('Non-JSON message received:', event.data);
-        return;
-      }
-      const { type, data } = message;
-      this.handleGameMessages(type, data);
-    };
+      let hasResolved = false;
 
-    this.gameSocket.onopen = () => {
-      console.log("Connected to the game room:", gameId);
-      this.retryCount = 0; // Reset no. of attempts to reconnect
-      this.sendMessage('join', { gameId, playerId: userId }); // Join game
-    };
+      this.gameSocket.onopen = () => {
+        console.log("Connected to the game room:", gameId);
+        this.retryCount = 0; // reset no. of attempts to reconnect
+        this.sendMessage('join', { gameId: this.gameId, playerId: this.playerId }); // join game
+        hasResolved = true;
+        resolve(true);
+      };
 
-    this.gameSocket.onerror = (error) => {
-      console.error("WebSocket error:", error);
-    };
-
-    this.gameSocket.onclose = () => {
-      console.log("Game room connection closed.");
-      this.reconnectGame();
-    };
+      // Handle WebSocket messages for the game room
+      this.gameSocket.onmessage = (event) => {
+        let message;
+        try {
+          message = JSON.parse(event.data);
+        } catch (error) {
+          console.log('Non-JSON message received:', event.data);
+          return;
+        }
+        const { type, data } = message;
+        this.handleGameMessages(type, data);
+      };
+  
+      this.gameSocket.onerror = (error) => {
+        console.error("WebSocket error:", error);
+        if (!hasResolved) {
+          hasResolved = true;
+          resolve(false);
+        }
+      };
+  
+      // Handle disconnect/attempt to reconnect
+      this.gameSocket.onclose = async () => {
+        console.log("Game room connection closed.");
+        if (!hasResolved) {
+          hasResolved = true;
+          resolve(false);
+        }
+        const success = await this.reconnectGame();
+        if (!success) {
+          console.warn("Could not reconnect after multiple attempts.");
+        }
+      };
+    });
   }
 
-  private reconnectGame() {
+  private async reconnectGame(): Promise<boolean> {
+    if (this.isReconnecting) return false;
+    this.isReconnecting = true;
+
     if (!this.gameId || !this.playerId) {
       console.error("[WebSocketManager] Missing gameId or playerId.");
-      return;
-    }
-    if (this.retryCount >= this.maxRetryCount) {
-      console.error("[WebSocketManager] Max retries reached. Giving up.");
-      return;
+      this.isReconnecting = false;
+      return false;
     }
   
-    // Increase delay between retries to avoid overloading server
-    this.retryCount++;
-    const delay = 1000 * Math.pow(2, this.retryCount);
-    console.log(`[WebSocketManager] Reconnecting in ${delay}ms...`);
-
-    setTimeout(() => {
-      this.connectGame(this.gameId!, this.playerId!);
-    }, delay);
-  }
+    while (this.retryCount < this.maxRetryCount) {
+      this.retryCount++;
+      const delay = 1000 * Math.pow(2, this.retryCount);
+      console.log(`[WebSocketManager] Reconnecting in ${delay}ms...`);
+  
+      // Delay execution of next reconnect attempt
+      await new Promise(res => setTimeout(res, delay));
+  
+      const success = await this.connectGame(this.gameId, this.playerId);
+      if (success)
+      {
+        this.isReconnecting = false;
+        return true;
+      }
+    }
+  
+    console.error("[WebSocketManager] Max retries reached. Giving up.");
+    this.isReconnecting = false;
+    return false;
+  }  
 
   /*--------------------------GAME MESSAGE HANDLERS-------------------------*/
 

@@ -7,10 +7,20 @@ export class PongGameService extends BaseApiService {
    */
   public async createGame(mode: 'local' | 'remote'): Promise<{success: boolean, gameId?: string, error?: string}> {
     return this.request<{gameId?: string}>(
-      '/createGame',
+      '/game/create',
       'POST',
       { mode },
       true
+    );
+  }
+
+  public async getExistingGame(playerId: number): Promise<{success: boolean, gameId?: string, isCreator?: boolean, message?: string}> {
+    return this.request<{success: boolean, gameId?: string, isCreator?: boolean, message?: string}>(
+      '/game/restore',
+      'GET',
+      undefined,
+      true,
+      { omitContentType: true }
     );
   }
 

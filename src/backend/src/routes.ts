@@ -29,6 +29,7 @@ interface FriendRequestParams {
   id: string;
 }
 
+
 export default fp(async function setupRoutes(server: FastifyInstance) {
   // User registration
   server.post('/api/register', registerUser);
@@ -110,7 +111,10 @@ export default fp(async function setupRoutes(server: FastifyInstance) {
 
   // GAME ROUTES
   // Create a new game
-  server.post('/api/createGame', { preHandler: server.authenticate }, GameController.createGame);
+  server.post('/api/game/create', { preHandler: server.authenticate }, GameController.createGame);
+  server.get('/api/game/restore', { preHandler: server.authenticate }, (request, reply) => {
+    return GameController.getExistingGame(request as AuthenticatedRequest, reply);
+  });
   /*
   // Start game
   server.post<{ Params: GameParams }>('/api/games/:id/start', { preHandler: server.authenticate }, GameController.startGame);
@@ -129,12 +133,14 @@ export default fp(async function setupRoutes(server: FastifyInstance) {
  */
 
   // STAT ROUTES 
-  server.post('/api/games/record-match', { preHandler: server.authenticate }, GameController.recordMatch);
 
   server.get('/api/user/match-history', { preHandler: server.authenticate }, GameController.getMatchHistory);
   
   server.get('/api/user/game-stats', { preHandler: server.authenticate }, GameController.getGameStats);
 
+  server.get('/api/user/leaderboard', { preHandler: server.authenticate }, GameController.getLeaderboard);
+  
+ 
 
   // Catch-all route for SPA
   server.setNotFoundHandler((request, reply) => {

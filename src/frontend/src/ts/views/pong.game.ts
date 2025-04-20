@@ -135,9 +135,14 @@ export class PongGamePage implements Page {
 
   /*----------------------------RESET GAME STATE----------------------------*/
 
-  update(): void {
-    // Reset the game state when revisiting the page
-    this.resetGame();
+  async update() {
+    console.log(`Inside pong game update(). User ID: ${this.userId}`);
+    // When revisiting the page: Reconnect if there is an existing game
+    const reconnected = await this.restoreGameSession();
+    if (!reconnected) {
+      console.log('No previous game found.');
+      this.resetGame();
+    }
   }
   
   private resetGame(): void {
@@ -158,11 +163,41 @@ export class PongGamePage implements Page {
       if (gameStatusElement) gameStatusElement.textContent = '';
       if (joinButton) joinButton.classList.remove('hidden');
 
-      
       // Re-setup canvas
       this.setupEventHandlers();
       this.setupCanvas();
     }
+  }
+
+  /*--------------------------MANAGE GAME SESSION---------------------------*/
+
+  private async restoreGameSession(): Promise<boolean> {
+    if (this.userId === null) {
+      console.error('Cannot check for active game session. No user ID found.');
+      return false;
+    }
+    console.log('Checking if player has an active game session...');
+  
+    const existingGame = await this.pongService.getExistingGame(this.userId!);
+    console.log(`existingGame: ${JSON.stringify(existingGame)}`);
+    if (existingGame.success) {
+      this.gameId = existingGame.gameId ?? null;
+      this.isCreator = existingGame.isCreator ?? false;
+
+      if (this.gameId) {
+        console.log(`Attempting to connect to previous game: ${this.gameId}. Creator: ${this.isCreator}.`);
+        const success = await this.wss.connectGame(this.gameId, this.userId);
+        if (success) {
+          const gameIdElement = this.element?.querySelector('#game-id');
+          if (gameIdElement) gameIdElement.textContent = this.gameId;
+          this.updateGameStatusUI('Reconnecting to previous game...');
+          return true;
+        } else {
+          console.log('Failed to reconnect to previous game.');
+        }
+      }
+    }
+    return false;
   }
 
   /*--------------------------GAME MESSAGE HANDLERS-------------------------*/
@@ -213,7 +248,7 @@ export class PongGamePage implements Page {
     if (prevState?.status === 'playing' && this.state.status === 'finished') {
       console.log('[handleUpdateState] Game has ended');
       this.drawGame();
-      this.recordMatchResult();
+      // this.recordMatchResult();
       this.stopGameLoop();
     }
     this.updateGameStatusUI();
@@ -261,6 +296,9 @@ export class PongGamePage implements Page {
       this.buttonHandlers[id] = clickHandler;
       button.addEventListener('click', clickHandler);
     });
+
+    // Add warning when player leaves game screen
+    window.addEventListener('beforeunload', this.handleBeforeUnload);
   }
 
   /*------------------------------KEY HANDLERS------------------------------*/
@@ -344,9 +382,13 @@ export class PongGamePage implements Page {
     // Connect to game room with the ID returned by the server
     this.gameId = response.gameId!;
     this.isCreator = true;
-    this.wss.connectGame(this.gameId, this.userId!);
+    const success = await this.wss.connectGame(this.gameId, this.userId!);
+    // Store game ID in local storage if successful
+    if (!success) {
+      console.log('Failed to connect to game room.');
+    }
   }
-
+  
   /*------------------------------JOIN GAME---------------------------------*/
 
   // On join game button
@@ -391,7 +433,11 @@ export class PongGamePage implements Page {
     this.resetGame();
     this.gameId = gameCode;
     this.isCreator = false;
-    this.wss.connectGame(gameCode, this.userId!);
+    const success = await this.wss.connectGame(this.gameId, this.userId!);
+    // Store game ID in local storage if successful
+    if (!success) {
+      console.log('Failed to connect to game room.');
+    }
     // handleJoinedGame() when the server responds
   }
 
@@ -460,38 +506,6 @@ export class PongGamePage implements Page {
       cancelAnimationFrame(this.gameLoopId);
       this.gameLoopId = null;
     }
-  }
-
-  /*-----------------------------RECORD RESULT------------------------------*/
-
-  private async recordMatchResult(): Promise<void> {
-    if (!this.gameId || !this.state) return;
-    
-    // Get user ID from session storage
-    if (!this.userId) {
-      console.log('User not logged in, not recording match');
-      return;
-    }
-    
-    // Determine which side won
-    const winner = this.state.winner;
-    
-    // Call the API to record the match
-    const response = await this.pongService.recordMatchResult({
-      gameId: this.gameId,
-      userId: this.userId,
-      // For simplicity, we'll assume the logged-in user is always the left player
-      userSide: 'left',
-      leftScore: this.state.scoreLeft,
-      rightScore: this.state.scoreRight,
-      winner: winner
-    });
-    
-    if (!response.success) {
-      console.error('Failed to record match:', response.error);
-      return;
-    }
-    console.log('Match recorded successfully');
   }
 
   /*---------------------------SETUP PONG CANVAS----------------------------*/
@@ -609,10 +623,19 @@ export class PongGamePage implements Page {
 
     window.removeEventListener('keydown', this.keyDownHandler);
     window.removeEventListener('keyup', this.keyUpHandler);
+    // Remove warning when leaving game screen
+    window.removeEventListener('beforeunload', this.handleBeforeUnload);
 
     this.resetGame();
     
     if (this.gameId) 
       this.pongService.cleanupGame(this.gameId);
   }
+
+  private handleBeforeUnload = (event: BeforeUnloadEvent) => {
+    if (this.state?.status === 'playing') {
+      event.preventDefault();
+      event.returnValue = '';
+    }
+  };
 }
