@@ -71,37 +71,55 @@ export class PongGamePage implements Page {
             </p>
             <p id="game-status" class="text-xl text-indigo-600 font-medium"></p>
           </div>
-          
-          <div class="flex justify-center mb-6">
-            <button id="create-game-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded mx-2">
-              Create New Game
-            </button>
-            <button id="join-game-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mx-2">
-              Join Game
-            </button>
-          </div>
-          
-          <div id="join-game-form" class="mb-6 text-center hidden">
-            <div class="flex justify-center items-center">
-              <input 
-                type="text" 
-                id="game-invite-code" 
-                placeholder="Enter invite code" 
-                class="border rounded py-2 px-3 text-gray-700 focus:outline-none focus:shadow-outline w-64"
-              />
-              <button id="submit-join-game-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded ml-2">
-                Join
-              </button>
-              <button id="cancel-join-game-btn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded ml-2">
-                Cancel
-              </button>
+
+          <!-- Game Mode Containers -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <!-- Local Mode -->
+            <div id="local-mode-container" class="border border-gray-200 rounded-lg p-6 bg-gray-50 shadow">
+              <h2 class="text-2xl font-semibold text-gray-800 mb-4 text-center">Local Mode</h2>
+              <div class="flex justify-center">
+                <button id="create-local-game-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">
+                  Create Local Game
+                </button>
+              </div>
+            </div>
+
+            <!-- Remote Mode -->
+            <div id="remote-mode-container" class="border border-gray-200 rounded-lg p-6 bg-gray-50 shadow">
+              <h2 class="text-2xl font-semibold text-gray-800 mb-4 text-center">Remote Mode</h2>
+              <div class="flex justify-center mb-4">
+                <button id="create-remote-game-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded mx-2">
+                  Create Remote Game
+                </button>
+                <button id="join-game-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mx-2">
+                  Join Game
+                </button>
+              </div>
+
+              <div id="join-game-form" class="text-center hidden">
+                <div class="flex justify-center items-center">
+                  <input 
+                    type="text" 
+                    id="game-invite-code" 
+                    placeholder="Enter invite code" 
+                    class="border rounded py-2 px-3 text-gray-700 focus:outline-none focus:shadow-outline w-64"
+                  />
+                  <button id="submit-join-game-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded ml-2">
+                    Join
+                  </button>
+                  <button id="cancel-join-game-btn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded ml-2">
+                    Cancel
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
-          
+
+          <!-- Game Info & Controls -->
           <div id="game-info" class="mb-4 text-center">
             <p>Game ID: <span id="game-id" class="font-mono">-</span></p>
           </div>
-          
+
           <div id="game-controls" class="flex justify-center mb-6 hidden">
             <button id="start-game-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mx-2">
               Start
@@ -110,18 +128,18 @@ export class PongGamePage implements Page {
               Pause/Resume
             </button>
           </div>
-          
+
           <div class="flex justify-center">
             <canvas id="pong-canvas" width="800" height="600" class="border border-gray-300 rounded-lg shadow-lg bg-black"></canvas>
           </div>
-          
+
           <div class="mt-6 text-center text-gray-500">
             <p>This is a server-side implementation of Pong. The game logic runs entirely on the server.</p>
           </div>
         </div>
       </div>
     `;
-    
+
     setTimeout(() => {
         this.setupEventHandlers();
         this.setupCanvas();
@@ -136,11 +154,9 @@ export class PongGamePage implements Page {
   /*----------------------------RESET GAME STATE----------------------------*/
 
   async update() {
-    console.log(`Inside pong game update(). User ID: ${this.userId}`);
     // When revisiting the page: Reconnect if there is an existing game
     const reconnected = await this.restoreGameSession();
     if (!reconnected) {
-      console.log('No previous game found.');
       this.resetGame();
     }
   }
@@ -176,10 +192,8 @@ export class PongGamePage implements Page {
       console.error('Cannot check for active game session. No user ID found.');
       return false;
     }
-    console.log('Checking if player has an active game session...');
   
     const existingGame = await this.pongService.getExistingGame(this.userId!);
-    console.log(`existingGame: ${JSON.stringify(existingGame)}`);
     if (existingGame.success) {
       this.gameId = existingGame.gameId ?? null;
       this.isCreator = existingGame.isCreator ?? false;
@@ -271,7 +285,8 @@ export class PongGamePage implements Page {
     
     // Add event listeners for the buttons
     const buttonActions: Record<string, () => void> = {
-      'create-game-btn': () => this.createGame(),
+      'create-local-game-btn': () => this.createGame('local'),
+      'create-remote-game-btn': () => this.createGame('remote'),
       'join-game-btn': () => this.showJoinGameForm(),
       'submit-join-game-btn': () => this.joinGame(),
       'cancel-join-game-btn': () => this.hideJoinGameForm(),
@@ -362,8 +377,9 @@ export class PongGamePage implements Page {
 
   /*------------------------------CREATE GAME-------------------------------*/
 
-  private async createGame(): Promise<void> {
+  private async createGame(gameMode: 'local' | 'remote'): Promise<void> {
     this.resetGame();
+    this.gameMode = gameMode;
 
     // Hide join button + input field if "create game" is selected
     const joinButton = this.element?.querySelector('#join-game-btn');
@@ -383,7 +399,6 @@ export class PongGamePage implements Page {
     this.gameId = response.gameId!;
     this.isCreator = true;
     const success = await this.wss.connectGame(this.gameId, this.userId!);
-    // Store game ID in local storage if successful
     if (!success) {
       console.log('Failed to connect to game room.');
     }
@@ -434,7 +449,6 @@ export class PongGamePage implements Page {
     this.gameId = gameCode;
     this.isCreator = false;
     const success = await this.wss.connectGame(this.gameId, this.userId!);
-    // Store game ID in local storage if successful
     if (!success) {
       console.log('Failed to connect to game room.');
     }

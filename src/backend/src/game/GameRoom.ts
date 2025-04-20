@@ -104,6 +104,7 @@ export class GameRoom {
       }
       this.localSocket = socket;
       this.players.left = { id: data.playerId, socket };
+      this.announceJoin(data.playerId, 'left');
     } else {
       // Remote: Assign player side depending on availability
       if (!this.players.left) {

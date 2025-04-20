@@ -81,19 +81,13 @@ async function websocketRoutes(server: FastifyInstance) {
       const message = JSON.parse(msg.toString());
       console.log('[ws.routes] Full message:', message.type, JSON.stringify(message.data, null, 2));
 
-      switch (message.type) {
-        case 'join':
-          const joinSuccess = gameManager.joinRoom(message.data, connection);
+      if (message.type === 'join') {
+        const joinSuccess = gameManager.joinRoom(message.data, connection);
           if (joinSuccess) {
             connection.off('message', onFirstMessage);
           }
-          break ;
-        // case 'delete':
-        //   gameManager.deleteGame(gameId);
-        //   break ;
-        // Other valid message types will be handled by the room after joining
-        default:
-          break ;
+      } else {
+        sendError(connection, `Unrecognized message type: ${message.type}. Please join a game first.`);
       }
     });    
   });

@@ -143,7 +143,7 @@ export class LoginPage implements Page {
         const div = document.createElement('div');
         div.id = 'g_id_onload';
         div.setAttribute('data-client_id', this.googleClientId as string);
-        div.setAttribute('data-callback', 'handleCredentialResponse');
+        div.setAttribute('data-callback', 'handleGoogleCredentialResponse');
 
         const signinDiv = document.createElement('div');
         signinDiv.className = 'g_id_signin';
@@ -180,10 +180,6 @@ export class LoginPage implements Page {
     window.handleGoogleCredentialResponse = this.handleGoogleCredentialResponse.bind(this);
   }
 
-  private async handleGoogleSignIn(): Promise<void> {
-    console.log('inside handleGoogleSignIn()');
-
-  }
   private async handleLogin(): Promise<void> {
     if (!this.element) return;
     
