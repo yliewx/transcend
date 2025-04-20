@@ -32,27 +32,34 @@ async function websocketRoutes(server: FastifyInstance) {
     try {
         user = await request.server.authenticateUser(request);
     } catch (error) {
-        console.log('Connection failed:', error);
-        connection.close();
-        return;
+      console.log('Connection failed:', error);
+      connection.close();
+      return;
     }
     console.log(`New WebSocket connection: ${JSON.stringify(user)}`);
     connection.send('Connected to server');
 
     // Add user to map of online users
     onlineUsers.set(user.id, connection);
+
+    // Ping client every 30 seconds to keep connection alive
+    const pingInterval = setInterval(() => {
+      if (connection.readyState === WebSocket.OPEN) {
+        connection.ping();
+      }
+    }, 30000);
     
     // Message handler
     connection.on('message', (msg: string) => {
-        const message = JSON.parse(msg);
-
-        console.log(`Received: ${message}`);
-        connection.send(`Echo: ${message}`);
+      const message = JSON.parse(msg);
+      console.log(`Received: ${message}`);
+      connection.send(`Echo: ${message}`);
     });
   
     connection.on('close', () => {
-        console.log(`User disconnected: ${user.id}`);
-        onlineUsers.delete(user.id);
+      clearInterval(pingInterval);
+      console.log(`User disconnected: ${user.id}`);
+      onlineUsers.delete(user.id);
     });
   });
 
