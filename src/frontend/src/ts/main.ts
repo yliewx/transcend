@@ -1,3 +1,4 @@
+import '../css/input.css';
 import { AuthService } from './services/auth.service';
 import { ControlAccess } from './services/control.access';
 import { Router } from './router';
