@@ -1,4 +1,4 @@
-import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { FastifyRequest, FastifyReply } from 'fastify';
 import { gameManager } from '../game/GameManager';
 import GameStats from '../models/game.stats';
 import crypto from 'crypto';
@@ -32,6 +32,21 @@ export async function createGame(request: FastifyRequest, reply: FastifyReply) {
 
   const gameId = gameManager.createGame(mode);
   return { gameId, success: true };
+}
+
+// Retrieve game ID if player is in an active game
+export function getExistingGame(request: AuthenticatedRequest, reply: FastifyReply) {
+  const playerId = request.user.id;
+  const existingGame = gameManager.getPlayerSession(playerId);
+  if (!existingGame) {
+    return reply.status(400).send({
+      success: false,
+      message: 'No existing game found.'
+    });
+  }
+
+  const { gameId, isCreator } = existingGame;
+  return { success: true, gameId, isCreator };
 }
 /*
 export async function startGame(request: FastifyRequest<{ Params: GameParams }>, reply: FastifyReply) {
@@ -114,24 +129,24 @@ export async function pollGameState(
   }
 }
 */
+/*
 export async function recordMatch(request: FastifyRequest, reply: FastifyReply)
 {
-    const { gameId, userId, userSide, leftScore, rightScore, winner } = request.body as {
-        gameId: string;
-        userId: number;
-        userSide: 'left' | 'right';
-        leftScore: number;
-        rightScore: number;
-        winner: 'left' | 'right';
-    };
-    
-    // Cast request to AuthenticatedRequest to access user property
-    const authRequest = request as AuthenticatedRequest;
-    
-    try {
-    // Get database connection
-    const db = await getDb();
-    
+  const { gameId, userId, opponentId, winnerId, leftScore, rightScore } = request.body as {
+      gameId: string;
+      userId: number;
+      opponentId: number;
+      winnerId: number;
+      leftScore: number;
+      rightScore: number;
+  };
+  
+  // Cast request to AuthenticatedRequest to access user property
+  const authRequest = request as AuthenticatedRequest;
+  let transactionStarted = false;
+  const db = await getDb();
+
+  try {
     // Verify that the authenticated user is the one recording the match
     if (authRequest.user.id !== userId) {
         return reply.code(403).send({
@@ -156,39 +171,52 @@ export async function recordMatch(request: FastifyRequest, reply: FastifyReply)
         message: 'Cannot record match for a game that has not finished'
         });
     }
-    
-    // For local games, use null for the second player
-    const player1Id = userSide === 'left' ? userId : null;
-    const player2Id = userSide === 'left' ? null : userId;
-    
-    // Determine the winner ID
-    const userWon = (userSide === 'left' && winner === 'left') || 
-                    (userSide === 'right' && winner === 'right');
-    const winnerId = userWon ? userId : null;
-    
-    // Record the match using your database connection
-    await GameStats.recordGameResult(
-        db,
-        player1Id,
-        player2Id,
-        winnerId,
-        leftScore,
-        rightScore
-    );
-    
+    await db.run('BEGIN TRANSACTION');
+    transactionStarted = true;
+    await GameStats.recordGameResult(db, userId, opponentId, winnerId, leftScore, rightScore)
+    const result : 'win' | 'loss' = winnerId === userId ? 'win' : 'loss';
+    await GameStats.updateMatches(db, userId, result);
+    if (opponentId !== null) 
+        await GameStats.updatePlayerElo(db, userId, opponentId, winnerId === userId ? 1 : 0);
+    await GameStats.updateWinStreak(db, userId, winnerId === userId)
+    await db.run('COMMIT');
     return reply.send({
         success: true,
         message: 'Match recorded successfully'
     });
-    } catch (error) {
+  } catch (error) {
+    if (transactionStarted) 
+      await db.run('ROLLBACK'); 
     console.error('Error recording match:', error);
     return reply.status(500).send({
         success: false,
         message: 'Error recording match'
     });
-    }
+  }
+}
+*/
+export async function getGameStats(request: FastifyRequest, reply: FastifyReply) {
+  try {
+    const authRequest = request as AuthenticatedRequest;
+    const db = await getDb();
+    const stats = await GameStats.getUserStats(db, authRequest.user.id);
+    return reply.send({ success: true, stats });
+  } catch (error) {
+    console.error('Error fetching game stats:', error);
+    return reply.status(500).send({ success: false, message: 'Failed to fetch game statistics' });
+  }
 }
 
+export async function getLeaderboard(request: FastifyRequest, reply: FastifyReply) {
+  try {
+      const db = await getDb();
+      const leaderboard = await GameStats.getLeaderboard(db);
+      return reply.send({ success: true, leaderboard });
+  } catch (error) {
+      console.error('Error fetching leaderboard:', error);
+      return reply.status(500).send({ success: false, message: 'Failed to fetch leaderboard' });
+  }
+}
 
 export async function getMatchHistory(request: FastifyRequest, reply: FastifyReply) {
   try {
@@ -199,17 +227,5 @@ export async function getMatchHistory(request: FastifyRequest, reply: FastifyRep
   } catch (error) {
     console.error('Error fetching match history:', error);
     return reply.status(500).send({ success: false, message: 'Failed to fetch match history' });
-  }
-}
-
-export async function getGameStats(request: FastifyRequest, reply: FastifyReply) {
-  try {
-    const authRequest = request as AuthenticatedRequest;
-    const db = await getDb();
-    const stats = await GameStats.getUserStats(db, authRequest.user.id);
-    return reply.send({ success: true, stats });
-  } catch (error) {
-    console.error('Error fetching game stats:', error);
-    return reply.status(500).send({ success: false, message: 'Failed to fetch game statistics' });
   }
 }

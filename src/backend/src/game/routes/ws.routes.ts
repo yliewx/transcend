@@ -8,7 +8,7 @@ import { sendError } from "../message.types";
 // type: 'input';
 export interface InputMessage {
   gameId: string;
-  playerId: string;
+  playerId: number;
   side?: 'left' | 'right'; // local play only
   input: {
     paddleUp: boolean;
@@ -59,6 +59,14 @@ async function websocketRoutes(server: FastifyInstance) {
   /*-----------------------------GAME SESSION-------------------------------*/
   
   server.get('/pong/:gameId', { websocket: true }, async (connection: WebSocket, request: FastifyRequest<{ Params: PongParams }>) => {
+    // Check for access token
+    try {
+        const user = await request.server.authenticateUser(request);
+    } catch (error) {
+        console.log('Connection failed:', error);
+        connection.close();
+        return;
+    }
     // On connection: Extract game ID and get game instance
     const gameId = request.params.gameId;
     const room = gameManager.getRoom(gameId);
@@ -75,7 +83,7 @@ async function websocketRoutes(server: FastifyInstance) {
 
       switch (message.type) {
         case 'join':
-          const joinSuccess = room.addPlayer(message.data, connection);
+          const joinSuccess = gameManager.joinRoom(message.data, connection);
           if (joinSuccess) {
             connection.off('message', onFirstMessage);
           }

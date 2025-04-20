@@ -4,9 +4,11 @@ import { InputMessage } from './routes/ws.routes';
 import { sendError } from './message.types';
 import { getDb } from '../db';
 import User from '../models/user';
+import GameStats from '../models/game.stats';
+import { Database } from 'sqlite';
 
 export interface Player {
-  id: string;
+  id: number;
   socket: WebSocket;
 }
 
@@ -20,7 +22,7 @@ export class GameRoom {
   private players: {
     left: Player | null;
     right: Player | null;
-  } = { left: null, right: null};
+  } = { left: null, right: null };
 
   /*------------------------------CONSTRUCTOR-------------------------------*/
 
@@ -32,6 +34,71 @@ export class GameRoom {
     this.game.onGameUpdate(() => {
       this.broadcastGameState('update');
     });
+    // Record match & player results on game end
+    this.game.onGameEnd((state: GameState) => {
+      this.broadcastGameState('update');
+      this.recordResults(state);
+    });
+  }
+
+  /*---------------------------RECORD GAME RESULTS--------------------------*/
+
+  async recordPlayerResults(db: Database,
+    userId: number,
+    opponentId: number,
+    winnerId: number
+  ) {
+    let transactionStarted = true;
+    try {
+      await db.run('BEGIN TRANSACTION');
+  
+      const result: 'win' | 'loss' = winnerId === userId ? 'win' : 'loss';
+      await GameStats.updateMatches(db, userId, result);
+      if (opponentId !== null) {
+        await GameStats.updatePlayerElo(db, userId, opponentId, winnerId === userId ? 1 : 0);
+      }
+      await GameStats.updateWinStreak(db, userId, winnerId === userId);
+
+      await db.run('COMMIT');
+    } catch (error) {
+      if (transactionStarted) {
+        await db.run('ROLLBACK');
+      }
+      console.error('Error recording player results:', error);
+      throw error; // Re-throw the error for handling by the caller
+    }
+  }
+
+  async recordMatch(db: Database,
+    leftPlayerId: number,
+    rightPlayerId: number,
+    winnerId: number,
+    state: GameState
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      await GameStats.recordGameResult(db, leftPlayerId, rightPlayerId, winnerId, state.scoreLeft, state.scoreRight);
+      
+      return {
+        success: true,
+        message: 'Game result recorded successfully'
+      };
+    } catch (error) {
+      console.error('Error recording game result:', error);
+      throw error;
+    }
+  }
+
+  async recordResults(state: GameState) {
+    const db = await getDb();
+    const leftPlayerId = this.players.left?.id;
+    const rightPlayerId = this.players.right?.id;
+    const winnerId = state.winner == 'left'? leftPlayerId : rightPlayerId;
+  
+    if (leftPlayerId && rightPlayerId && winnerId) {
+      await this.recordMatch(db, leftPlayerId, rightPlayerId, winnerId, state);
+      await this.recordPlayerResults(db, leftPlayerId, rightPlayerId, winnerId);
+      await this.recordPlayerResults(db, rightPlayerId, leftPlayerId, winnerId);
+    }
   }
 
   /*--------------------------BROADCAST GAME STATE--------------------------*/
@@ -66,7 +133,7 @@ export class GameRoom {
   }
 
   // Broadcast message when a player joins the room
-  private async announceJoin(playerId: string, side: 'left' | 'right') {
+  private async announceJoin(playerId: number, side: 'left' | 'right') {
     const db = await getDb();
     const user = await User.findById(db, Number(playerId));
     
@@ -83,7 +150,7 @@ export class GameRoom {
 
   /*-------------------------------JOIN GAME--------------------------------*/
 
-  private addPlayer(data: { gameId: string; playerId: string }, socket: WebSocket): boolean {
+  private addNewPlayer(data: { gameId: string; playerId: number }, socket: WebSocket): boolean {
     if (this.mode === 'local') {
       // Local: Only one socket
       if (this.localSocket) {
@@ -112,7 +179,7 @@ export class GameRoom {
     return true;
   }
  
-  public handleJoin(data: { gameId: string; playerId: string }, socket: WebSocket): boolean {
+  public handleJoin(data: { gameId: string; playerId: number }, socket: WebSocket): boolean {
     const { playerId } = data;
 
     // Check if join attempt is from a disconnected player (trying to reconnect) or a new player
@@ -125,7 +192,7 @@ export class GameRoom {
         this.players.left.socket = socket;
       } else {
         // New local join attempt
-        const success = this.addPlayer(data, socket);
+        const success = this.addNewPlayer(data, socket);
         if (!success) return false;
       }
     } else {
@@ -138,7 +205,7 @@ export class GameRoom {
         this.announceJoin(playerId, 'right');
       } else {
         // New remote join attempt
-        const success = this.addPlayer(data, socket);
+        const success = this.addNewPlayer(data, socket);
         if (!success) return false;
       }
     }
@@ -183,7 +250,7 @@ export class GameRoom {
 
   /*------------------------------INPUT HANDLER-----------------------------*/
 
-  private getPlayerSide(playerId: string): 'left' | 'right' | null {
+  private getPlayerSide(playerId: number): 'left' | 'right' | null {
     if (this.players.left?.id === playerId) return 'left';
     if (this.players.right?.id === playerId) return 'right';
     return null;
@@ -192,7 +259,7 @@ export class GameRoom {
   /*
   InputMessage {
     gameId: string;
-    playerId: string;
+    playerId: number;
     side?: 'left' | 'right'; // local play only
     input: {
       paddleUp: boolean;
@@ -249,6 +316,28 @@ export class GameRoom {
     return (
       (this.mode === 'local' && !!this.localSocket) ||
       (this.mode === 'remote' && !!this.players?.left && !!this.players?.right)
-    );    
+    );
+  }
+
+  /*--------------------------------ACCESSORS-------------------------------*/
+
+  public getGameId(): string {
+    return this.id;
+  }
+
+  public getPlayerIds(): number[] {
+    const ids: number[] = [];
+  
+    if (this.players.left) ids.push(this.players.left.id);
+    if (this.players.right) ids.push(this.players.right.id);
+  
+    return ids;
+  }
+
+  public playerIsCreator(playerId: number): boolean {
+    if (this.players.left) {
+      return playerId === this.players.left.id;
+    }
+    return false;
   }
 }
