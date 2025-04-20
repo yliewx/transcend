@@ -31,24 +31,13 @@ export class PongGame {
   private state: GameState;
   private updateInterval: NodeJS.Timeout | null = null;
 
-  /*----------------------------CALLBACK METHODS----------------------------*/
-
-  // GameRoom callback method
-  private updateCallback: (() => void) | null = null;
-  private endgameCallback: ((state: GameState) => void) | null = null;
-
-  // Set the callback to send game state updates to players
-  public onGameUpdate(callback: () => void): void {
-    this.updateCallback = callback;
-  }
-
-  public onGameEnd(callback: (state: GameState) => void): void {
-    this.endgameCallback = callback;
-  }
-
   /*------------------------------CONSTRUCTOR-------------------------------*/
 
-  constructor(gameId: string) {
+  constructor(
+    gameId: string,
+    private updateCallback: () => void, // Send game state updates in GameRoom
+    private endgameCallback: (state: GameState) => void // Handle game end in GameRoom
+  ) {
       this.state = {
         id: gameId,
         status: 'waiting',
@@ -81,9 +70,7 @@ export class PongGame {
         this.state.lastUpdateTime = Date.now();
         
         // Send game state updates to players
-        if (this.updateCallback) {
-          this.updateCallback();
-        }
+        this.updateCallback();
       }
     }, 16);   
   }
@@ -222,19 +209,17 @@ export class PongGame {
     this.cleanup();
 
     // Notify GameRoom of the winner
-    if (this.endgameCallback) {
-      this.endgameCallback(this.getState());
-    }
+    this.endgameCallback(this.getState());
   }
 
   public cleanup(): void {
-      if (this.updateInterval) {
-        clearInterval(this.updateInterval);
-        this.updateInterval = null;
-      }
+    if (this.updateInterval) {
+      clearInterval(this.updateInterval);
+      this.updateInterval = null;
+    }
   }
 
   public getState(): GameState {
-        return { ...this.state };
+    return { ...this.state };
   }
 }

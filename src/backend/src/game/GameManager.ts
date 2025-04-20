@@ -7,6 +7,8 @@ export class GameManager {
   private sessions: Map<string, GameRoom> = new Map(); // track active games
   private activePlayers: Map<number, GameRoom> = new Map(); // map player ID to game
   
+  /*------------------------------CONSTRUCTOR-------------------------------*/
+
   constructor() {
     // Cleanup inactive sessions periodically (every hour)
     setInterval(() => {
@@ -14,15 +16,23 @@ export class GameManager {
     }, 60 * 60 * 1000);
   }
 
+  /*--------------------------------GET GAME--------------------------------*/
+
+  // Search for game room by game ID
   public getRoom(gameId: string): GameRoom | undefined {
-    console.log(`Fetching game with ID: ${gameId}`);
-    console.log(`Current sessions: ${Array.from(this.sessions.keys())}`);
+    console.log(`[GameManager] Fetching game with ID: ${gameId}`);
+    console.log(`[GameManager] Current sessions: ${Array.from(this.sessions.keys())}`);
     return this.sessions.get(gameId);
   }
 
+  // Search for game by player ID
   public getPlayerSession(playerId: number): { gameId: string, isCreator: boolean } | undefined {
-    console.log(`Fetching game with player ID: ${playerId}`);
-    console.log(`Current player sessions: ${Array.from(this.activePlayers.keys())}`);
+    console.log(`[GameManager] Fetching game with player ID: ${playerId}`);
+    console.log(`[GameManager] Current player sessions:`);
+    for (const [key, value] of this.activePlayers.entries()) {
+      console.log(key, value);
+    }
+    
     const room = this.activePlayers.get(playerId);
     if (room) {
       return {
@@ -33,10 +43,13 @@ export class GameManager {
     return undefined;
   }
 
-  public getGame(gameId: string): PongGame | undefined {
-    const room = this.getRoom(gameId);
-    return room ? room.game : undefined;
-  }
+  // // Get pong game instance directly
+  // public getGame(gameId: string): PongGame | undefined {
+  //   const room = this.getRoom(gameId);
+  //   return room ? room.game : undefined;
+  // }
+
+  /*-------------------------------JOIN GAME--------------------------------*/
 
   public joinRoom(data: { gameId: string; playerId: number }, connection: WebSocket): boolean {
     const room = this.getRoom(data.gameId);
@@ -47,15 +60,20 @@ export class GameManager {
     return false;
   }
 
+  /*------------------------------CREATE GAME-------------------------------*/
+
   public createGame(mode: 'local' | 'remote'): string {
     const gameId = uuidv4();
-    console.log(`Creating game with ID: ${gameId}`);
-    const room = new GameRoom(gameId, mode);
+    console.log(`[GameManager] Creating game with ID: ${gameId}`);
+    const room = new GameRoom(gameId, mode, this.deleteGame);
     this.sessions.set(gameId, room);
     return gameId;
   }
 
-  public deleteGame(gameId: string): boolean {
+  /*------------------------------DESTROY GAME------------------------------*/
+
+  public deleteGame(gameId: string): void {
+    console.log(`[GameManager] Cleaning up game with ID: ${gameId}`);
     const room = this.sessions.get(gameId);
     if (room && room.game) {
       // Clean up resources & remove active players before deleting
@@ -63,7 +81,7 @@ export class GameManager {
       const players = room.getPlayerIds();
       players.forEach(playerId => this.activePlayers.delete(playerId));
     }
-    return this.sessions.delete(gameId);
+    this.sessions.delete(gameId);
   }
 
   private cleanupInactiveGames(): void {

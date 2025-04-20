@@ -88,9 +88,9 @@ async function websocketRoutes(server: FastifyInstance) {
             connection.off('message', onFirstMessage);
           }
           break ;
-        case 'delete':
-          gameManager.deleteGame(gameId);
-          break ;
+        // case 'delete':
+        //   gameManager.deleteGame(gameId);
+        //   break ;
         // Other valid message types will be handled by the room after joining
         default:
           break ;

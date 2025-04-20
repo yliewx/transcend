@@ -628,8 +628,8 @@ export class PongGamePage implements Page {
 
     this.resetGame();
     
-    if (this.gameId) 
-      this.pongService.cleanupGame(this.gameId);
+    // if (this.gameId) 
+    //   this.pongService.cleanupGame(this.gameId);
   }
 
   private handleBeforeUnload = (event: BeforeUnloadEvent) => {
