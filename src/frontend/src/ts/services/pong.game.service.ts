@@ -76,24 +76,24 @@ export class PongGameService extends BaseApiService {
   /**
    * Record a match result
    */
-  public async recordMatchResult(matchData: MatchRecord): Promise<{success: boolean, error?: string}> {
-    return this.request<{}>(
-      '/games/record-match',
-      'POST',
-      matchData,
-      false
-    );
-  }
+  // public async recordMatchResult(matchData: MatchRecord): Promise<{success: boolean, error?: string}> {
+  //   return this.request<{}>(
+  //     '/games/record-match',
+  //     'POST',
+  //     matchData,
+  //     false
+  //   );
+  // }
 
   /**
    * Clean up a game when no longer needed
    */
-  public async cleanupGame(gameId: string): Promise<{success: boolean, error?: string}> {
-    return this.request<{}>(
-      `/games/${gameId}`,
-      'DELETE',
-      undefined,
-      false
-    );
-  }
+  // public async cleanupGame(gameId: string): Promise<{success: boolean, error?: string}> {
+  //   return this.request<{}>(
+  //     `/games/${gameId}`,
+  //     'DELETE',
+  //     undefined,
+  //     false
+  //   );
+  // }
 }
