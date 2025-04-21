@@ -263,16 +263,16 @@ export class AdminTournamentPage implements Page {
     }
     
     // Check if end date is at least 1 hour after start date
-    const minEndDateTime = new Date(startDateTime.getTime());
-    minEndDateTime.setHours(minEndDateTime.getHours() + 1);
+    // const minEndDateTime = new Date(startDateTime.getTime());
+    // minEndDateTime.setHours(minEndDateTime.getHours() + 1);
     
-    if (endDateTime < minEndDateTime) {
-      if (dateErrorElement) {
-        dateErrorElement.textContent = 'End date and time must be at least 1 hour after start date and time.';
-        dateErrorElement.classList.remove('hidden');
-      }
-      return false;
-    }
+    // if (endDateTime < minEndDateTime) {
+    //   if (dateErrorElement) {
+    //     dateErrorElement.textContent = 'End date and time must be at least 1 hour after start date and time.';
+    //     dateErrorElement.classList.remove('hidden');
+    //   }
+    //   return false;
+    // }
     
     return true;
   }

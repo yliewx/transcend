@@ -61,7 +61,7 @@ setInterval(async () => {
   } catch (error) {
     console.error('Error in tournament processing:', error);
   }
-}, 60 * 60 * 1000); // Run every hour
+}, 1000); // Run every hour
 
 // Start server
 const start = async () => {

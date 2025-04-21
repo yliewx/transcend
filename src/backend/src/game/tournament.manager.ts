@@ -6,6 +6,7 @@ export class TournamentManager {
   // Run this periodically (e.g., every hour)
   public static async processTournaments(): Promise<void> {
     const db = await getDb();
+    console.log('inside processTournaments');
     
     try {
       await db.run('BEGIN TRANSACTION');
@@ -25,6 +26,7 @@ export class TournamentManager {
   
   private static async startPendingTournaments(db: Database): Promise<void> {
     // Find tournaments that should start now
+    console.log('inside startPendingTournaments');
     const tournamentsToStart = await db.all(`
       SELECT id, max_participants
       FROM tournaments
