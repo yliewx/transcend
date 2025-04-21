@@ -14,6 +14,7 @@ import setupTwilio from './plugins/twilio';
 import setupGoogleAuth from './plugins/oauth2';
 import authRoutes from './auth/routes/auth.routes';
 import setupWebSocket from './game/routes/ws.routes'
+import { TournamentManager } from './game/tournament.manager';
 
 // Initialize database
 setupDbConnection();
@@ -52,6 +53,15 @@ server.register(setupCors);
 server.register(authRoutes);
 server.register(setupRoutes);
 server.register(setupWebSocket);
+
+// Set up periodic tournament processing
+setInterval(async () => {
+  try {
+    await TournamentManager.processTournaments();
+  } catch (error) {
+    console.error('Error in tournament processing:', error);
+  }
+}, 60 * 60 * 1000); // Run every hour
 
 // Start server
 const start = async () => {

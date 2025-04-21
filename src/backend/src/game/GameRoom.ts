@@ -6,6 +6,8 @@ import { getDb } from '../db';
 import User from '../models/user';
 import GameStats from '../models/game.stats';
 import { Database } from 'sqlite';
+import { updateTournamentMatchResult } from '../controllers/tour.controller';
+
 
 export interface Player {
   id: number;
@@ -341,6 +343,8 @@ export class GameRoom {
       await this.recordMatch(db, leftPlayerId, rightPlayerId, winnerId, state);
       await this.recordPlayerResults(db, leftPlayerId, rightPlayerId, winnerId);
       await this.recordPlayerResults(db, rightPlayerId, leftPlayerId, winnerId);
+      // Check if this game is part of a tournament match
+      await updateTournamentMatchResult(this.id, winnerId);
     }
   }
 

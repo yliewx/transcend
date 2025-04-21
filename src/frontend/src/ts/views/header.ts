@@ -32,6 +32,15 @@ export class HeaderPage implements Page {
               <a href="/play" class="nav-link border-transparent text-gray-500 hover:border-indigo-500 hover:text-indigo-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                 Play
               </a>
+              <a href="/tournaments" class="nav-link border-transparent text-gray-500 hover:border-indigo-500 hover:text-indigo-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                Tournaments
+              </a>
+              <a href="/my-tournaments" class="nav-link border-transparent text-gray-500 hover:border-indigo-500 hover:text-indigo-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                My Tournaments
+              </a>
+              <a href="/admin-tournaments" class="nav-link border-transparent text-gray-500 hover:border-indigo-500 hover:text-indigo-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                Admin Tournaments
+              </a>
               <a href="/stats" class="nav-link border-transparent text-gray-500 hover:border-indigo-500 hover:text-indigo-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                 Stats
               </a>
