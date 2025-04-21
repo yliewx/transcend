@@ -4,8 +4,9 @@
   "description": "Ping Pong Game",
   "main": "public/js/main.js",
   "scripts": {
-    "build": "NODE_ENV=production webpack",
-    "dev": "webpack serve --mode development"
+    "build": "webpack && npx @tailwindcss/cli -i src/css/input.css -o public/css/style.css --minify",
+    "dev": "concurrently \"webpack --watch\" \"npx @tailwindcss/cli -i src/css/input.css -o public/css/style.css --watch\"",
+    "start": "webpack serve"
   },
   "keywords": [],
   "author": "",
