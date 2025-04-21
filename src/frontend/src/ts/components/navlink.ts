@@ -3,7 +3,7 @@ export class IconNavLink {
 
   constructor(
     private href: string,
-    private icon: string, // SVG content
+    private icon: string,
     private label: string
   ) {}
 
@@ -12,8 +12,7 @@ export class IconNavLink {
 
     const link = document.createElement('a');
     link.href = this.href;
-    link.className =
-      'nav-link flex items-center p-3 text-gray-500 hover:text-indigo-600 hover:bg-gray-100 rounded-lg transition-all';
+    link.className = 'nav-link nav-link-inactive';
 
     link.innerHTML = `
       <span class="w-6 h-6 mr-2">${this.icon}</span>
@@ -26,8 +25,8 @@ export class IconNavLink {
 
   setActive(isActive: boolean): void {
     if (!this.element) return;
-    this.element.classList.toggle('text-indigo-600', isActive);
-    this.element.classList.toggle('text-gray-500', !isActive);
+    this.element.classList.toggle('nav-link-active', isActive);
+    this.element.classList.toggle('nav-link-inactive', !isActive);
   }
 
   getHref(): string {

@@ -25,25 +25,25 @@ export class SidebarComponent {
     if (this.element) return this.element;
 
     const sidebar = document.createElement('aside');
-    sidebar.className = 'fixed top-0 left-0 h-screen w-20 md:w-48 bg-white shadow-md flex flex-col z-50';
+    sidebar.className = 'sidebar';
 
     // Append "transcend" logo
     const topBar = document.createElement('div');
-    topBar.className = 'bg-white h-16 flex justify-center items-center shadow w-full';
+    topBar.className = 'sidebar-header';
     topBar.innerHTML = `
-      <a href="/home" class="text-xl font-bold text-indigo-600 hidden md:inline">Transcend</a>
+      <a href="/home" class="sidebar-title">Transcend</a>
     `;
     sidebar.appendChild(topBar);
 
     // Append navigation links
     const navContainer = document.createElement('nav');
-    navContainer.className = 'flex flex-col items-center w-full space-y-2';
+    navContainer.className = 'nav-container';
     this.navLinks.forEach(link => {
       navContainer.appendChild(link.render());
     });
     // Wrap nav link elements
     const navWrapper = document.createElement('div');
-    navWrapper.className = 'flex-1 flex flex-col items-center py-6 space-y-4';
+    navWrapper.className = 'nav-wrapper';
     navWrapper.appendChild(navContainer);
     sidebar.appendChild(navWrapper);
 
@@ -51,7 +51,7 @@ export class SidebarComponent {
     const logoutBtn = new LogoutButton(() => this.performLogout());
     // Append wrapped logout button
     const logoutBtnWrapper = document.createElement('div');
-    logoutBtnWrapper.className = 'flex justify-center mb-4';
+    logoutBtnWrapper.className = 'logout-wrapper';
     logoutBtnWrapper.appendChild(logoutBtn.render());
     sidebar.appendChild(logoutBtnWrapper);
 
