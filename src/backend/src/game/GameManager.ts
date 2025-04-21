@@ -26,7 +26,7 @@ export class GameManager {
   }
 
   // Search for game by player ID
-  public getPlayerSession(playerId: number): { gameId: string, isCreator: boolean } | undefined {
+  public getPlayerSession(playerId: number): { gameId: string, gameMode: string, isCreator: boolean } | undefined {
     console.log(`[GameManager] Fetching game with player ID: ${playerId}`);
     console.log(`[GameManager] Current player sessions:`);
     for (const [key, value] of this.activePlayers.entries()) {
@@ -37,6 +37,7 @@ export class GameManager {
     if (room) {
       return {
         gameId: room.getGameId(),
+        gameMode: room.getGameMode(),
         isCreator: room.playerIsCreator(playerId)
       };
     }

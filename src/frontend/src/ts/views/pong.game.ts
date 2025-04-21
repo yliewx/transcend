@@ -19,7 +19,7 @@ export class PongGamePage implements Page {
   private paddleWidth: number = 10;
   private ballSize: number = 30;
   // For handling game modes
-  private gameMode: 'local' | 'remote' = 'remote';
+  private gameMode: 'local' | 'remote' = 'local';
   // Game data
   private gameId: string | null = null;
   private userId: number | null = null;
@@ -64,85 +64,6 @@ export class PongGamePage implements Page {
     const container = document.createElement('div');
     container.className = 'max-w-7xl mx-auto py-6 sm:px-6 lg:px-8';
     container.innerHTML = this.pongViewComponents.render();
-    
-    // container.innerHTML = `
-    //   <div class="px-4 py-6 sm:px-0">
-    //     <div class="bg-white shadow-md rounded-lg p-8">
-    //       <div class="text-center mb-6">
-    //         <h1 class="text-3xl font-bold text-gray-900">Pong Game</h1>
-    //         <p class="mt-2 text-gray-600 mb-4">
-    //           <strong>Controls:</strong> Player 1 (Left): W/S keys | Player 2 (Right): Arrow Up/Down keys
-    //         </p>
-    //         <p id="game-status" class="text-xl text-indigo-600 font-medium"></p>
-    //       </div>
-
-    //       <!-- Game Mode Containers -->
-    //       <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-    //         <!-- Local Mode -->
-    //         <div id="local-mode-container" class="border border-gray-200 rounded-lg p-6 bg-gray-50 shadow">
-    //           <h2 class="text-2xl font-semibold text-gray-800 mb-4 text-center">Local Mode</h2>
-    //           <div class="flex justify-center">
-    //             <button id="create-local-game-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">
-    //               Create Local Game
-    //             </button>
-    //           </div>
-    //         </div>
-
-    //         <!-- Remote Mode -->
-    //         <div id="remote-mode-container" class="border border-gray-200 rounded-lg p-6 bg-gray-50 shadow">
-    //           <h2 class="text-2xl font-semibold text-gray-800 mb-4 text-center">Remote Mode</h2>
-    //           <div class="flex justify-center mb-4">
-    //             <button id="create-remote-game-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded mx-2">
-    //               Create Remote Game
-    //             </button>
-    //             <button id="join-game-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mx-2">
-    //               Join Game
-    //             </button>
-    //           </div>
-
-    //           <div id="join-game-form" class="text-center hidden">
-    //             <div class="flex justify-center items-center">
-    //               <input 
-    //                 type="text" 
-    //                 id="game-invite-code" 
-    //                 placeholder="Enter invite code" 
-    //                 class="border rounded py-2 px-3 text-gray-700 focus:outline-none focus:shadow-outline w-64"
-    //               />
-    //               <button id="submit-join-game-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded ml-2">
-    //                 Join
-    //               </button>
-    //               <button id="cancel-join-game-btn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded ml-2">
-    //                 Cancel
-    //               </button>
-    //             </div>
-    //           </div>
-    //         </div>
-    //       </div>
-
-    //       <!-- Game Info & Controls -->
-    //       <div id="game-info" class="mb-4 text-center">
-    //         <p>Game ID: <span id="game-id" class="font-mono">-</span></p>
-    //       </div>
-
-    //       <div id="game-controls" class="flex justify-center mb-6 hidden">
-    //         <button id="start-game-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mx-2">
-    //           Start
-    //         </button>
-    //         <button id="pause-game-btn" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded mx-2">
-    //           Pause/Resume
-    //         </button>
-    //       </div>
-
-    //       <div class="flex justify-center">
-    //         <canvas id="pong-canvas" width="800" height="600" class="border border-gray-300 rounded-lg shadow-lg bg-black"></canvas>
-    //       </div>
-
-    //       <div class="mt-6 text-center text-gray-500">
-    //         <p>This is a server-side implementation of Pong. The game logic runs entirely on the server.</p>
-    //       </div>
-    //     </div>
-    //   </div>
-    // `;
 
     setTimeout(() => {
         this.setupEventHandlers();
@@ -202,6 +123,7 @@ export class PongGamePage implements Page {
     const existingGame = await this.pongService.getExistingGame(this.userId!);
     if (existingGame.success) {
       this.gameId = existingGame.gameId ?? null;
+      this.gameMode = existingGame.gameMode ?? 'local';
       this.isCreator = existingGame.isCreator ?? false;
 
       if (this.gameId) {
@@ -238,24 +160,26 @@ export class PongGamePage implements Page {
     this.updateGameStatusUI();
   }
 
+  // Update UI when joining game
+  private setupGameUI(): void {
+    const gameIdElement = this.element?.querySelector('#game-id');
+    if (gameIdElement) gameIdElement.textContent = this.gameId;
+    this.element?.querySelector('#game-controls')?.classList.remove('hidden');
+    this.element?.querySelector('#pong-canvas-container')?.classList.remove('hidden');
+    this.element?.querySelector('#mode-selection')?.classList.add('hidden');
+    this.element?.querySelector('#reset-game-btn')?.classList.remove('hidden');
+  }
+
   // Called by websocket manager on 'player-joined' message
   private handleJoinedGame(data: any): void {
     if (data.state) this.state = data.state;
 
-    // Update UI
-    const gameIdElement = this.element?.querySelector('#game-id');
-    if (gameIdElement) gameIdElement.textContent = this.gameId;
-    
-    const gameControlsElement = this.element?.querySelector('#game-controls');
-    if (gameControlsElement) gameControlsElement.classList.remove('hidden');
-
-    this.element?.querySelector('#pong-canvas-container')?.classList.remove('hidden');
-    this.element?.querySelector('#mode-selection')?.classList.add('hidden');
-    this.element?.querySelector('#reset-game-btn')?.classList.remove('hidden');
-
-    // this.hideJoinGameForm();
-    
-    if (this.isCreator && data.ready) {
+    this.setupGameUI();
+    if (this.state?.status === 'playing') {
+      this.setupEventHandlers();
+      this.startGameLoop();
+      this.updateGameStatusUI();
+    } else if (this.isCreator && data.ready) {
       this.updateGameStatusUI('Game created! Press Start to begin.');
     } else if (this.isCreator && !data.ready) {
       this.updateGameStatusUI('Game created! Waiting for opponent to join.');

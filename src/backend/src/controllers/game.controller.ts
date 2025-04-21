@@ -45,8 +45,8 @@ export function getExistingGame(request: AuthenticatedRequest, reply: FastifyRep
     });
   }
 
-  const { gameId, isCreator } = existingGame;
-  return { success: true, gameId, isCreator };
+  const { gameId, gameMode, isCreator } = existingGame;
+  return { success: true, gameId, gameMode, isCreator };
 }
 /*
 export async function startGame(request: FastifyRequest<{ Params: GameParams }>, reply: FastifyReply) {

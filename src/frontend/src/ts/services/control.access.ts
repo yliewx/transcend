@@ -16,7 +16,6 @@ export class ControlAccess {
     const result = await this.authService.getGoogleClientId();
 
     if (result.success && result.googleClientId) {
-      console.log("Google Client ID:", result.googleClientId);
       this.googleClientId = result.googleClientId;
     } else {
       console.error("Error fetching Google Client ID:", result.error);

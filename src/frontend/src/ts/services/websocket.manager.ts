@@ -89,7 +89,7 @@ export class WebSocketManager {
     while (this.retryCount < this.maxRetryCount) {
       this.retryCount++;
       const delay = 1000 * Math.pow(2, this.retryCount);
-      console.log(`[WebSocketManager] Reconnecting in ${delay}ms...`);
+      // console.log(`[WebSocketManager] Reconnecting in ${delay}ms...`);
   
       // Delay execution of next reconnect attempt
       await new Promise(res => setTimeout(res, delay));
