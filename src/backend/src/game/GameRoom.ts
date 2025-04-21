@@ -135,6 +135,7 @@ export class GameRoom {
         // Local reconnect
         this.localSocket = socket;
         this.players.left.socket = socket;
+        this.announceJoin(playerId, 'left');
       } else {
         // New local join attempt
         const success = this.addNewPlayer(data, socket);
@@ -287,20 +288,20 @@ export class GameRoom {
   /*---------------------------RECORD GAME RESULTS--------------------------*/
 
   async recordPlayerResults(db: Database,
-    userId: number,
-    opponentId: number,
-    winnerId: number
+    userId: number | null,
+    opponentId: number | null,
+    winnerId: number | null
   ) {
     let transactionStarted = true;
     try {
       await db.run('BEGIN TRANSACTION');
   
       const result: 'win' | 'loss' = winnerId === userId ? 'win' : 'loss';
-      await GameStats.updateMatches(db, userId, result);
+      await GameStats.updateMatches(db, userId!, result);
       if (opponentId !== null) {
-        await GameStats.updatePlayerElo(db, userId, opponentId, winnerId === userId ? 1 : 0);
+        await GameStats.updatePlayerElo(db, userId!, opponentId, winnerId === userId ? 1 : 0);
       }
-      await GameStats.updateWinStreak(db, userId, winnerId === userId);
+      await GameStats.updateWinStreak(db, userId!, winnerId === userId);
 
       await db.run('COMMIT');
     } catch (error) {
@@ -314,8 +315,8 @@ export class GameRoom {
 
   async recordMatch(db: Database,
     leftPlayerId: number,
-    rightPlayerId: number,
-    winnerId: number,
+    rightPlayerId: number | null,
+    winnerId: number | null,
     state: GameState
   ): Promise<{ success: boolean; message: string }> {
     try {
@@ -333,21 +334,29 @@ export class GameRoom {
 
   async recordResults(state: GameState) {
     const db = await getDb();
-    const leftPlayerId = this.players.left?.id;
-    const rightPlayerId = this.players.right?.id;
-    const winnerId = state.winner == 'left'? leftPlayerId : rightPlayerId;
+    const leftPlayerId = this.players.left?.id ?? null;
+    const rightPlayerId = this.players.right?.id ?? null;
+    const winnerId: number | null = state.winner === 'left' ? leftPlayerId : rightPlayerId;
   
-    if (leftPlayerId && rightPlayerId && winnerId) {
+    if ((leftPlayerId && rightPlayerId && winnerId) || (leftPlayerId && this.mode === 'local'))  {
       await this.recordMatch(db, leftPlayerId, rightPlayerId, winnerId, state);
       await this.recordPlayerResults(db, leftPlayerId, rightPlayerId, winnerId);
       await this.recordPlayerResults(db, rightPlayerId, leftPlayerId, winnerId);
-    }
+    } 
+    // else if (leftPlayerId && this.mode === 'local') {
+    //   await this.recordMatch(db, leftPlayerId, null, winnerId, state);
+    //   await this.recordPlayerResults(db, leftPlayerId, null, winnerId);
+    // }
   }
 
   /*--------------------------------ACCESSORS-------------------------------*/
 
   public getGameId(): string {
     return this.id;
+  }
+
+  public getGameMode(): string {
+    return this.mode;
   }
 
   public getPlayerIds(): number[] {

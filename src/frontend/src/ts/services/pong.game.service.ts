@@ -14,8 +14,8 @@ export class PongGameService extends BaseApiService {
     );
   }
 
-  public async getExistingGame(playerId: number): Promise<{success: boolean, gameId?: string, isCreator?: boolean, message?: string}> {
-    return this.request<{success: boolean, gameId?: string, isCreator?: boolean, message?: string}>(
+  public async getExistingGame(playerId: number): Promise<{success: boolean, gameId?: string, gameMode?: 'local' | 'remote', isCreator?: boolean, message?: string}> {
+    return this.request<{success: boolean, gameId?: string, gameMode?: 'local' | 'remote', isCreator?: boolean, message?: string}>(
       '/game/restore',
       'GET',
       undefined,
