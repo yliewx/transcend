@@ -83,7 +83,7 @@ export class PongViewComponents {
   render(): string {
     return `
       <div class="px-4 py-6 sm:px-0">
-        <div class="shadow-md rounded-lg p-8">
+        <div class="dark:bg-gray-900 shadow-md rounded-lg p-8">
           ${this.renderHeader()}
           ${this.renderModeSelection()}
           ${this.renderGameInfo()}

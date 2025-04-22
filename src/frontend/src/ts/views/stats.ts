@@ -30,95 +30,147 @@ export class StatsPage implements Page {
   }
   
   render(): HTMLElement {
-    if (this.element) return this.element;
-  
+    // Return cached element if it exists
+    if (this.element) {
+      return this.element;
+    }
+    
     const container = document.createElement('div');
-    container.className = 'max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8';
-  
+    container.className = 'max-w-7xl mx-auto py-6 sm:px-6 lg:px-8';
+    
+    // Initial loading state
     container.innerHTML = `
-      <div class="card">
-        <div class="text-center mb-6">
-          <h1 class="text-3xl font-bold text-pink-600 dark:text-pink-400">Your Game Statistics</h1>
-          <p class="card-description">View your performance and match history</p>
-        </div>
-  
-        <!-- Tab navigation -->
-        <div class="border-b border-gray-300 dark:border-gray-700 mb-6">
-          <nav class="flex space-x-4 justify-center">
-            <button id="stats-tab" class="px-3 py-2 text-sm font-medium border-b-2 border-pink-400 text-gray-200 dark:hover:text-pink-400">
-              Statistics & Match History
-            </button>
-            <button id="leaderboard-tab" class="px-3 py-2 text-sm font-medium text-gray-200 dark:hover:text-pink-400 border-b-2 border-transparent">
-              Leaderboard
-            </button>
-          </nav>
-        </div>
-  
-        <!-- Loading state -->
-        <div id="stats-loading" class="text-center py-10">
-          <p class="text-lg text-gray-600 dark:text-gray-300">Loading statistics...</p>
-        </div>
-  
-        <!-- Stats content -->
-        <div id="stats-content" class="hidden">
-          <div id="stats-row" class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-            ${this.createStatCard('Rank & ELO', '#0', 'purple', 'elo-rating-value', '1200')}
-            ${this.createStatCard('Win Rate', '%', 'green', 'win-rate-value', '0%')}
-            ${this.createStatCard('Games Played', 'G', 'blue', 'games-played-value', '0', 'games-played-details', '0 wins, 0 losses')}
-            ${this.createStatCard('Win Streak', '🔥', 'amber', 'win-streak-value', '0', 'win-streak-details', 'Best: 0')}
+      <div class="px-4 py-6 sm:px-0">
+        <div class="bg-white dark:bg-gray-900 shadow-md rounded-lg p-8 text-center">
+          <div class="mb-6">
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Your Game Statistics</h1>
+            <p class="mt-2 text-gray-600 dark:text-gray-300 mb-4">View your performance and match history</p>
           </div>
-  
-          <div id="match-history-container" class="mb-8">
-            <h2 class="text-2xl font-bold text-pink-600 dark:text-pink-400 mb-4">Match History</h2>
-            <div class="overflow-x-auto">
-              <table class="min-w-full bg-white dark:bg-gray-800 rounded-lg overflow-hidden">
-                <thead class="bg-gray-100 dark:bg-gray-700">
-                  <tr>
-                    <th class="px-4 py-3 text-center text-sm font-medium text-gray-600 dark:text-gray-300">Date</th>
-                    <th class="px-4 py-3 text-center text-sm font-medium text-gray-600 dark:text-gray-300">Opponent</th>
-                    <th class="px-4 py-3 text-center text-sm font-medium text-gray-600 dark:text-gray-300">Score</th>
-                    <th class="px-4 py-3 text-center text-sm font-medium text-gray-600 dark:text-gray-300">Result</th>
-                  </tr>
-                </thead>
-                <tbody id="match-history-table-body"></tbody>
-              </table>
+    
+          <!-- Tab navigation -->
+          <div class="border-b border-gray-200 dark:border-gray-700 mb-6">
+            <nav class="flex justify-center space-x-8">
+              <button id="stats-tab" class="px-3 py-2 text-sm font-medium border-b-2 border-pink-500 text-pink-600 dark:text-pink-400">
+                Statistics & Match History
+              </button>
+              <button id="leaderboard-tab" class="px-3 py-2 text-sm font-medium text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-100 border-b-2 border-transparent">
+                Leaderboard
+              </button>
+            </nav>
+          </div>
+    
+          <div id="stats-loading" class="text-center py-10">
+            <p class="text-lg text-gray-600 dark:text-gray-300">Loading statistics...</p>
+          </div>
+    
+          <!-- Stats content tab -->
+          <div id="stats-content" class="hidden">
+            <div id="stats-row" class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8 border rounded-lg p-4 bg-gray-50 dark:bg-gray-800 text-center">
+              <!-- Rank & ELO Rating -->
+              <div class="flex flex-col items-center space-y-2">
+                <div class="h-12 w-12 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center">
+                  <span id="rank-value" class="text-lg font-bold text-purple-700 dark:text-purple-300">#0</span>
+                </div>
+                <h3 class="text-sm font-medium text-gray-500 dark:text-gray-300">Rank & ELO</h3>
+                <p id="elo-rating-value" class="text-lg font-bold text-gray-900 dark:text-white">1200</p>
+              </div>
+    
+              <!-- Win Rate -->
+              <div class="flex flex-col items-center space-y-2">
+                <div class="h-12 w-12 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
+                  <span class="text-lg font-bold text-green-700 dark:text-green-300">%</span>
+                </div>
+                <h3 class="text-sm font-medium text-gray-500 dark:text-gray-300">Win Rate</h3>
+                <p id="win-rate-value" class="text-lg font-bold text-gray-900 dark:text-white">0%</p>
+              </div>
+    
+              <!-- Games Played -->
+              <div class="flex flex-col items-center space-y-2">
+                <div class="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                  <span class="text-lg font-bold text-blue-700 dark:text-blue-300">G</span>
+                </div>
+                <h3 class="text-sm font-medium text-gray-500 dark:text-gray-300">Games Played</h3>
+                <p id="games-played-value" class="text-lg font-bold text-gray-900 dark:text-white">0</p>
+                <p id="games-played-details" class="text-xs text-gray-500 dark:text-gray-400">0 wins, 0 losses</p>
+              </div>
+    
+              <!-- Win Streak -->
+              <div class="flex flex-col items-center space-y-2">
+                <div class="h-12 w-12 rounded-full bg-amber-100 dark:bg-amber-900 flex items-center justify-center">
+                  <span class="text-lg font-bold text-amber-700 dark:text-amber-300">🔥</span>
+                </div>
+                <h3 class="text-sm font-medium text-gray-500 dark:text-gray-300">Win Streak</h3>
+                <p id="win-streak-value" class="text-lg font-bold text-gray-900 dark:text-white">0</p>
+                <p id="win-streak-details" class="text-xs text-gray-500 dark:text-gray-400">Best: 0</p>
+              </div>
             </div>
-            <div id="pagination-controls" class="flex justify-between items-center mt-4">
-              <span id="pagination-info" class="text-sm text-gray-600 dark:text-gray-300">Showing 1–10 of 0 results</span>
-              <div class="flex space-x-2">
-                <button id="prev-page-btn" class="btn-gray disabled:opacity-50 disabled:cursor-not-allowed">Previous</button>
-                <button id="next-page-btn" class="btn-gray disabled:opacity-50 disabled:cursor-not-allowed">Next</button>
+    
+            <!-- Match history section -->
+            <div id="match-history-container" class="mb-8 text-center">
+              <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-4">Match History</h2>
+              <div class="overflow-x-auto">
+                <table class="min-w-full bg-white dark:bg-gray-800 rounded-lg overflow-hidden text-center">
+                  <thead class="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                    <tr>
+                      <th class="px-4 py-3 text-sm font-medium text-center">Date</th>
+                      <th class="px-4 py-3 text-sm font-medium text-center">Opponent</th>
+                      <th class="px-4 py-3 text-sm font-medium text-center">Score</th>
+                      <th class="px-4 py-3 text-sm font-medium text-center">Result</th>
+                    </tr>
+                  </thead>
+                  <tbody id="match-history-table-body">
+                    <!-- Match rows here -->
+                  </tbody>
+                </table>
+              </div>
+    
+              <div id="pagination-controls" class="flex justify-between items-center mt-4">
+                <span id="pagination-info" class="text-sm text-gray-600 dark:text-gray-300">
+                  Showing 1–10 of 0 results
+                </span>
+                <div class="flex space-x-2">
+                  <button id="prev-page-btn" class="px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-white rounded disabled:opacity-50 disabled:cursor-not-allowed">
+                    Previous
+                  </button>
+                  <button id="next-page-btn" class="px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-white rounded disabled:opacity-50 disabled:cursor-not-allowed">
+                    Next
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-  
-        <!-- Leaderboard content -->
-        <div id="leaderboard-content" class="hidden">
-          <h2 class="text-2xl font-bold text-pink-600 dark:text-pink-400 mb-4">Global Leaderboard</h2>
-          <p class="card-description">See how you rank against other players</p>
-          <div class="overflow-x-auto">
-            <table class="min-w-full bg-white dark:bg-gray-800 rounded-lg overflow-hidden table-fixed">
-              <thead class="bg-gray-100 dark:bg-gray-700">
-                <tr>
-                  <th class="w-1/4 px-4 py-3 text-center text-sm font-medium text-gray-600 dark:text-gray-300">Rank</th>
-                  <th class="w-1/6 px-4 py-3 text-center text-sm font-medium text-gray-600 dark:text-gray-300">Player</th>
-                  <th class="w-1/4 px-4 py-3 text-center text-sm font-medium text-gray-600 dark:text-gray-300">ELO</th>
-                  <th class="w-1/4 px-4 py-3 text-center text-sm font-medium text-gray-600 dark:text-gray-300">Streak</th>
-                </tr>
-              </thead>
-              <tbody id="leaderboard-table-body"></tbody>
-            </table>
+    
+          <!-- Leaderboard content tab -->
+          <div id="leaderboard-content" class="hidden text-center">
+            <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-4">Global Leaderboard</h2>
+            <p class="text-gray-600 dark:text-gray-300 mb-6">See how you rank against other players</p>
+            <div class="overflow-x-auto">
+              <table class="min-w-full bg-white dark:bg-gray-800 rounded-lg overflow-hidden table-fixed">
+                <thead class="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                  <tr>
+                    <th class="w-1/4 px-4 py-3 text-center text-sm font-medium">Rank</th>
+                    <th class="w-1/6 px-4 py-3 text-sm font-medium">Player</th>
+                    <th class="w-1/4 px-4 py-3 text-center text-sm font-medium">ELO</th>
+                    <th class="w-1/4 px-4 py-3 text-center text-sm font-medium">Streak</th>
+                  </tr>
+                </thead>
+                <tbody id="leaderboard-table-body">
+                  <!-- Leaderboard rows here -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+    
+          <div id="stats-error" class="hidden text-center py-10">
+            <p class="text-lg text-red-600 dark:text-red-400">Unable to load your statistics. Please try again later.</p>
+            <button id="retry-btn" class="mt-4 px-4 py-2 bg-pink-600 hover:bg-pink-700 text-white rounded">
+              Retry
+            </button>
           </div>
         </div>
-  
-        <div id="stats-error" class="hidden text-center py-10">
-          <p class="text-lg text-red-600">Unable to load your statistics. Please try again later.</p>
-          <button id="retry-btn" class="btn-blue mt-4">Retry</button>
-        </div>
       </div>
-    `;
-  
+    `;  
+    
     // Cache the element
     this.element = container;
     
@@ -129,33 +181,6 @@ export class StatsPage implements Page {
     setTimeout(() => this.loadData(), 0);
     
     return container;
-  }
-  
-  private createStatCard(
-    label: string,
-    icon: string,
-    color: string,
-    valueId: string,
-    value: string,
-    detailId?: string,
-    detailText?: string
-  ): string {
-    return `
-      <div class="flex items-center space-x-4 bg-${color}-50 dark:bg-gray-800 p-4 rounded-lg">
-        <div class="h-12 w-12 rounded-full bg-${color}-100 flex items-center justify-center text-${color}-700 font-bold">
-          ${icon}
-        </div>
-        <div>
-          <h3 class="text-sm text-gray-500 dark:text-gray-400">${label}</h3>
-          <p id="${valueId}" class="text-lg font-bold text-gray-900 dark:text-white">${value}</p>
-          ${
-            detailId && detailText
-              ? `<p id="${detailId}" class="text-xs text-gray-500 dark:text-gray-400">${detailText}</p>`
-              : ''
-          }
-        </div>
-      </div>
-    `;
   }
   
   private setupEventHandlers(): void {
@@ -437,12 +462,12 @@ export class StatsPage implements Page {
     row.className = 'border-t border-gray-200 hover:bg-gray-50';
     
     row.innerHTML = `
-      <td class="px-4 py-3 text-sm text-gray-300">${matchDate}</td>
-      <td class="px-4 py-3 text-sm text-gray-300">${match.opponent_name}</td>
+      <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">${matchDate}</td>
+      <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">${match.opponent_name}</td>
       <td class="px-4 py-3 text-center text-sm font-medium">
-        <span class="${match.user_won === 1 ? 'text-green-600' : 'text-gray-300'}">${match.user_score}</span>
-        <span class="text-gray-300 mx-1">-</span>
-        <span class="${match.user_won === 0 ? 'text-red-600' : 'text-gray-300'}">${match.opponent_score}</span>
+        <span class="${match.user_won === 1 ? 'text-green-600' : 'text-gray-600 dark:text-gray-300'}">${match.user_score}</span>
+        <span class="text-gray-400 mx-1">-</span>
+        <span class="${match.user_won === 0 ? 'text-red-600' : 'text-gray-600 dark:text-gray-300'}">${match.opponent_score}</span>
       </td>
       <td class="px-4 py-3 text-center">
         <span class="inline-block px-2 py-1 text-xs font-semibold rounded-full ${
@@ -475,7 +500,7 @@ export class StatsPage implements Page {
       const emptyRow = document.createElement('tr');
       emptyRow.className = 'empty-row';
       emptyRow.innerHTML = `
-        <td colspan="5" class="px-4 py-6 text-center text-gray-300">
+        <td colspan="5" class="px-4 py-6 text-center text-gray-500">
           No players with ratings found yet.
         </td>
       `;
@@ -501,16 +526,16 @@ export class StatsPage implements Page {
           : player.current_win_streak.toString();
         
         row.innerHTML = `
-          <td class="px-4 py-3 text-center text-sm ${isCurrentUser ? 'font-bold text-blue-800' : 'text-gray-300'}">
+          <td class="px-4 py-3 text-center text-sm ${isCurrentUser ? 'font-bold text-blue-800' : 'text-gray-600 dark:text-gray-300'}">
             #${player.rank}
           </td>
-          <td class="px-4 py-3 text-sm ${isCurrentUser ? 'font-bold text-blue-800' : 'text-gray-300'}">
+          <td class="px-4 py-3 text-sm ${isCurrentUser ? 'font-bold text-blue-800' : 'text-gray-600 dark:text-gray-300'}">
             ${isCurrentUser ? 'You' : playerName}
           </td>
-          <td class="px-4 py-3 text-center text-sm ${isCurrentUser ? 'font-bold text-blue-800' : 'text-gray-300'}">
+          <td class="px-4 py-3 text-center text-sm ${isCurrentUser ? 'font-bold text-blue-800' : 'text-gray-600 dark:text-gray-300'}">
             ${player.elo_rating}
           </td>
-          <td class="px-4 py-3 text-center text-sm ${player.current_win_streak >= 3 ? 'font-bold text-amber-600' : isCurrentUser ? 'font-bold text-blue-800' : 'text-gray-600'}">
+          <td class="px-4 py-3 text-center text-sm ${player.current_win_streak >= 3 ? 'font-bold text-amber-600' : isCurrentUser ? 'font-bold text-blue-800' : 'text-gray-600 dark:text-gray-300'}">
             ${streakDisplay}
           </td>
         `;

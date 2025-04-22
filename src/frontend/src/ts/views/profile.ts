@@ -21,14 +21,14 @@ export class ProfilePage implements Page {
     
     const container = document.createElement('div');
     
-    // Set initial HTML content first (non-blocking)
+    // Set initial HTML content
     container.innerHTML = `
       <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div class="px-4 py-6 sm:px-0">
-          <div class="bg-white shadow-md rounded-lg p-8">
+          <div class="card p-8">
             <div class="text-center mb-8">
-              <h1 class="text-3xl font-bold text-gray-900">Edit Your Profile</h1>
-              <p class="mt-4 text-lg text-gray-600">
+              <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Edit Your Profile</h1>
+              <p class="mt-4 text-lg text-gray-600 dark:text-gray-400">
                 Update your personal information and settings
               </p>
             </div>
@@ -36,99 +36,99 @@ export class ProfilePage implements Page {
             <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
               <!-- Avatar Section -->
               <div class="md:col-span-1">
-                <div class="bg-indigo-50 p-6 rounded-lg text-center">
-                  <h2 class="text-xl font-bold text-indigo-600 mb-4">Profile Picture</h2>
+                <div class="bg-indigo-50 dark:bg-indigo-900/30 p-6 rounded-lg text-center">
+                  <h2 class="text-xl font-bold text-indigo-600 dark:text-indigo-400 mb-4">Profile Picture</h2>
                   <div class="avatar-container mb-4">
                     <img 
                       id="current-avatar" 
                       src="/assets/default-avatar.png" 
                       alt="Profile picture" 
-                      class="w-40 h-40 rounded-full mx-auto object-cover border-4 border-indigo-200"
+                      class="w-40 h-40 rounded-full mx-auto object-cover border-4 border-indigo-200 dark:border-indigo-500"
                     >
                   </div>
                   <div class="mt-4">
-                    <label for="avatar-upload" class="inline-block bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700 cursor-pointer">
+                    <label for="avatar-upload" class="btn-primary cursor-pointer">
                       Upload New Picture
                     </label>
                     <input id="avatar-upload" type="file" accept="image/*" class="hidden">
-                    <p class="text-gray-500 text-sm mt-2">JPG, PNG or GIF. Max size 5MB.</p>
+                    <p class="text-gray-500 dark:text-gray-400 text-sm mt-2">JPG, PNG or GIF. Max size 5MB.</p>
                   </div>
                 </div>
               </div>
               
               <!-- Profile Form Section -->
               <div class="md:col-span-2">
-                <form id="profile-form" class="space-y-6">
+                <form id="profile-form" class="space-y-6 text-left">
                   <!-- Username -->
                   <div>
-                    <label for="username" class="block text-sm font-medium text-gray-700">Username</label>
+                    <label for="username" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Username</label>
                     <input 
                       type="text" 
                       id="username" 
                       name="username" 
-                      class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
-                      value=""
+                      value="a"
+                      class="input-field"
                     >
                   </div>
                   
                   <!-- Display Name -->
                   <div>
-                    <label for="displayName" class="block text-sm font-medium text-gray-700">Display Name</label>
+                    <label for="displayName" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Display Name</label>
                     <input 
                       type="text" 
                       id="displayName" 
                       name="displayName" 
-                      class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
-                      value=""
+                      value="a"
+                      class="input-field"
                     >
                   </div>
                   
                   <!-- Email -->
                   <div>
-                    <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
+                    <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
                     <input 
                       type="email" 
                       id="email" 
                       name="email" 
-                      class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
-                      value=""
+                      value="a@gmail.com"
+                      class="input-field"
                     >
                   </div>
                   
                   <!-- Change Password Section -->
-                  <div class="pt-4 border-t border-gray-200">
-                    <h3 class="text-lg font-medium text-gray-900 mb-4">Change Password</h3>
+                  <div class="pt-4 border-t border-gray-200 dark:border-gray-600">
+                    <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4 text-center">Change Password</h3>
                     
                     <!-- Current Password -->
                     <div class="mb-4">
-                      <label for="currentPassword" class="block text-sm font-medium text-gray-700">Current Password</label>
+                      <label for="currentPassword" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Current Password</label>
                       <input 
                         type="password" 
                         id="currentPassword" 
                         name="currentPassword" 
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
+                        class="input-field"
                       >
                     </div>
                     
                     <!-- New Password -->
                     <div class="mb-4">
-                      <label for="newPassword" class="block text-sm font-medium text-gray-700">New Password</label>
+                      <label for="newPassword" class="block text-sm font-medium text-gray-700 dark:text-gray-300">New Password</label>
                       <input 
                         type="password" 
                         id="newPassword" 
                         name="newPassword" 
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
+                        class="input-field"
                       >
                     </div>
                     
                     <!-- Confirm New Password -->
                     <div>
-                      <label for="confirmPassword" class="block text-sm font-medium text-gray-700">Confirm New Password</label>
+                      <label for="confirmPassword" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Confirm New Password</label>
                       <input 
                         type="password" 
                         id="confirmPassword" 
                         name="confirmPassword" 
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
+                        class="input-field"
                       >
                     </div>
                   </div>
@@ -138,13 +138,13 @@ export class ProfilePage implements Page {
                     <button 
                       type="button" 
                       id="cancel-button" 
-                      class="py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                      class="btn-secondary"
                     >
                       Cancel
                     </button>
                     <button 
                       type="submit" 
-                      class="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                      class="btn-primary"
                     >
                       Save Changes
                     </button>
@@ -153,15 +153,15 @@ export class ProfilePage implements Page {
                 
                 <!-- Notification Section -->
                 <div id="notification" class="mt-6 hidden">
-                  <div class="p-4 rounded-md bg-green-50">
-                    <div class="flex">
+                  <div class="p-4 rounded-md bg-green-50 dark:bg-green-900/30">
+                    <div class="flex items-center">
                       <div class="flex-shrink-0">
-                        <svg class="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <svg class="h-5 w-5 text-green-400 dark:text-green-300" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
                           <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
                         </svg>
                       </div>
                       <div class="ml-3">
-                        <p id="notification-message" class="text-sm font-medium text-green-800">Profile updated successfully!</p>
+                        <p id="notification-message" class="text-sm font-medium text-green-800 dark:text-green-200">Profile updated successfully!</p>
                       </div>
                     </div>
                   </div>
