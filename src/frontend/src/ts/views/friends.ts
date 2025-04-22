@@ -1,9 +1,11 @@
 import { Page } from '../types';
 import { Router } from '../router';
 import { FriendService } from '../services/friend.service';
+import { WebSocketManager } from '../services/websocket.manager';
 
 export class FriendsPage implements Page {
   private router: Router;
+  private wss: WebSocketManager;
   private friendService: FriendService;
   private userId: number | null = null;
   private currentTab: 'friends' | 'pending' | 'search' = 'friends';
@@ -17,11 +19,17 @@ export class FriendsPage implements Page {
   // Element caching
   private element: HTMLElement | null = null;
 
+  /*------------------------------CONSTRUCTOR-------------------------------*/
+
   constructor(router: Router, friendService: FriendService) {
     this.router = router;
     this.friendService = friendService;
+    this.wss = this.router.getWsManager();
+    this.setupMessageHandlers();
   }
-  
+
+  /*-----------------------------RENDER ELEMENT-----------------------------*/
+
   render(): HTMLElement {
     // Return cached element if it exists
     if (this.element) {
@@ -40,7 +48,7 @@ export class FriendsPage implements Page {
           </div>
           
           <!-- Tab Navigation -->
-          <div class="flex border-b border-gray-200 dark:border-gray-700 mb-6">
+          <div class="flex justify-center border-b border-gray-200 dark:border-gray-700 mb-6">
             <button id="tab-friends" class="py-2 px-4 font-medium text-sm ${
               this.currentTab === 'friends'
                 ? 'text-pink-600 dark:text-pink-400 border-b-2 border-pink-600 dark:border-pink-400'
@@ -265,6 +273,26 @@ export class FriendsPage implements Page {
     }
   }
 
+  /*-------------------------ONLINE MESSAGE HANDLERS------------------------*/
+
+  private setupMessageHandlers(): void {
+    this.wss.onlineStatusEvent('online-status', (data: any) => this.updateFriendOnlineState(data));
+  }
+
+  private updateFriendOnlineState(data: any): void {
+    const { userId, online } = data;
+    if (userId == null || online == null) {
+      console.error('Required fields missing from online status message');
+      return;
+    }
+  
+    const badge = document.querySelector(`[data-friend-id="${userId}"] .online-badge`);
+    if (badge) {
+      badge.classList.remove('bg-green-500', 'bg-gray-300');
+      badge.classList.add(online ? 'bg-green-500' : 'bg-gray-300');
+    }
+  }
+
   private async performSearch(): Promise<void> {
     if (!this.element) return;
     
@@ -318,7 +346,8 @@ export class FriendsPage implements Page {
     this.currentFriends.forEach(friend => {
       const friendCard = document.createElement('div');
       friendCard.className = 'bg-gray-50 rounded-lg p-4 flex items-center';
-      
+      friendCard.dataset.friendId = friend.id.toString();
+
       // Avatar wrapper to position the badge
       const avatarWrapper = document.createElement('div');
       avatarWrapper.className = 'relative mr-4';
@@ -327,15 +356,11 @@ export class FriendsPage implements Page {
       avatar.className = 'w-12 h-12 bg-pink-100 rounded-full flex items-center justify-center text-pink-800 font-bold text-xl mr-4';
       avatar.textContent = (friend.displayName || friend.username || 'User').charAt(0).toUpperCase();
 
-      avatarWrapper.appendChild(avatar);
-      console.log(`[FriendsList] ${friend.username}'s online status: ${friend.online}`);
+      const onlineBadge = document.createElement('span');
+      onlineBadge.className = `online-badge absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${friend.online ? 'bg-green-500' : 'bg-gray-300'} transition-colors duration-300`;
 
-      // Online badge
-      if (friend.online) {
-        const badge = document.createElement('span');
-        badge.className = 'absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-white transform translate-x-1/4 translate-y-1/4';
-        avatarWrapper.appendChild(badge);
-      }
+      avatarWrapper.appendChild(avatar);
+      avatarWrapper.appendChild(onlineBadge);
 
       const details = document.createElement('div');
       details.className = 'flex-grow';

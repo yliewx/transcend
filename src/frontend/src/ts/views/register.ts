@@ -24,61 +24,61 @@ export class RegisterPage implements Page {
     container.innerHTML = `
       <main>
         <div class="max-w-md mx-auto px-4 sm:px-6 lg:px-8">
-          <div class="bg-white shadow-md rounded-lg p-8">
+          <div class="bg-gray-800 shadow-md rounded-lg p-8">
             <div class="text-center">
-              <h1 class="text-2xl font-bold text-gray-900">Create an account</h1>
-              <p class="mt-2 text-sm text-gray-600">
-                Or <a href="/login" class="nav-link font-medium text-indigo-600 hover:text-indigo-500">sign in to your account</a>
+              <h1 class="text-2xl font-bold text-white">Create an account</h1>
+              <p class="mt-2 text-sm text-gray-300">
+                Or <a href="/login" class="nav-link font-medium text-indigo-400 hover:text-indigo-300">sign in to your account</a>
               </p>
             </div>
             
             <form id="register-form" class="mt-8 space-y-6">
-              <div id="register-error" class="rounded-md bg-red-50 p-4 hidden">
+              <div id="register-error" class="rounded-md bg-red-900 bg-opacity-20 p-4 hidden">
                 <div class="flex">
                   <div class="ml-3">
-                    <h3 class="text-sm font-medium text-red-800" id="register-error-message"></h3>
+                    <h3 class="text-sm font-medium text-red-300" id="register-error-message"></h3>
                   </div>
                 </div>
               </div>
               
-              <div id="register-success" class="rounded-md bg-green-50 p-4 hidden">
+              <div id="register-success" class="rounded-md bg-green-900 bg-opacity-20 p-4 hidden">
                 <div class="flex">
                   <div class="ml-3">
-                    <h3 class="text-sm font-medium text-green-800" id="register-success-message"></h3>
+                    <h3 class="text-sm font-medium text-green-300" id="register-success-message"></h3>
                   </div>
                 </div>
               </div>
               
               <div class="rounded-md shadow-sm space-y-4">
                 <div>
-                  <label for="username" class="block text-sm font-medium text-gray-700">Username</label>
+                  <label for="username" class="block text-sm font-medium text-gray-300">Username</label>
                   <input id="username" name="username" type="text" required 
-                         class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                        class="mt-1 block w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
                 </div>
                 
                 <div>
-                  <label for="email" class="block text-sm font-medium text-gray-700">Email address</label>
+                  <label for="email" class="block text-sm font-medium text-gray-300">Email address</label>
                   <input id="email" name="email" type="email" required 
-                         class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                        class="mt-1 block w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
                 </div>
                 
                 <div>
-                  <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
+                  <label for="password" class="block text-sm font-medium text-gray-300">Password</label>
                   <input id="password" name="password" type="password" required 
-                         class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
-                  <p class="mt-1 text-xs text-gray-500">Must be at least 8 characters</p>
+                        class="mt-1 block w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                  <p class="mt-1 text-xs text-gray-400">Must be at least 8 characters</p>
                 </div>
                 
                 <div>
-                  <label for="confirm-password" class="block text-sm font-medium text-gray-700">Confirm Password</label>
+                  <label for="confirm-password" class="block text-sm font-medium text-gray-300">Confirm Password</label>
                   <input id="confirm-password" name="confirmPassword" type="password" required 
-                         class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                        class="mt-1 block w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
                 </div>
               </div>
               
               <div>
                 <button type="submit" 
-                       class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                   Register
                 </button>
               </div>
@@ -86,7 +86,7 @@ export class RegisterPage implements Page {
           </div>
         </div>
       </main>
-    `;
+    `;  
     
     this.setupEventHandlers(container);
     

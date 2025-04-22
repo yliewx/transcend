@@ -21,11 +21,6 @@ export async function getFriends(request: AuthenticatedRequest, reply: FastifyRe
 
     // Get friends list
     const friends: FriendRecord[] = await Friend.getFriendsList(db, userId);
-    console.log(`[getFriends] Current online users:`);
-    for (const [key, value] of onlineUsers.entries()) {
-      console.log(key);
-    }
-    console.log('[getFriends] end online users');
 
     return reply.send({
       success: true,
