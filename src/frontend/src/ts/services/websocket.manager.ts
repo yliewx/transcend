@@ -7,6 +7,7 @@ export class WebSocketManager {
   private gameId: string | null = null;
   private playerId: number | null = null;
   private gameEventCallbacks: Map<string, (data: any) => void> = new Map();
+  private onlineEventCallbacks: Map<string, (data: any) => void> = new Map();
   // Handle reconnection
   private retryCount: number = 0;
   private maxRetryCount: number = 5;
@@ -19,7 +20,12 @@ export class WebSocketManager {
   // Register handler functions from PongGamePage
   public onGameEvent(type: string, callback: (data: any) => void): void {
     this.gameEventCallbacks.set(type, callback);
-  }  
+  }
+
+  // Register handler functions from FriendsPage
+  public onlineStatusEvent(type: string, callback: (data: any) => void): void {
+    this.onlineEventCallbacks.set(type, callback);
+  }
 
   /*------------------------------GAME SOCKET-------------------------------*/
 
@@ -81,7 +87,7 @@ export class WebSocketManager {
     this.isReconnecting = true;
 
     if (!this.gameId || !this.playerId) {
-      console.error("[WebSocketManager] Missing gameId or playerId.");
+      console.error("[Game Socket] Missing gameId or playerId.");
       this.isReconnecting = false;
       return false;
     }
@@ -89,7 +95,7 @@ export class WebSocketManager {
     while (this.retryCount < this.maxRetryCount) {
       this.retryCount++;
       const delay = 1000 * Math.pow(2, this.retryCount);
-      // console.log(`[WebSocketManager] Reconnecting in ${delay}ms...`);
+      // console.log(`[Game Socket] Reconnecting in ${delay}ms...`);
   
       // Delay execution of next reconnect attempt
       await new Promise(res => setTimeout(res, delay));
@@ -102,7 +108,7 @@ export class WebSocketManager {
       }
     }
   
-    console.error("[WebSocketManager] Max retries reached. Giving up.");
+    console.error("[Game Socket] Max retries reached. Giving up.");
     this.isReconnecting = false;
     return false;
   }  
@@ -112,11 +118,11 @@ export class WebSocketManager {
   // Types: start, player-joined, update (update also handles pause/resume/end)
   private handleGameMessages(type: string, data: any): void {
     if (type === 'error') {
-      console.error('[WebSocketManager] Error from server:', JSON.stringify(data, null, 2));
+      console.error('[Game Socket] Error from server:', JSON.stringify(data, null, 2));
       return;
     }
     if (type !== 'update') {
-      console.log('[WebSocketManager] Received from server:', type, JSON.stringify(data, null, 2));
+      console.log('[Game Socket] Received from server:', type, JSON.stringify(data, null, 2));
     }
 
     const callback = this.gameEventCallbacks.get(type);
@@ -129,7 +135,7 @@ export class WebSocketManager {
 
   // Send a message to the server
   public sendMessage(type: string, data: any): void {
-    console.log('[WebSocketManager] Sending message to server:', type);
+    console.log('[Game Socket] Sending message to server:', type);
     if (this.gameSocket && this.gameSocket.readyState === WebSocket.OPEN) {
       this.gameSocket.send(JSON.stringify({ type, data }));
     } else {
@@ -152,10 +158,6 @@ export class WebSocketManager {
   /*-----------------------------ONLINE SOCKET------------------------------*/
 
   // Initialize general socket for tracking online status
-  /* - new request received
-  - request cancelled
-  - friend-accepted
-  - friend-rejected */
   public connect(): void {
     this.onlineSocket = new WebSocket(this.baseUrl);
 
@@ -189,17 +191,21 @@ export class WebSocketManager {
 
   /*----------------------------MESSAGE HANDLERS----------------------------*/
 
+  /* notified by server when:
+  - friend goes online/offline
+  - friend request status changes: received/cancelled, accepted/rejected */
   private handleMessages(type: string, data: any): void {
-    switch (type) {
-      case 'online-status':
-        // this.handleOnlineStatus(data);
-        break;
-      case 'error':
-        console.error('Error:', ...data);
-        break;
-      default:
-        console.warn(`Unhandled message type: ${type}`);
+    if (type === 'error') {
+      console.error('[Online Socket] Error from server:', JSON.stringify(data, null, 2));
+      return;
     }
+
+    const callback = this.onlineEventCallbacks.get(type);
+    if (!callback) {
+      console.warn(`Unhandled online message type: ${type}`);
+      return;
+    }
+    callback(data);
   }
 
   /*----------------------------CLOSE CONNECTION----------------------------*/

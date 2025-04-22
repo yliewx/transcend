@@ -4,9 +4,31 @@ import { WebSocket } from 'ws';
 import { gameManager } from "../GameManager";
 import fp from 'fastify-plugin';
 import { onlineUsers, sendError } from "../ws.types";
+import { getDb } from "../../db";
+import Friend from "../../models/friend";
 
 interface PongParams {
   gameId: string;
+}
+
+// Notify user's online friends
+export async function notifyFriends(userId: number, online: boolean) {
+  try {
+    const db = await getDb();
+    const friends = await Friend.getFriendsList(db, userId);
+    friends.forEach((friend: any) => {
+      // Check if friends are online
+      const friendSocket = onlineUsers.get(friend.user_id);
+      if (friendSocket && friendSocket.readyState === WebSocket.OPEN) {
+        friendSocket.send(JSON.stringify({
+          type: 'online-status',
+          data: { userId, online }
+        }));
+      }
+    })
+  } catch (error) {
+    console.log('Failed to notify friends:', error);
+  }
 }
 
 async function websocketRoutes(server: FastifyInstance) {  
@@ -27,6 +49,7 @@ async function websocketRoutes(server: FastifyInstance) {
 
     // Add user to map of online users
     onlineUsers.set(user.id, connection);
+    notifyFriends(user.id, true);
 
     // Ping client every 30 seconds to keep connection alive
     const pingInterval = setInterval(() => {
@@ -46,7 +69,15 @@ async function websocketRoutes(server: FastifyInstance) {
       clearInterval(pingInterval);
       console.log(`User disconnected: ${user.id}`);
       onlineUsers.delete(user.id);
+      notifyFriends(user.id, false);
     });
+
+    connection.on('error', () => {
+      clearInterval(pingInterval);
+      console.log(`Error in online socket: ${user.id}`);
+      onlineUsers.delete(user.id);
+      notifyFriends(user.id, false);
+    });    
   });
 
   /*-----------------------------GAME SESSION-------------------------------*/

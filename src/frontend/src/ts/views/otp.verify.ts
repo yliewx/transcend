@@ -25,17 +25,17 @@ export class OTPVerificationPage implements Page {
       <div class="py-10">
         <main>
           <div class="max-w-md mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="bg-white shadow-md rounded-lg p-8">
+            <div class="bg-gray-800 shadow-md rounded-lg p-8">
               <div class="text-center">
-                <h1 class="text-2xl font-bold text-gray-900">Enter OTP Code</h1>
-                <p class="mt-2 text-sm text-gray-600">We have sent a 6-digit verification code to your registered device.</p>
+                <h1 class="text-2xl font-bold text-white">Enter OTP Code</h1>
+                <p class="mt-2 text-sm text-gray-300">We have sent a 6-digit verification code to your registered device.</p>
               </div>
               
               <form id="otp-form" class="mt-8 space-y-6">
                 <div class="flex justify-center gap-2">
                   ${Array.from({ length: 6 }).map((_, i) => `
                     <input id="otp-${i}" type="text" maxlength="1" 
-                      class="w-12 h-12 text-center text-xl font-semibold border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                      class="w-12 h-12 text-center text-xl font-semibold border border-gray-500 bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-white"
                     />
                   `).join('')}
                 </div>
@@ -48,8 +48,8 @@ export class OTPVerificationPage implements Page {
                     Verify OTP
                   </button>
                 </div>
-                <p class="text-sm text-center text-gray-600 mt-2">
-                  Didn't receive the code? <button id="resend-otp" class="text-indigo-600 hover:text-indigo-500">Resend OTP</button>
+                <p class="text-sm text-center text-gray-300 mt-2">
+                  Didn't receive the code? <button id="resend-otp" class="text-indigo-400 hover:text-indigo-300">Resend OTP</button>
                 </p>
               </form>
             </div>
