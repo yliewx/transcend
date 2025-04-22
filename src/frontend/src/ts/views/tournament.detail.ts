@@ -165,7 +165,12 @@ export class TournamentDetailPage implements Page {
       console.log('Joining match:', matchId);
       const response = await this.tournamentService.joinTournamentMatch(matchId);
       if (response.success && response.gameId) {
-        this.router.navigateTo(`/pong/${response.gameId}`);
+        const userId = parseInt(sessionStorage.getItem('userId') || '0');
+        const success = await this.router.getWsManager().connectGame(response.gameId, userId);
+        if (!success) {
+          alert('Failed to connect to game room.');
+        }
+        this.router.navigateTo(`/play`);
       } else {
         alert(response.error || 'Failed to join match');
       }
@@ -304,7 +309,7 @@ export class TournamentDetailPage implements Page {
     
     const userId = parseInt(sessionStorage.getItem('userId') || '0');
     const userInMatch = match.player1_id === userId || match.player2_id === userId;
-    const matchIsPlayable = match.status === 'scheduled' && userInMatch && match.player1_id && match.player2_id;
+    const matchIsPlayable = userInMatch && match.player1_id && match.player2_id;
     
     return `
       <div class="border border-gray-200 rounded-lg p-3">

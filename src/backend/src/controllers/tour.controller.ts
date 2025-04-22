@@ -13,7 +13,7 @@ export async function getTournaments(request: AuthenticatedRequest, reply: Fasti
       SELECT t.*, COUNT(tp.id) as current_participants 
       FROM tournaments t
       LEFT JOIN tournament_participants tp ON t.id = tp.tournament_id
-      WHERE t.status != 'cancelled'
+      WHERE t.status != 'cancelled' and t.status != 'completed'
       GROUP BY t.id
       ORDER BY t.start_date DESC
     `);
