@@ -1,7 +1,6 @@
 import { WebSocket } from 'ws';
 import { GameState, PongGame } from "./PongGame";
-import { InputMessage } from './routes/ws.routes';
-import { sendError } from './message.types';
+import { InputMessage, sendError } from './ws.types';
 import { getDb } from '../db';
 import User from '../models/user';
 import GameStats from '../models/game.stats';

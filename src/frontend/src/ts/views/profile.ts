@@ -25,7 +25,7 @@ export class ProfilePage implements Page {
     container.innerHTML = `
       <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div class="px-4 py-6 sm:px-0">
-          <div class="card p-8">
+          <div class="card dark:bg-gray-900 p-8">
             <div class="text-center mb-8">
               <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Edit Your Profile</h1>
               <p class="mt-4 text-lg text-gray-600 dark:text-gray-400">
@@ -36,14 +36,14 @@ export class ProfilePage implements Page {
             <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
               <!-- Avatar Section -->
               <div class="md:col-span-1">
-                <div class="bg-indigo-50 dark:bg-indigo-900/30 p-6 rounded-lg text-center">
-                  <h2 class="text-xl font-bold text-indigo-600 dark:text-indigo-400 mb-4">Profile Picture</h2>
+                <div class="bg-pink-50 dark:bg-pink-900/30 p-6 rounded-lg text-center">
+                  <h2 class="text-xl font-bold text-pink-600 dark:text-pink-400 mb-4">Profile Picture</h2>
                   <div class="avatar-container mb-4">
                     <img 
                       id="current-avatar" 
                       src="/assets/default-avatar.png" 
                       alt="Profile picture" 
-                      class="w-40 h-40 rounded-full mx-auto object-cover border-4 border-indigo-200 dark:border-indigo-500"
+                      class="w-40 h-40 rounded-full mx-auto object-cover border-4 border-pink-200 dark:border-pink-900"
                     >
                   </div>
                   <div class="mt-4">
