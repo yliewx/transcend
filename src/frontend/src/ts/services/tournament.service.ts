@@ -76,7 +76,8 @@ export class TournamentService extends BaseApiService {
       `/tournaments/${tournamentId}/unregister`,
       'DELETE',
       undefined,
-      true
+      true,
+      { omitContentType: true}
     );
   }
 
@@ -96,7 +97,8 @@ export class TournamentService extends BaseApiService {
       `/tournaments/matches/${matchId}/join`,
       'POST',
       undefined,
-      true
+      true,
+      { omitContentType: true}
     );
   }
 }

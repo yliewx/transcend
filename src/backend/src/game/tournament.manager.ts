@@ -6,32 +6,30 @@ export class TournamentManager {
   // Run this periodically (e.g., every hour)
   public static async processTournaments(): Promise<void> {
     const db = await getDb();
-    console.log('inside processTournaments');
     
     try {
-      await db.run('BEGIN TRANSACTION');
-      
       // Start tournaments that should begin today
       await TournamentManager.startPendingTournaments(db);
-      
       // Close tournaments that have ended
       await TournamentManager.completeTournaments(db);
       
-      await db.run('COMMIT');
     } catch (error) {
-      await db.run('ROLLBACK');
       console.error('Error processing tournaments:', error);
     }
   }
-  
+
   private static async startPendingTournaments(db: Database): Promise<void> {
-    // Find tournaments that should start now
-    console.log('inside startPendingTournaments');
+    // Find tournaments that should start now (either by date or max participants)
     const tournamentsToStart = await db.all(`
-      SELECT id, max_participants
-      FROM tournaments
-      WHERE status = 'pending'
-      AND datetime('now') >= datetime(start_date)
+      SELECT t.id, t.max_participants,
+             (SELECT COUNT(*) FROM tournament_participants WHERE tournament_id = t.id) as participant_count
+      FROM tournaments t
+      WHERE t.status = 'pending'
+      AND (
+        datetime('now') >= datetime(t.start_date)
+        OR
+        (SELECT COUNT(*) FROM tournament_participants WHERE tournament_id = t.id) >= t.max_participants
+      )
     `);
     
     for (const tournament of tournamentsToStart) {
@@ -44,58 +42,58 @@ export class TournamentManager {
         ORDER BY ps.elo_rating DESC NULLS LAST
       `, [tournament.id]);
       
-      if (participants.length >= 2) {
-        // Start the tournament (update status)
+
+      // Start the tournament (update status)
+      await db.run(`
+        UPDATE tournaments
+        SET status = 'active'
+        WHERE id = ?
+      `, [tournament.id]);
+      
+      // Generate tournament bracket
+      // This is a simplified implementation for a single-elimination tournament
+      const numberOfParticipants = participants.length;
+      const rounds = Math.ceil(Math.log2(numberOfParticipants));
+      
+      // Generate first round matches
+      for (let i = 0; i < Math.floor(numberOfParticipants / 2); i++) {
+        const player1 = participants[i];
+        const player2 = participants[numberOfParticipants - 1 - i];
+        
         await db.run(`
-          UPDATE tournaments
-          SET status = 'active'
-          WHERE id = ?
-        `, [tournament.id]);
-        
-        // Generate tournament bracket
-        // This is a simplified implementation for a single-elimination tournament
-        const numberOfParticipants = participants.length;
-        const rounds = Math.ceil(Math.log2(numberOfParticipants));
-        
-        // Generate first round matches
-        for (let i = 0; i < Math.floor(numberOfParticipants / 2); i++) {
-          const player1 = participants[i];
-          const player2 = participants[numberOfParticipants - 1 - i];
-          
-          await db.run(`
-            INSERT INTO tournament_matches 
-            (tournament_id, round, match_number, player1_id, player2_id, status)
-            VALUES (?, 1, ?, ?, ?, 'scheduled')
-          `, [tournament.id, i + 1, player1.user_id, player2.user_id]);
-        }
-        
-        // Handle bye if odd number of participants
-        if (numberOfParticipants % 2 !== 0) {
-          const middleIndex = Math.floor(numberOfParticipants / 2);
-          await db.run(`
-            INSERT INTO tournament_matches 
-            (tournament_id, round, match_number, player1_id, player2_id, status, winner_id)
-            VALUES (?, 1, ?, ?, NULL, 'completed', ?)
-          `, [tournament.id, Math.floor(numberOfParticipants / 2) + 1, participants[middleIndex].user_id, participants[middleIndex].user_id]);
-        }
-        
-        // Create empty matches for future rounds
-        for (let round = 2; round <= rounds; round++) {
-          const matchesInRound = Math.pow(2, rounds - round);
-          
-          for (let match = 1; match <= matchesInRound; match++) {
-            await db.run(`
-              INSERT INTO tournament_matches 
-              (tournament_id, round, match_number, status)
-              VALUES (?, ?, ?, 'scheduled')
-            `, [tournament.id, round, match]);
-          }
-        }
-        
-        console.log(`Started tournament ${tournament.id} with ${numberOfParticipants} participants.`);
+          INSERT INTO tournament_matches 
+          (tournament_id, round, match_number, player1_id, player2_id, status)
+          VALUES (?, 1, ?, ?, ?, 'scheduled')
+        `, [tournament.id, i + 1, player1.user_id, player2.user_id]);
       }
+      
+      // Handle bye if odd number of participants
+      if (numberOfParticipants % 2 !== 0) {
+        const middleIndex = Math.floor(numberOfParticipants / 2);
+        await db.run(`
+          INSERT INTO tournament_matches 
+          (tournament_id, round, match_number, player1_id, player2_id, status, winner_id)
+          VALUES (?, 1, ?, ?, NULL, 'completed', ?)
+        `, [tournament.id, Math.floor(numberOfParticipants / 2) + 1, participants[middleIndex].user_id, participants[middleIndex].user_id]);
+      }
+      
+      // Create empty matches for future rounds
+      for (let round = 2; round <= rounds; round++) {
+        const matchesInRound = Math.pow(2, rounds - round);
+        
+        for (let match = 1; match <= matchesInRound; match++) {
+          await db.run(`
+            INSERT INTO tournament_matches 
+            (tournament_id, round, match_number, status)
+            VALUES (?, ?, ?, 'scheduled')
+          `, [tournament.id, round, match]);
+        }
+      }
+
+      console.log(`Started tournament ${tournament.id} with ${numberOfParticipants} participants.`);
     }
   }
+
   
   private static async completeTournaments(db: Database): Promise<void> {
     // Find active tournaments that have passed their end date

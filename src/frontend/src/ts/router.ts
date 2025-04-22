@@ -96,7 +96,7 @@ export class Router {
     await this.showPage('/login');
   }
   
-  /*
+  
   // Show the page for the given path with optional parameter
   private async showPage(routePath: string, tournamentId: string | null = null): Promise<void> {
     // Clear container
@@ -136,9 +136,9 @@ export class Router {
       console.error(`Error rendering page for route ${routePath}:`, error);
     }
   }
-  */
+  
 
-
+/*
 // Show the page for the given path with optional parameter
 private async showPage(routePath: string, tournamentId: string | null = null): Promise<void> {
   // Clear container
@@ -170,7 +170,7 @@ private async showPage(routePath: string, tournamentId: string | null = null): P
     }
     
     // Get the rendered element from the component
-    const element = await Promise.resolve(page.render());
+    const element = await Promise.resolve(page.update());
     
     // Append to container
     this.container.appendChild(element);
@@ -178,6 +178,7 @@ private async showPage(routePath: string, tournamentId: string | null = null): P
     console.error(`Error rendering page for route ${routePath}:`, error);
   }
 }
+*/
 
 /*
 // Show the page for the given path with optional parameter
