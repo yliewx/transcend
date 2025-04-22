@@ -33,30 +33,42 @@ export class FriendsPage implements Page {
     
     container.innerHTML = `
       <div class="px-4 py-6 sm:px-0">
-        <div class="bg-white shadow-md rounded-lg p-8">
+        <div class="bg-white dark:bg-gray-900 shadow-md rounded-lg p-8">
           <div class="text-center mb-6">
-            <h1 class="text-3xl font-bold text-gray-900">Friends</h1>
-            <p class="mt-2 text-gray-600">Connect with other players</p>
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Friends</h1>
+            <p class="mt-2 text-gray-600 dark:text-gray-400">Connect with other players</p>
           </div>
           
           <!-- Tab Navigation -->
-          <div class="flex border-b border-gray-200 mb-6">
-            <button id="tab-friends" class="py-2 px-4 font-medium text-sm ${this.currentTab === 'friends' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-gray-500 hover:text-gray-700'}">
+          <div class="flex border-b border-gray-200 dark:border-gray-700 mb-6">
+            <button id="tab-friends" class="py-2 px-4 font-medium text-sm ${
+              this.currentTab === 'friends'
+                ? 'text-pink-600 dark:text-pink-400 border-b-2 border-pink-600 dark:border-pink-400'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+            }">
               My Friends
             </button>
-            <button id="tab-pending" class="py-2 px-4 font-medium text-sm ${this.currentTab === 'pending' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-gray-500 hover:text-gray-700'}">
+            <button id="tab-pending" class="py-2 px-4 font-medium text-sm ${
+              this.currentTab === 'pending'
+                ? 'text-pink-600 dark:text-pink-400 border-b-2 border-pink-600 dark:border-pink-400'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+            }">
               Pending Requests
-              <span id="pending-badge" class="hidden ml-1 px-2 py-0.5 text-xs font-medium rounded-full bg-indigo-100 text-indigo-800">0</span>
+              <span id="pending-badge" class="hidden ml-1 px-2 py-0.5 text-xs font-medium rounded-full bg-pink-100 dark:bg-pink-800 text-pink-800 dark:text-pink-100">0</span>
             </button>
-            <button id="tab-search" class="py-2 px-4 font-medium text-sm ${this.currentTab === 'search' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-gray-500 hover:text-gray-700'}">
+            <button id="tab-search" class="py-2 px-4 font-medium text-sm ${
+              this.currentTab === 'search'
+                ? 'text-pink-600 dark:text-pink-400 border-b-2 border-pink-600 dark:border-pink-400'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+            }">
               Find Friends
             </button>
           </div>
           
           <!-- Error State -->
           <div id="error-container" class="hidden text-center py-10">
-            <p class="text-lg text-red-600">Something went wrong. Please try again.</p>
-            <button id="retry-btn" class="mt-4 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">
+            <p class="text-lg text-red-600 dark:text-red-400">Something went wrong. Please try again.</p>
+            <button id="retry-btn" class="mt-4 px-4 py-2 bg-pink-600 text-white rounded hover:bg-pink-700 dark:hover:bg-pink-500">
               Retry
             </button>
           </div>
@@ -67,8 +79,8 @@ export class FriendsPage implements Page {
               <!-- Friends will be dynamically inserted here -->
             </div>
             <div id="no-friends" class="text-center py-8 hidden">
-              <p class="text-gray-600">You don't have any friends yet.</p>
-              <button id="find-friends-btn" class="mt-4 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">
+              <p class="text-gray-600 dark:text-gray-400">You don't have any friends yet.</p>
+              <button id="find-friends-btn" class="btn-primary mt-4 px-4 py-2">
                 Find Friends
               </button>
             </div>
@@ -80,7 +92,7 @@ export class FriendsPage implements Page {
               <!-- Pending requests will be dynamically inserted here -->
             </div>
             <div id="no-pending" class="text-center py-8 hidden">
-              <p class="text-gray-600">No pending friend requests.</p>
+              <p class="text-gray-600 dark:text-gray-400">No pending friend requests.</p>
             </div>
           </div>
           
@@ -92,12 +104,12 @@ export class FriendsPage implements Page {
                   id="search-input" 
                   type="text" 
                   placeholder="Search by username" 
-                  class="flex-grow px-4 py-2 border rounded-l focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  class="flex-grow px-4 py-2 border rounded-l focus:outline-none focus:ring-2 focus:ring-pink-500 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                   value="${this.searchQuery}"
                 >
                 <button 
                   id="search-btn" 
-                  class="px-4 py-2 bg-indigo-600 text-white rounded-r hover:bg-indigo-700"
+                  class="px-4 py-2 bg-pink-600 text-white rounded-r hover:bg-pink-700 dark:hover:bg-pink-500"
                 >
                   Search
                 </button>
@@ -108,12 +120,12 @@ export class FriendsPage implements Page {
               <!-- Search results will be dynamically inserted here -->
             </div>
             <div id="no-results" class="text-center py-8 hidden">
-              <p class="text-gray-600">No users found. Try a different search term.</p>
+              <p class="text-gray-600 dark:text-gray-400">No users found. Try a different search term.</p>
             </div>
           </div>
         </div>
       </div>
-    `;
+    `;  
     
     // Cache the element
     this.element = container;
@@ -232,9 +244,9 @@ export class FriendsPage implements Page {
       
       const button = this.element?.querySelector(`#tab-${tabName}`);
       if (button) {
-        button.classList.toggle('text-indigo-600', isActive);
+        button.classList.toggle('text-pink-600', isActive);
         button.classList.toggle('border-b-2', isActive);
-        button.classList.toggle('border-indigo-600', isActive);
+        button.classList.toggle('border-pink-600', isActive);
         button.classList.toggle('text-gray-500', !isActive);
         button.classList.toggle('hover:text-gray-700', !isActive);
       }
@@ -307,10 +319,24 @@ export class FriendsPage implements Page {
       const friendCard = document.createElement('div');
       friendCard.className = 'bg-gray-50 rounded-lg p-4 flex items-center';
       
+      // Avatar wrapper to position the badge
+      const avatarWrapper = document.createElement('div');
+      avatarWrapper.className = 'relative mr-4';
+
       const avatar = document.createElement('div');
-      avatar.className = 'w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-800 font-bold text-xl mr-4';
+      avatar.className = 'w-12 h-12 bg-pink-100 rounded-full flex items-center justify-center text-pink-800 font-bold text-xl mr-4';
       avatar.textContent = (friend.displayName || friend.username || 'User').charAt(0).toUpperCase();
-      
+
+      avatarWrapper.appendChild(avatar);
+      console.log(`[FriendsList] ${friend.username}'s online status: ${friend.online}`);
+
+      // Online badge
+      if (friend.online) {
+        const badge = document.createElement('span');
+        badge.className = 'absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-white transform translate-x-1/4 translate-y-1/4';
+        avatarWrapper.appendChild(badge);
+      }
+
       const details = document.createElement('div');
       details.className = 'flex-grow';
       details.innerHTML = `
@@ -322,7 +348,7 @@ export class FriendsPage implements Page {
       actions.className = 'flex space-x-2';
       
       const challengeBtn = document.createElement('button');
-      challengeBtn.className = 'px-3 py-1 text-sm bg-indigo-600 text-white rounded hover:bg-indigo-700';
+      challengeBtn.className = 'px-3 py-1 text-sm bg-pink-600 text-white rounded hover:bg-pink-700';
       challengeBtn.textContent = 'Challenge';
       challengeBtn.dataset.friendId = friend.id.toString();
       //challengeBtn.addEventListener('click', () => this.friendService.challengeFriend(friend.id));
@@ -336,7 +362,7 @@ export class FriendsPage implements Page {
       actions.appendChild(challengeBtn);
       actions.appendChild(removeBtn);
       
-      friendCard.appendChild(avatar);
+      friendCard.appendChild(avatarWrapper);
       friendCard.appendChild(details);
       friendCard.appendChild(actions);
       
@@ -368,7 +394,7 @@ export class FriendsPage implements Page {
       requestCard.className = 'bg-gray-50 rounded-lg p-4 flex items-center';
       
       const avatar = document.createElement('div');
-      avatar.className = 'w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-800 font-bold text-xl mr-4';
+      avatar.className = 'w-12 h-12 bg-pink-100 rounded-full flex items-center justify-center text-pink-800 font-bold text-xl mr-4';
       avatar.textContent = (request.displayName || request.username || 'User').charAt(0).toUpperCase();
       
       const details = document.createElement('div');
@@ -380,7 +406,7 @@ export class FriendsPage implements Page {
       details.innerHTML = `
         <h3 class="font-medium text-gray-900">${request.displayName || 'User'}</h3>
         <p class="text-sm text-gray-500">@${request.username}</p>
-        <p class="text-xs text-indigo-600 mt-1">${isIncoming ? 'Wants to be your friend' : 'Request sent'}</p>
+        <p class="text-xs text-pink-600 mt-1">${isIncoming ? 'Wants to be your friend' : 'Request sent'}</p>
       `;
       
       const actions = document.createElement('div');
@@ -452,7 +478,7 @@ export class FriendsPage implements Page {
       userCard.className = 'bg-gray-50 rounded-lg p-4 flex items-center';
       
       const avatar = document.createElement('div');
-      avatar.className = 'w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-800 font-bold text-xl mr-4';
+      avatar.className = 'w-12 h-12 bg-pink-100 rounded-full flex items-center justify-center text-pink-800 font-bold text-xl mr-4';
       avatar.textContent = (user.displayName || user.username || 'User').charAt(0).toUpperCase();
       
       const details = document.createElement('div');
@@ -488,7 +514,7 @@ export class FriendsPage implements Page {
       // Otherwise, show add friend button
       else {
         const addFriendBtn = document.createElement('button');
-        addFriendBtn.className = 'px-3 py-1 text-sm bg-indigo-600 text-white rounded hover:bg-indigo-700';
+        addFriendBtn.className = 'px-3 py-1 text-sm bg-pink-600 text-white rounded hover:bg-pink-700';
         addFriendBtn.textContent = 'Add Friend';
         addFriendBtn.dataset.userId = user.id.toString();
         addFriendBtn.addEventListener('click', () => this.friendService.sendFriendRequest(user.id));
@@ -690,7 +716,7 @@ export class FriendsPage implements Page {
         if (newStatus === 'add') {
           // Add Friend button
           const addFriendBtn = document.createElement('button');
-          addFriendBtn.className = 'px-3 py-1 text-sm bg-indigo-600 text-white rounded hover:bg-indigo-700';
+          addFriendBtn.className = 'px-3 py-1 text-sm bg-pink-600 text-white rounded hover:bg-pink-700';
           addFriendBtn.textContent = 'Add Friend';
           addFriendBtn.dataset.userId = userId.toString();
           addFriendBtn.addEventListener('click', () => this.friendService.sendFriendRequest(userId));

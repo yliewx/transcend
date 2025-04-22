@@ -3,6 +3,15 @@ import { getDb } from '../db.js';
 import { AuthenticatedRequest } from '../../@types/fastify';
 import User from '../models/user';
 import Friend from '../models/friend';
+import { onlineUsers } from '../game/ws.types.js';
+
+interface FriendRecord {
+  id: number;
+  user_id: number;
+  username: string;
+  display_name?: string;
+  created_at: string;
+}
 
 // Get a user's friends list
 export async function getFriends(request: AuthenticatedRequest, reply: FastifyReply) {
@@ -11,14 +20,20 @@ export async function getFriends(request: AuthenticatedRequest, reply: FastifyRe
     const userId = request.user.id;
 
     // Get friends list
-    const friends = await Friend.getFriendsList(db, userId);
+    const friends: FriendRecord[] = await Friend.getFriendsList(db, userId);
+    console.log(`[getFriends] Current online users:`);
+    for (const [key, value] of onlineUsers.entries()) {
+      console.log(key);
+    }
+    console.log('[getFriends] end online users');
 
     return reply.send({
       success: true,
       friends: friends.map(friend => ({
         id: friend.user_id,
         username: friend.username,
-        displayName: friend.display_name || friend.username
+        displayName: friend.display_name || friend.username,
+        online: onlineUsers.has(friend.user_id) // boolean
       }))
     });
   } catch (error) {

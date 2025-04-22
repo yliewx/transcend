@@ -47,6 +47,7 @@ export interface FriendResponse {
   id: number;
   username: string;
   displayName: string;
+  online: boolean;
   status?: string;
 }
   

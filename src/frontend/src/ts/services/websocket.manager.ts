@@ -152,6 +152,10 @@ export class WebSocketManager {
   /*-----------------------------ONLINE SOCKET------------------------------*/
 
   // Initialize general socket for tracking online status
+  /* - new request received
+  - request cancelled
+  - friend-accepted
+  - friend-rejected */
   public connect(): void {
     this.onlineSocket = new WebSocket(this.baseUrl);
 

@@ -3,25 +3,11 @@ import websocket from '@fastify/websocket';
 import { WebSocket } from 'ws';
 import { gameManager } from "../GameManager";
 import fp from 'fastify-plugin';
-import { sendError } from "../message.types";
-
-// type: 'input';
-export interface InputMessage {
-  gameId: string;
-  playerId: number;
-  side?: 'left' | 'right'; // local play only
-  input: {
-    paddleUp: boolean;
-    paddleDown: boolean;
-  };
-};
+import { onlineUsers, sendError } from "../ws.types";
 
 interface PongParams {
   gameId: string;
 }
-
-// key: user ID, value: client socket
-const onlineUsers = new Map<number, WebSocket>();
 
 async function websocketRoutes(server: FastifyInstance) {  
   /*-----------------------------ONLINE STATUS------------------------------*/
