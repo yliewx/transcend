@@ -6,7 +6,7 @@ export class PongViewComponents {
         <p class="mt-2 text-gray-600 dark:text-gray-400 mb-4">
           <strong>Controls:</strong> Player 1 (W/S) | Player 2 (↑/↓)
         </p>
-        <p id="game-status" class="text-xl text-indigo-600 dark:text-indigo-400 font-medium"></p>
+        <p id="game-status" class="text-xl text-pink-600 dark:text-pink-400 font-medium"></p>
       </div>
     `;
   }
@@ -17,6 +17,7 @@ export class PongViewComponents {
         <!-- Local Mode -->
         <div id="local-mode-container" class="card">
           <h2 class="card-title">Local Mode</h2>
+          <p class="card-description"><strong>Controls:</strong> Player 1 (W/S) | Player 2 (↑/↓)</p>
           <div class="flex justify-center">
             <button id="create-local-game-btn" class="card-button">Create Game</button>
           </div>
@@ -25,9 +26,10 @@ export class PongViewComponents {
         <!-- Remote Mode -->
         <div id="remote-mode-container" class="card">
           <h2 class="card-title">Remote Mode</h2>
+          <p class="card-description"><strong>Controls:</strong> Player 1 (↑/↓) | Player 2 (↑/↓)</p>
           <div class="flex justify-center mb-4">
             <button id="create-remote-game-btn" class="card-button mx-2">Create Game</button>
-            <button id="join-game-btn" class="btn-success mx-2">Join Game</button>
+            <button id="join-game-btn" class="btn-green mx-2">Join Game</button>
           </div>
 
           <div id="join-game-form" class="text-center hidden">
@@ -63,10 +65,10 @@ export class PongViewComponents {
 
   private renderCanvas(): string {
     return  `
-      <div id="pong-canvas-container" class="hidden">
-        <canvas id="pong-canvas" width="800" height="600"
-          class="border border-gray-300 dark:border-gray-700 rounded-lg shadow-lg bg-black"></canvas>
-      </div>
+    <div id="pong-canvas-container" class="hidden flex justify-center items-center min-h-[600px]">
+      <canvas id="pong-canvas" width="800" height="600"
+        class="border border-gray-300 dark:border-gray-700 rounded-lg shadow-lg bg-black"></canvas>
+    </div>
     `;
   }
 
@@ -81,7 +83,7 @@ export class PongViewComponents {
   render(): string {
     return `
       <div class="px-4 py-6 sm:px-0">
-        <div class="bg-white dark:bg-gray-950 shadow-md rounded-lg p-8">
+        <div class="shadow-md rounded-lg p-8">
           ${this.renderHeader()}
           ${this.renderModeSelection()}
           ${this.renderGameInfo()}

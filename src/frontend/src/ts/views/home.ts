@@ -20,7 +20,7 @@ export class HomePage implements Page {
     inner.className = 'px-4 py-6 sm:px-0';
 
     const cardWrapper = document.createElement('div');
-    cardWrapper.className = 'bg-white dark:bg-gray-950 shadow-md rounded-lg p-8';
+    cardWrapper.className = 'shadow-md rounded-lg p-8';
 
     const header = document.createElement('div');
     header.className = 'text-center mb-8';
