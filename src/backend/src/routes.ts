@@ -91,14 +91,23 @@ export default fp(async function setupRoutes(server: FastifyInstance) {
   // Tournament routes
   defineAuthRoute(server, 'get', '/api/tournaments', TournamentController.getTournaments);
   defineAuthRoute(server, 'get', '/api/tournaments/:id', TournamentController.getTournamentDetails);
-  defineAuthRoute(server, 'post', '/api/tournaments/:id/register', TournamentController.registerForTournament);
-  defineAuthRoute(server, 'delete', '/api/tournaments/:id/unregister', TournamentController.unregisterFromTournament);
+  //defineAuthRoute(server, 'post', '/api/tournaments/:id/register', TournamentController.registerForTournament);
+  defineAuthRoute(server, 'post', '/api/tournaments/:id/register', TournamentController.registerForTournament, {
+    schema: {
+      body: {
+        type: 'object',
+        required: ['alias'],
+        properties: {
+          alias: { type: 'string', minLength: 1 }
+        }
+      }
+    }
+  });
   defineAuthRoute(server, 'get', '/api/user/tournaments', TournamentController.getUserTournaments);
   defineAuthRoute(server, 'post', '/api/tournaments/matches/:id/join', TournamentController.joinTournamentMatch);
 
   // Admin routes
   defineAuthRoute(server, 'post', '/api/admin/tournaments', TournamentController.createTournament);
-  defineAuthRoute(server, 'post', '/api/admin/tournaments/:id/start', TournamentController.startTournament);
 
   // Catch-all route for SPA
   server.setNotFoundHandler((request, reply) => {
