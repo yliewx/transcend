@@ -4,20 +4,13 @@ import { AuthenticatedRequest } from '../../@types/fastify';
 import { getDb } from '../db';
 import { gameManager } from '../game/GameManager';
 import { Database } from 'sqlite';
+import Tournament from '../models/tournament';
 
 // Controller for tournament operations
 export async function getTournaments(request: AuthenticatedRequest, reply: FastifyReply): Promise<FastifyReply> {
   const db = await getDb();
   try {
-    const tournaments = await db.all(`
-      SELECT t.*, COUNT(tp.id) as current_participants 
-      FROM tournaments t
-      LEFT JOIN tournament_participants tp ON t.id = tp.tournament_id
-      WHERE t.status != 'cancelled' and t.status != 'completed'
-      GROUP BY t.id
-      ORDER BY t.created_at DESC
-    `);
-    
+    const tournaments = await Tournament.findActiveTournaments(db);
     return reply.send({ success: true, tournaments });
   } catch (error) {
     console.error('Error fetching tournaments:', error);
@@ -37,43 +30,17 @@ export async function getTournamentDetails(request: AuthenticatedRequest, reply:
   
   try {
     // Get tournament info
-    const tournament = await db.get(`
-      SELECT t.*, COUNT(tp.id) as current_participants 
-      FROM tournaments t
-      LEFT JOIN tournament_participants tp ON t.id = tp.tournament_id
-      WHERE t.id = ?
-      GROUP BY t.id
-    `, [tournamentId]);
+    const tournament = await Tournament.findById(db, tournamentId);
     
     if (!tournament) {
       return reply.status(404).send({ success: false, error: 'Tournament not found' });
     }
     
     // Get tournament matches
-    const matches = await db.all(`
-      SELECT tm.*, 
-        u1.username as player1_username, 
-        u2.username as player2_username,
-        tp1.alias as player1_alias,
-        tp2.alias as player2_alias
-      FROM tournament_matches tm
-      LEFT JOIN users u1 ON tm.player1_id = u1.id
-      LEFT JOIN users u2 ON tm.player2_id = u2.id
-      LEFT JOIN tournament_participants tp1 ON (tm.player1_id = tp1.user_id AND tm.tournament_id = tp1.tournament_id)
-      LEFT JOIN tournament_participants tp2 ON (tm.player2_id = tp2.user_id AND tm.tournament_id = tp2.tournament_id)
-      WHERE tm.tournament_id = ?
-      ORDER BY tm.round, tm.match_number
-    `, [tournamentId]);
+    const matches = await Tournament.getTournamentMatches(db, tournamentId);
     
     // Get participants
-    const participants = await db.all(`
-      SELECT u.id, u.username, ps.elo_rating as elo, tp.status, tp.alias
-      FROM tournament_participants tp
-      JOIN users u ON tp.user_id = u.id
-      LEFT JOIN player_stats ps ON u.id = ps.user_id
-      WHERE tp.tournament_id = ?
-      ORDER BY ps.elo_rating DESC
-    `, [tournamentId]);
+    const participants = await Tournament.getTournamentParticipants(db, tournamentId);
     
     return reply.send({ 
       success: true, 
@@ -112,10 +79,7 @@ export async function registerForTournament(request: AuthenticatedRequest, reply
     await db.run('BEGIN TRANSACTION');
     
     // Check if tournament exists and is in registration phase
-    const tournament = await db.get(`
-      SELECT * FROM tournaments 
-      WHERE id = ? AND status = 'pending'
-    `, [tournamentId]);
+    const tournament = await Tournament.isPendingTournament(db, tournamentId);
     
     if (!tournament) {
       await db.run('ROLLBACK');
@@ -126,10 +90,7 @@ export async function registerForTournament(request: AuthenticatedRequest, reply
     }
     
     // Check if user is already registered
-    const existingRegistration = await db.get(`
-      SELECT * FROM tournament_participants
-      WHERE tournament_id = ? AND user_id = ?
-    `, [tournamentId, userId]);
+    const existingRegistration = await Tournament.isUserRegistered(db, tournamentId, userId);
     
     if (existingRegistration) {
       await db.run('ROLLBACK');
@@ -140,10 +101,7 @@ export async function registerForTournament(request: AuthenticatedRequest, reply
     }
     
     // Check if alias is already taken in this tournament
-    const existingAlias = await db.get(`
-      SELECT * FROM tournament_participants
-      WHERE tournament_id = ? AND alias = ?
-    `, [tournamentId, alias.trim()]);
+    const existingAlias = await Tournament.isAliasTaken(db, tournamentId, alias);
     
     if (existingAlias) {
       await db.run('ROLLBACK');
@@ -154,12 +112,9 @@ export async function registerForTournament(request: AuthenticatedRequest, reply
     }
     
     // Check if tournament is full (now always 4 players)
-    const participantCount = await db.get(`
-      SELECT COUNT(*) as count FROM tournament_participants
-      WHERE tournament_id = ?
-    `, [tournamentId]);
+    const participantCount = await Tournament.getParticipantCount(db, tournamentId);
     
-    if (participantCount.count >= 4) {
+    if (participantCount >= 4) {
       await db.run('ROLLBACK');
       return reply.status(400).send({ 
         success: false, 
@@ -168,19 +123,10 @@ export async function registerForTournament(request: AuthenticatedRequest, reply
     }
     
     // Register user with alias
-    await db.run(`
-      INSERT INTO tournament_participants (tournament_id, user_id, alias)
-      VALUES (?, ?, ?)
-    `, [tournamentId, userId, alias.trim()]);
-    
-    // Check if we've reached 4 participants after registration
-    const newParticipantCount = await db.get(`
-      SELECT COUNT(*) as count FROM tournament_participants
-      WHERE tournament_id = ?
-    `, [tournamentId]);
+    const newParticipantCount = await Tournament.addParticipant(db, tournamentId, userId, alias);
     
     // If we have exactly 4 participants, start the tournament automatically
-    if (newParticipantCount.count === 4) {
+    if (newParticipantCount === 4) {
       // Start tournament logic
       await startTournamentInternal(db, tournamentId);
     }
@@ -190,7 +136,7 @@ export async function registerForTournament(request: AuthenticatedRequest, reply
     return reply.send({ 
       success: true, 
       message: 'Successfully registered for tournament',
-      tournament_started: newParticipantCount.count === 4
+      tournament_started: newParticipantCount === 4
     });
   } catch (error) {
     await db.run('ROLLBACK');
@@ -202,45 +148,11 @@ export async function registerForTournament(request: AuthenticatedRequest, reply
   }
 }
 
-// export async function getUserTournaments(request: AuthenticatedRequest, reply: FastifyReply): Promise<FastifyReply> {
-//   const userId = request.user.id;
-//   const db = await getDb();
-//   try {
-//     const tournaments = await db.all(`
-//       SELECT t.*, tp.status as participant_status, tp.alias
-//       FROM tournaments t
-//       JOIN tournament_participants tp ON t.id = tp.tournament_id
-//       WHERE tp.user_id = ?
-//       ORDER BY t.created_at DESC
-//     `, [userId]);
-    
-//     return reply.send({ success: true, tournaments });
-//   } catch (error) {
-//     console.error('Error fetching user tournaments:', error);
-//     return reply.status(500).send({ 
-//       success: false, 
-//       error: 'Failed to fetch your tournaments' 
-//     });
-//   }
-// }
-
 export async function getUserTournaments(request: AuthenticatedRequest, reply: FastifyReply): Promise<FastifyReply> {
   const userId = request.user.id;
   const db = await getDb();
   try {
-    // Modified query to include current_participants count
-    const tournaments = await db.all(`
-      SELECT 
-        t.*, 
-        tp.status as participant_status, 
-        tp.alias,
-        (SELECT COUNT(*) FROM tournament_participants WHERE tournament_id = t.id) as current_participants
-      FROM tournaments t
-      JOIN tournament_participants tp ON t.id = tp.tournament_id
-      WHERE tp.user_id = ?
-      ORDER BY t.created_at DESC
-    `, [userId]);
-    
+    const tournaments = await Tournament.findTournamentsByUserId(db, userId);
     return reply.send({ success: true, tournaments });
   } catch (error) {
     console.error('Error fetching user tournaments:', error);
@@ -265,11 +177,7 @@ export async function joinTournamentMatch(request: AuthenticatedRequest, reply: 
   
   try {
     // Get match details
-    const match = await db.get(`
-      SELECT * FROM tournament_matches
-      WHERE id = ? AND (player1_id = ? OR player2_id = ?)
-      AND status IN ('scheduled', 'in_progress')
-    `, [matchId, userId, userId]);
+    const match = await Tournament.getMatchForPlayer(db, matchId, userId);
     
     if (!match) {
       return reply.status(404).send({ 
@@ -285,11 +193,7 @@ export async function joinTournamentMatch(request: AuthenticatedRequest, reply: 
       gameId = gameManager.createGame('remote');
       
       // Update match with game ID and status
-      await db.run(`
-        UPDATE tournament_matches
-        SET game_id = ?, status = 'in_progress'
-        WHERE id = ?
-      `, [gameId, matchId]);
+      await Tournament.setMatchGameId(db, matchId, gameId);
     }
     
     return reply.send({ success: true, gameId });
@@ -308,10 +212,7 @@ export async function createTournament(request: AuthenticatedRequest, reply: Fas
   const db = await getDb();
   
   try {
-    const result = await db.run(`
-      INSERT INTO tournaments (name, description, status)
-      VALUES (?, ?, 'pending')
-    `, [name, description]);
+    const result = await Tournament.create(db, { name, description });
     
     return reply.send({ 
       success: true, 
@@ -331,28 +232,15 @@ export async function createTournament(request: AuthenticatedRequest, reply: Fas
 async function startTournamentInternal(db: Database, tournamentId: number): Promise<void> {
   try {
     // Update tournament status
-    await db.run(`
-      UPDATE tournaments
-      SET status = 'active'
-      WHERE id = ?
-    `, [tournamentId]);
+    await Tournament.updateStatus(db, tournamentId, 'active');
     
     // Check for any participants missing aliases and generate default ones if needed
-    const participantsWithMissingAliases = await db.all(`
-      SELECT tp.id, u.username 
-      FROM tournament_participants tp
-      JOIN users u ON tp.user_id = u.id
-      WHERE tp.tournament_id = ? AND (tp.alias IS NULL OR tp.alias = '')
-    `, [tournamentId]);
+    const participantsWithMissingAliases = await Tournament.getParticipantsWithMissingAliases(db, tournamentId);
     
     // Generate and set default aliases for participants who didn't set one
     for (const participant of participantsWithMissingAliases) {
       const defaultAlias = `Player_${participant.username.substring(0, 8)}`;
-      await db.run(`
-        UPDATE tournament_participants
-        SET alias = ?
-        WHERE id = ?
-      `, [defaultAlias, participant.id]);
+      await Tournament.setParticipantAlias(db, participant.id, defaultAlias);
     }
     
     // Mark all participants as active
@@ -363,36 +251,18 @@ async function startTournamentInternal(db: Database, tournamentId: number): Prom
     `, [tournamentId]);
     
     // Get participants with their ELO ratings
-    const participants = await db.all(`
-      SELECT tp.user_id, ps.elo_rating
-      FROM tournament_participants tp
-      LEFT JOIN player_stats ps ON tp.user_id = ps.user_id
-      WHERE tp.tournament_id = ?
-      ORDER BY ps.elo_rating DESC NULLS LAST
-    `, [tournamentId]);
+    const participants = await Tournament.getParticipantsForSeeding(db, tournamentId);
     
     // Since there are always 4 participants, we'll organize 2 semifinal matches
     
     // Semifinal 1: 1st seed vs 4th seed
-    await db.run(`
-      INSERT INTO tournament_matches 
-      (tournament_id, round, match_number, player1_id, player2_id, status)
-      VALUES (?, 1, 1, ?, ?, 'scheduled')
-    `, [tournamentId, participants[0].user_id, participants[3].user_id]);
+    await Tournament.createMatch(db, tournamentId, 1, 1, participants[0].user_id, participants[3].user_id);
     
     // Semifinal 2: 2nd seed vs 3rd seed
-    await db.run(`
-      INSERT INTO tournament_matches 
-      (tournament_id, round, match_number, player1_id, player2_id, status)
-      VALUES (?, 1, 2, ?, ?, 'scheduled')
-    `, [tournamentId, participants[1].user_id, participants[2].user_id]);
+    await Tournament.createMatch(db, tournamentId, 1, 2, participants[1].user_id, participants[2].user_id);
     
     // Create empty final match (round 2)
-    await db.run(`
-      INSERT INTO tournament_matches 
-      (tournament_id, round, match_number, status)
-      VALUES (?, 2, 1, 'scheduled')
-    `, [tournamentId]);
+    await Tournament.createMatch(db, tournamentId, 2, 1);
   } catch (error) {
     console.error('Error in startTournamentInternal:', error);
     throw error;
@@ -415,12 +285,9 @@ export async function startTournament(request: AuthenticatedRequest, reply: Fast
     await db.run('BEGIN TRANSACTION');
     
     // Check if we have exactly 4 participants
-    const participantCount = await db.get(`
-      SELECT COUNT(*) as count FROM tournament_participants
-      WHERE tournament_id = ?
-    `, [tournamentId]);
+    const participantCount = await Tournament.getParticipantCount(db, tournamentId);
     
-    if (participantCount.count !== 4) {
+    if (participantCount !== 4) {
       await db.run('ROLLBACK');
       return reply.status(400).send({
         success: false,
@@ -452,44 +319,23 @@ export async function updateTournamentMatchResult(gameId: string, winnerId: numb
   
   try {
     // Find the match with this game ID
-    const match = await db.get(`
-      SELECT * FROM tournament_matches
-      WHERE game_id = ?
-    `, [gameId]);
+    const match = await Tournament.findMatchByGameId(db, gameId);
     
     if (!match) return;
     
     await db.run('BEGIN TRANSACTION');
     
     // Update match result
-    await db.run(`
-      UPDATE tournament_matches
-      SET winner_id = ?, status = 'completed'
-      WHERE id = ?
-    `, [winnerId, match.id]);
+    await Tournament.setMatchWinner(db, match.id, winnerId);
     
     // Update participant status for the loser
     const loserId = winnerId === match.player1_id ? match.player2_id : match.player1_id;
-    
-    await db.run(`
-      UPDATE tournament_participants
-      SET status = 'eliminated'
-      WHERE tournament_id = ? AND user_id = ?
-    `, [match.tournament_id, loserId]);
+    await Tournament.setParticipantStatus(db, match.tournament_id, loserId, 'eliminated');
     
     // If this is the final match (round 2), update tournament and winner
     if (match.round === 2) {
-      await db.run(`
-        UPDATE tournaments
-        SET status = 'completed'
-        WHERE id = ?
-      `, [match.tournament_id]);
-      
-      await db.run(`
-        UPDATE tournament_participants
-        SET status = 'winner'
-        WHERE tournament_id = ? AND user_id = ?
-      `, [match.tournament_id, winnerId]);
+      await Tournament.updateStatus(db, match.tournament_id, 'completed');
+      await Tournament.setParticipantStatus(db, match.tournament_id, winnerId, 'winner');
     } else {
       // Otherwise, advance winner to the final
       await advanceToNextRound(db, match, winnerId);
@@ -518,27 +364,12 @@ async function advanceToNextRound(
   // Round 1, Match 2 winner goes to Round 2, Match 1 as player2
   
   if (match.round === 1) {
-    if (match.match_number === 1) {
-      // First semifinal winner goes to final as player1
-      await db.run(`
-        UPDATE tournament_matches
-        SET player1_id = ?
-        WHERE tournament_id = ? AND round = 2 AND match_number = 1
-      `, [winnerId, match.tournament_id]);
-    } else if (match.match_number === 2) {
-      // Second semifinal winner goes to final as player2
-      await db.run(`
-        UPDATE tournament_matches
-        SET player2_id = ?
-        WHERE tournament_id = ? AND round = 2 AND match_number = 1
-      `, [winnerId, match.tournament_id]);
-    }
+    const isPlayer1 = match.match_number === 1;
+    
+    await Tournament.updateMatchPlayer(db, match.tournament_id, 2, 1, isPlayer1, winnerId);
     
     // Check if both players are set for the final match
-    const finalMatch = await db.get(`
-      SELECT * FROM tournament_matches
-      WHERE tournament_id = ? AND round = 2 AND match_number = 1
-    `, [match.tournament_id]);
+    const finalMatch = await Tournament.getFinalMatch(db, match.tournament_id);
     
     // If both players are set, update status to ready
     if (finalMatch.player1_id && finalMatch.player2_id) {

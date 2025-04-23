@@ -459,8 +459,9 @@ private showRegistrationModal(): void {
     
     const userId = parseInt(sessionStorage.getItem('userId') || '0');
     const userInMatch = match.player1_id === userId || match.player2_id === userId;
-    const matchIsPlayable = userInMatch && match.player1_id && match.player2_id;
-    
+    //const matchIsPlayable = userInMatch && match.player1_id && match.player2_id;
+    const matchIsPlayable = userInMatch && (match.status === 'scheduled' || match.status === 'in_progress');
+
     const statusColors = {
       scheduled: 'bg-yellow-100 text-yellow-800',
       in_progress: 'bg-blue-100 text-blue-800',
