@@ -36,11 +36,27 @@ export interface TournamentParticipant {
   status?: string;
 }
 
+export interface CreateTournamentData {
+  name: string;
+  description: string;
+  max_participants: number;
+}
+
 export class TournamentService extends BaseApiService {
   // Get list of all available tournaments
   public async getTournaments(): Promise<{ success: boolean, tournaments?: Tournament[], error?: string }> {
     return this.request<{ tournaments: Tournament[] }>(
       '/tournaments',
+      'GET',
+      undefined,
+      true
+    );
+  }
+
+   // Get user's tournaments
+   public async getUserTournaments(): Promise<{ success: boolean, tournaments?: Tournament[], error?: string }> {
+    return this.request<{ tournaments: Tournament[] }>(
+      '/user/tournaments',
       'GET',
       undefined,
       true
@@ -82,16 +98,6 @@ export class TournamentService extends BaseApiService {
     );
   }
 
-  // Get user's tournaments
-  public async getUserTournaments(): Promise<{ success: boolean, tournaments?: Tournament[], error?: string }> {
-    return this.request<{ tournaments: Tournament[] }>(
-      '/user/tournaments',
-      'GET',
-      undefined,
-      true
-    );
-  }
-
   // Join tournament match
   public async joinTournamentMatch(matchId: number): Promise<{ success: boolean, gameId?: string, error?: string }> {
     return this.request<{ gameId: string }>(
@@ -100,6 +106,21 @@ export class TournamentService extends BaseApiService {
       undefined,
       true,
       { omitContentType: true}
+    );
+  }
+
+  // Create a new tournament
+  public async createTournament(tournamentData: CreateTournamentData): Promise<{ 
+    success: boolean, 
+    tournamentId?: number,
+    message?: string, 
+    error?: string 
+  }> {
+    return this.request<{ success: boolean, tournamentId: number, message: string }>(
+      '/admin/tournaments',
+      'POST',
+      tournamentData,
+      true
     );
   }
 }

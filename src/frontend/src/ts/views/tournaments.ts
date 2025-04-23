@@ -202,16 +202,7 @@ export class TournamentPage implements Page {
       submitButton.textContent = 'Creating...';
       submitButton.disabled = true;
       
-      const response = await fetch('/api/admin/tournaments', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${sessionStorage.getItem('token')}`
-        },
-        body: JSON.stringify(tournamentData)
-      });
-      
-      const data = await response.json();
+      const data = await this.tournamentService.createTournament(tournamentData);
       
       if (data.success) {
         // Reset form
