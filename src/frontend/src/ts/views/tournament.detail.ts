@@ -17,26 +17,8 @@ export class TournamentDetailPage implements Page {
     this.tournamentService = new TournamentService();
   }
 
-  async render(): Promise<HTMLElement> {
-    if (this.element) return this.element;
-    
-    const container = document.createElement('div');
-    container.className = 'max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 bg-gray-50 min-h-screen';
-    
-    // Add a single event listener for all button clicks using event delegation
-    container.addEventListener('click', this.handleClick.bind(this));
-    
-    // Placeholder while loading
-    container.innerHTML = `
-      <div class="flex justify-center items-center h-64">
-        <div class="animate-pulse flex flex-col items-center">
-          <div class="h-12 w-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-          <p class="mt-4 text-indigo-600 font-medium">Loading tournament details...</p>
-        </div>
-      </div>
-    `;
-    
-    // Fetch tournament details
+  // Load tournament data
+  private async loadData(): Promise<{ success: boolean; error?: string }> {
     try {
       console.log('Fetching tournament details for ID:', this.tournamentId);
       const response = await this.tournamentService.getTournamentDetails(this.tournamentId);
@@ -50,20 +32,49 @@ export class TournamentDetailPage implements Page {
         const userId = parseInt(sessionStorage.getItem('userId') || '0');
         this.isRegistered = this.participants.some(p => p.id === userId);
         
-        this.renderContent(container);
+        return { success: true };
       } else {
-        this.renderError(container, response.error || 'Failed to load tournament details');
+        return { success: false, error: response.error || 'Failed to load tournament details' };
       }
     } catch (error) {
       console.error('Error fetching tournament details:', error);
-      this.renderError(container, 'An error occurred while loading tournament details.');
+      return { success: false, error: 'An error occurred while loading tournament details.' };
+    }
+  }
+
+  async render(): Promise<HTMLElement> {
+    if (this.element) return this.element;
+    
+    const container = document.createElement('div');
+    container.className = 'max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 bg-gray-50 min-h-screen';
+    
+    // Add a single event listener for all clicks using event delegation
+    container.addEventListener('click', this.handleClick.bind(this));
+    
+    // Placeholder while loading
+    container.innerHTML = `
+      <div class="flex justify-center items-center h-64">
+        <div class="animate-pulse flex flex-col items-center">
+          <div class="h-12 w-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+          <p class="mt-4 text-indigo-600 font-medium">Loading tournament details...</p>
+        </div>
+      </div>
+    `;
+    
+    // Load data
+    const result = await this.loadData();
+    
+    if (result.success) {
+      this.renderContent(container);
+    } else {
+      this.renderError(container, result.error || 'Failed to load tournament details');
     }
     
     this.element = container;
     return container;
   }
   
-  // Handle all button clicks with a single event handler
+  // Handle all click events with a single event handler
   private handleClick(e: MouseEvent): void {
     const target = e.target as HTMLElement;
     
@@ -87,71 +98,121 @@ export class TournamentDetailPage implements Page {
       }
       return;
     }
-  }
-  
-  private showRegistrationModal(): void {
-    // Create modal overlay
-    const modalOverlay = document.createElement('div');
-    modalOverlay.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
-    modalOverlay.id = 'registration-modal';
     
-    // Create modal content
-    modalOverlay.innerHTML = `
-      <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl transform transition-all">
-        <div class="flex justify-between items-center mb-4">
-          <h3 class="text-lg font-medium text-gray-900">Tournament Registration</h3>
-          <button type="button" id="close-modal" class="text-gray-400 hover:text-gray-500">
-            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+    // Modal close button
+    // if (target.id === 'close-modal' || target.closest('#close-modal')) {
+    //   const modal = document.getElementById('registration-modal');
+    //   if (modal) modal.remove();
+    //   return;
+    // }
+    
+    // // Cancel registration button
+    // if (target.id === 'cancel-registration' || target.closest('#cancel-registration')) {
+    //   const modal = document.getElementById('registration-modal');
+    //   if (modal) modal.remove();
+    //   return;
+    // }
+    
+    // Notification close button
+    const notificationButton = target.closest('.notification button');
+    if (notificationButton) {
+      const notification = target.closest('.notification');
+      if (notification) notification.remove();
+      return;
+    }
+    
+    const submitButton = target.id === 'submit-registration' || target.closest('#submit-registration');
+    if (submitButton) {
+      e.preventDefault();
+      // Find the form in the DOM instead of trying to traverse from the button
+      const form = document.getElementById('registration-form') as HTMLFormElement;
+      if (form) {
+        const aliasInput = form.querySelector('#alias') as HTMLInputElement;
+        const alias = aliasInput?.value.trim();
+        
+        if (alias) {
+          this.registerForTournament(alias);
+          const modal = document.getElementById('registration-modal');
+          if (modal) modal.remove();
+        }
+      }
+    }
+  }
+
+
+private showRegistrationModal(): void {
+  // Create modal overlay
+  const modalOverlay = document.createElement('div');
+  modalOverlay.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+  modalOverlay.id = 'registration-modal';
+  
+  // Create modal content
+  modalOverlay.innerHTML = `
+    <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl transform transition-all">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-medium text-gray-900">Tournament Registration</h3>
+        <button type="button" id="close-modal" class="text-gray-400 hover:text-gray-500">
+          <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      
+      <p class="text-gray-600 mb-4">Please choose an alias.</p>
+      
+      <form id="registration-form" class="space-y-4">
+        <div>
+          <input type="text" id="alias" name="alias" required
+                 class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                 placeholder="Enter something fun">
+          <p class="mt-1 text-sm text-gray-500">This is how other players will see you during the tournament.</p>
         </div>
         
-        <p class="text-gray-600 mb-4">Please choose an alias for this tournament. This is how other players will see you.</p>
+        <div class="flex justify-end">
+          <button type="button" id="cancel-registration" class="mr-3 bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+            Cancel
+          </button>
+          <button type="button" id="submit-registration" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+            Register
+          </button>
+        </div>
+      </form>
+    </div>
+  `;
+  
+  modalOverlay.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement;
+    
+    // Close modal
+    if (target.id === 'close-modal' || target.closest('#close-modal')) {
+      modalOverlay.remove();
+      return;
+    }
+    
+    // Cancel button
+    if (target.id === 'cancel-registration' || target.closest('#cancel-registration')) {
+      modalOverlay.remove();
+      return;
+    }
+    
+    // Submit registration
+    if (target.id === 'submit-registration' || target.closest('#submit-registration')) {
+      const form = document.getElementById('registration-form') as HTMLFormElement;
+      if (form) {
+        const aliasInput = form.querySelector('#alias') as HTMLInputElement;
+        const alias = aliasInput?.value.trim();
         
-        <form id="registration-form" class="space-y-4">
-          <div>
-            <label for="alias" class="block text-sm font-medium text-gray-700">Tournament Alias</label>
-            <input type="text" id="alias" name="alias" required
-                   class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                   placeholder="Enter your tournament alias">
-            <p class="mt-1 text-sm text-gray-500">This is how other players will see you during the tournament.</p>
-          </div>
-          
-          <div class="flex justify-end">
-            <button type="button" id="cancel-registration" class="mr-3 bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-              Cancel
-            </button>
-            <button type="submit" id="submit-registration" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-              Register
-            </button>
-          </div>
-        </form>
-      </div>
-    `;
-    
-    document.body.appendChild(modalOverlay);
-    
-    // Set up event listeners
-    document.getElementById('close-modal')?.addEventListener('click', () => {
-      modalOverlay.remove();
-    });
-    
-    document.getElementById('cancel-registration')?.addEventListener('click', () => {
-      modalOverlay.remove();
-    });
-    
-    document.getElementById('registration-form')?.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const aliasInput = document.getElementById('alias') as HTMLInputElement;
-      const alias = aliasInput.value.trim();
-      
-      if (alias) {
-        this.registerForTournament(alias);
-        modalOverlay.remove();
+        if (alias) {
+          this.registerForTournament(alias);
+          modalOverlay.remove();
+        }
       }
-    });
-  }
+      return;
+    }
+  });
+  
+  document.body.appendChild(modalOverlay);
+}
   
   private async registerForTournament(alias: string): Promise<void> {
     try {
@@ -168,7 +229,8 @@ export class TournamentDetailPage implements Page {
           this.showNotification(response.message || 'Successfully registered for tournament', 'success');
         }
         
-        this.update();
+        // Call update immediately to refresh the UI
+        await this.update();
       } else {
         this.showNotification(response.error || 'Failed to register for tournament', 'error');
       }
@@ -225,10 +287,7 @@ export class TournamentDetailPage implements Page {
       </button>
     `;
     
-    // Add click listener for close button
-    notification.querySelector('button')?.addEventListener('click', () => {
-      notification.remove();
-    });
+    // No need to add individual event listeners - we're using delegation
     
     notificationContainer.appendChild(notification);
     
@@ -463,6 +522,21 @@ export class TournamentDetailPage implements Page {
     `;
   }
   
+  private formatMatchStatus(status: string): string {
+    switch (status) {
+      case 'scheduled':
+        return 'Scheduled';
+      case 'in_progress':
+        return 'In Progress';
+      case 'completed':
+        return 'Completed';
+      case 'cancelled':
+        return 'Cancelled';
+      default:
+        return status;
+    }
+  }
+  
   private renderParticipants(): string {
     if (this.participants.length === 0) {
       return `
@@ -508,22 +582,6 @@ export class TournamentDetailPage implements Page {
       </div>
     `;
   }
-  
-  
-  private formatMatchStatus(status: string): string {
-    switch (status) {
-      case 'scheduled':
-        return 'Scheduled';
-      case 'in_progress':
-        return 'In Progress';
-      case 'completed':
-        return 'Completed';
-      case 'cancelled':
-        return 'Cancelled';
-      default:
-        return status;
-    }
-  }
 
   setTournamentId(id: string): void {
     console.log('Setting tournament ID:', id);
@@ -532,24 +590,25 @@ export class TournamentDetailPage implements Page {
     this.element = null;
   }
 
-  
-
-  update(): void {
+  async update(): Promise<void> {
     console.log('Updating tournament page, ID:', this.tournamentId);
-    // Re-render to get latest data
-    this.element = null;
-    this.render();
-  }
-
-  
-  destroy(): void {
-    // Remove any modal that might be open
-    const modal = document.getElementById('registration-modal');
-    if (modal) {
-      modal.remove();
+    
+    if (!this.element) {
+      // If element doesn't exist yet, just render the whole page
+      await this.render();
+      return;
     }
     
-    // Clean up resources
-    this.element = null;
+    // Load the latest data
+    const result = await this.loadData();
+    
+    if (!result.success) {
+      // If data loading failed, show error
+      this.renderError(this.element, result.error || 'Failed to load tournament details');
+      return;
+    }
+    
+    // Simply re-render the entire content
+    this.renderContent(this.element);
   }
 }
