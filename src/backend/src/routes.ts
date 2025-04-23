@@ -1,7 +1,7 @@
 // routes.ts
 import { FastifyInstance, FastifyRequest, FastifyReply, RouteHandlerMethod, RouteShorthandOptions } from 'fastify';
 import { registerUser } from './controllers/user.register';
-import { profileHandler, updatePasswordHandler, updateProfileDataHandler, updateUserDataHandler } from './controllers/user.profile';
+import { profileHandler, updatePasswordHandler, updateProfileDataHandler, updateUserDataHandler, uploadAvatarHandler } from './controllers/user.profile';
 import fp from 'fastify-plugin';
 import { AuthenticatedRequest } from '../@types/fastify';
 import * as GameController from './controllers/game.controller';
@@ -22,6 +22,25 @@ interface FriendRequestParams {
 }
 
 // Helper function to define authenticated routes
+// function defineAuthRoute<T = any>(
+//   server: FastifyInstance,
+//   method: 'get' | 'post' | 'put' | 'delete',
+//   url: string,
+//   handler: (request: AuthenticatedRequest, reply: FastifyReply) => Promise<any>,
+//   options: RouteShorthandOptions = {}
+// ) {
+//   const opts = { ...options, preHandler: server.authenticate };
+  
+//   // The type error occurs here. The wrapped handler needs to be properly typed
+//   // to return a Promise
+//   const wrappedHandler: RouteHandlerMethod = async (req, reply) => {
+//     // Await the handler result to ensure we return a Promise
+//     return await handler(req as AuthenticatedRequest, reply);
+//   };
+  
+//   server[method](url, opts, wrappedHandler);
+// }
+
 function defineAuthRoute<T = any>(
   server: FastifyInstance,
   method: 'get' | 'post' | 'put' | 'delete',
@@ -31,11 +50,10 @@ function defineAuthRoute<T = any>(
 ) {
   const opts = { ...options, preHandler: server.authenticate };
   
-  // The type error occurs here. The wrapped handler needs to be properly typed
-  // to return a Promise
+  // The wrapped handler now uses explicit type assertion
   const wrappedHandler: RouteHandlerMethod = async (req, reply) => {
-    // Await the handler result to ensure we return a Promise
-    return await handler(req as AuthenticatedRequest, reply);
+    // Use 'as unknown as' to safely convert between the types
+    return await handler(req as unknown as AuthenticatedRequest, reply);
   };
   
   server[method](url, opts, wrappedHandler);
@@ -50,7 +68,8 @@ export default fp(async function setupRoutes(server: FastifyInstance) {
   defineAuthRoute(server, 'put', '/api/profile/update', updateProfileDataHandler);
   defineAuthRoute(server, 'put', '/api/user/update', updateUserDataHandler);
   defineAuthRoute(server, 'put', '/api/user/password', updatePasswordHandler);
-
+  defineAuthRoute(server, 'post', '/api/profile/avatar', uploadAvatarHandler);
+  
   // FRIEND ROUTES
   defineAuthRoute(server, 'get', '/api/friends', FriendController.getFriends);
   defineAuthRoute(server, 'get', '/api/friends/pending', FriendController.getPendingRequests);
@@ -79,8 +98,13 @@ export default fp(async function setupRoutes(server: FastifyInstance) {
   // GAME ROUTES
   defineAuthRoute(server, 'post', '/api/game/create', GameController.createGame);
   //defineAuthRoute(server, 'get', '/api/game/restore', GameController.getExistingGame);
+  // server.get('/api/game/restore', { preHandler: server.authenticate }, (request, reply) => {
+  //   return GameController.getExistingGame(request as AuthenticatedRequest, reply);
+  // });
+
   server.get('/api/game/restore', { preHandler: server.authenticate }, (request, reply) => {
-    return GameController.getExistingGame(request as AuthenticatedRequest, reply);
+    // Use the same type assertion pattern
+    return GameController.getExistingGame(request as unknown as AuthenticatedRequest, reply);
   });
   
   // STAT ROUTES
