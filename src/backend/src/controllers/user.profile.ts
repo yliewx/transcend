@@ -4,6 +4,11 @@ import User from '../models/user';
 import Profile from '../models/profile';
 import { getDb } from '../db.js';
 import { AuthenticatedRequest } from '../../@types/fastify';
+import fs from 'fs';
+import path from 'path';
+import { pipeline } from 'stream/promises';
+import { v4 as uuidv4 } from 'uuid';
+import { MultipartFile } from '@fastify/multipart';
 
 export async function profileHandler(request: AuthenticatedRequest, reply: FastifyReply) {
     try {
@@ -208,6 +213,86 @@ export async function updatePasswordHandler(request: AuthenticatedRequest, reply
     return reply.status(500).send({ 
       success: false, 
       error: 'Failed to update password' 
+    });
+  }
+}
+
+
+// Define the upload directory - make sure this path exists and is writable
+const UPLOAD_DIR = path.join(process.cwd(), 'public', 'uploads', 'avatars');
+
+// Create directory if it doesn't exist
+if (!fs.existsSync(UPLOAD_DIR)) {
+  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+}
+
+export async function uploadAvatarHandler(request: AuthenticatedRequest, reply: FastifyReply) {
+  try {
+    // Get the authenticated user's ID
+    const userId = request.user.id;
+    
+    // Process the uploaded file using Fastify Multipart
+    const data = await request.file();
+    
+    if (!data) {
+      return reply.status(400).send({ error: 'No file uploaded' });
+    }
+    
+    // Validate the file type
+    const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/gif'];
+    if (!allowedMimeTypes.includes(data.mimetype)) {
+      return reply.status(400).send({ error: 'Only JPG, PNG and GIF images are allowed' });
+    }
+    
+    // Generate a unique filename to prevent collisions
+    const fileExtension = data.filename.split('.').pop() || 'jpg';
+    const filename = `user_${userId}_${uuidv4()}.${fileExtension}`;
+    const filePath = path.join(UPLOAD_DIR, filename);
+    
+    // Save the file to disk
+    await pipeline(data.file, fs.createWriteStream(filePath));
+    
+    // Create a public URL path for the avatar
+    const avatarPath = `/uploads/avatars/${filename}`;
+    
+    // Update the user's profile in the database
+    const db = await getDb();
+    
+    // First, check if we need to delete an old avatar file
+    const existingProfile = await db.get(
+      'SELECT avatar_path FROM profiles WHERE user_id = ?',
+      [userId]
+    );
+    
+    if (existingProfile && existingProfile.avatar_path) {
+      // Extract the filename from the path
+      const oldFilename = existingProfile.avatar_path.split('/').pop();
+      if (oldFilename) {
+        const oldFilePath = path.join(UPLOAD_DIR, oldFilename);
+        // Check if file exists before attempting to delete
+        if (fs.existsSync(oldFilePath)) {
+          fs.unlinkSync(oldFilePath); // Delete the old file
+        }
+      }
+    }
+    
+    // Update the profile with the new avatar path
+    await db.run(
+      `INSERT INTO profiles (user_id, avatar_path) 
+       VALUES (?, ?) 
+       ON CONFLICT(user_id) 
+       DO UPDATE SET avatar_path = ?`,
+      [userId, avatarPath, avatarPath]
+    );
+    
+    return reply.status(200).send({ 
+      success: true, 
+      avatarPath: avatarPath 
+    });
+  } catch (error) {
+    console.error('Avatar upload error:', error);
+    return reply.status(500).send({ 
+      error: 'Failed to process avatar upload'
     });
   }
 }
