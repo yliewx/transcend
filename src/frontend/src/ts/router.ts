@@ -121,10 +121,12 @@ export class Router {
           console.error('Tournament page component is missing setTournamentId method');
         }
       }
-      
       // Get the rendered element from the component
       const element = await Promise.resolve(page.render());
-      
+
+      if (routePath === '/tournaments/:id' && typeof page.destroy === 'function') {
+        page.destroy(); // This will set element to null in the page component
+      }
       // Call update method if it exists
       if (typeof page.update === 'function') {
         await Promise.resolve(page.update());

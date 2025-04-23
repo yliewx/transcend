@@ -159,10 +159,8 @@ CREATE TABLE IF NOT EXISTS tournaments (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
   description TEXT,
-  start_date DATETIME NOT NULL,
-  end_date DATETIME NOT NULL,
   status TEXT NOT NULL CHECK(status IN ('pending', 'active', 'completed', 'cancelled')) DEFAULT 'pending',
-  max_participants INTEGER NOT NULL DEFAULT 8,
+  max_participants INTEGER NOT NULL DEFAULT 4,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -171,6 +169,7 @@ CREATE TABLE IF NOT EXISTS tournament_participants (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   tournament_id INTEGER NOT NULL,
   user_id INTEGER NOT NULL,
+  alias TEXT NOT NULL,
   seed INTEGER,
   status TEXT CHECK(status IN ('registered', 'active', 'eliminated', 'winner')) DEFAULT 'registered',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -188,7 +187,6 @@ CREATE TABLE IF NOT EXISTS tournament_matches (
   player1_id INTEGER,
   player2_id INTEGER,
   winner_id INTEGER,
-  match_date DATETIME,
   game_id TEXT,
   status TEXT CHECK(status IN ('scheduled', 'in_progress', 'completed', 'cancelled')) DEFAULT 'scheduled',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,

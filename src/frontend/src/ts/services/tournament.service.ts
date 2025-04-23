@@ -4,13 +4,11 @@ export interface Tournament {
   id: string;
   name: string;
   description: string;
-  start_date: string;
-  end_date: string;
   status: 'pending' | 'active' | 'completed' | 'cancelled';
-  max_participants: number;
   current_participants?: number;
   created_at: string;
   participant_status: string;
+  alias?: string; // Player's alias in this tournament
 }
 
 export interface TournamentMatch {
@@ -22,10 +20,20 @@ export interface TournamentMatch {
   player2_id: number | null;
   player1_username?: string;
   player2_username?: string;
+  player1_alias?: string;
+  player2_alias?: string;
   winner_id: number | null;
   match_date: string | null;
   game_id: string | null;
   status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
+}
+
+export interface TournamentParticipant {
+  id: number;
+  username: string;
+  elo: number;
+  alias?: string;
+  status?: string;
 }
 
 export class TournamentService extends BaseApiService {
@@ -44,13 +52,13 @@ export class TournamentService extends BaseApiService {
     success: boolean, 
     tournament?: Tournament, 
     matches?: TournamentMatch[],
-    participants?: {id: number, username: string, elo: number}[],
+    participants?: TournamentParticipant[],
     error?: string 
   }> {
     return this.request<{ 
       tournament: Tournament, 
       matches: TournamentMatch[],
-      participants: {id: number, username: string, elo: number}[]
+      participants: TournamentParticipant[]
     }>(
       `/tournaments/${tournamentId}`,
       'GET',
@@ -59,25 +67,18 @@ export class TournamentService extends BaseApiService {
     );
   }
 
-  // Register for a tournament
-  public async registerForTournament(tournamentId: string | null): Promise<{ success: boolean, message?: string, error?: string }> {
-    return this.request<{ message: string }>(
+  // Register for a tournament with alias
+  public async registerForTournament(tournamentId: string | null, alias: string): Promise<{ 
+    success: boolean, 
+    message?: string, 
+    error?: string, 
+    tournament_started?: boolean 
+  }> {
+    return this.request<{ message: string, tournament_started?: boolean }>(
       `/tournaments/${tournamentId}/register`,
       'POST',
-      undefined,
-      true,
-      { omitContentType: true}
-    );
-  }
-
-  // Unregister from a tournament
-  public async unregisterFromTournament(tournamentId: string | null): Promise<{ success: boolean, message?: string, error?: string }> {
-    return this.request<{ message: string }>(
-      `/tournaments/${tournamentId}/unregister`,
-      'DELETE',
-      undefined,
-      true,
-      { omitContentType: true}
+      { alias },
+      true
     );
   }
 
