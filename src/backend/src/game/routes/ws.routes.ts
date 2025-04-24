@@ -30,7 +30,29 @@ export async function notifyFriends(userId: number, online: boolean) {
     console.log('Failed to notify friends:', error);
   }
 }
+/*export interface FriendResponse {
+  id: number;
+  username: string;
+  displayName: string;
+  online?: boolean;
+  status?: string;
+}
+  
+export interface RequestResponse {
+  id: number;
+  username: string;
+  displayName: string;
+  requestType: 'incoming' | 'outgoing';
+  status: string;
+  requestDate: string;
+}
 
+export interface FriendRequestMessage {
+  friend: FriendResponse;
+  request: RequestResponse;
+  requestStatus: 'pending' | 'accepted' | 'declined' | 'cancelled';
+  message: string;
+*/
 async function websocketRoutes(server: FastifyInstance) {  
   /*-----------------------------ONLINE STATUS------------------------------*/
   

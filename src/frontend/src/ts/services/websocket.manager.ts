@@ -7,7 +7,7 @@ export class WebSocketManager {
   private gameId: string | null = null;
   private playerId: number | null = null;
   private gameEventCallbacks: Map<string, (data: any) => void> = new Map();
-  private onlineEventCallbacks: Map<string, (data: any) => void> = new Map();
+  private onUserEventCallbacks: Map<string, (data: any) => void> = new Map();
   // Handle reconnection
   private retryCount: number = 0;
   private maxRetryCount: number = 5;
@@ -23,8 +23,8 @@ export class WebSocketManager {
   }
 
   // Register handler functions from FriendsPage
-  public onlineStatusEvent(type: string, callback: (data: any) => void): void {
-    this.onlineEventCallbacks.set(type, callback);
+  public onUserEvent(type: string, callback: (data: any) => void): void {
+    this.onUserEventCallbacks.set(type, callback);
   }
 
   /*------------------------------GAME SOCKET-------------------------------*/
@@ -193,14 +193,18 @@ export class WebSocketManager {
 
   /* notified by server when:
   - friend goes online/offline
-  - friend request status changes: received/cancelled, accepted/rejected */
+  - friend request status changes: received/cancelled, accepted/rejected
+  - friend removed */
   private handleMessages(type: string, data: any): void {
     if (type === 'error') {
       console.error('[Online Socket] Error from server:', JSON.stringify(data, null, 2));
       return;
     }
+    if (type !== 'online-status') {
+      console.log('[Online Socket] Received from server:', type, JSON.stringify(data, null, 2));
+    }
 
-    const callback = this.onlineEventCallbacks.get(type);
+    const callback = this.onUserEventCallbacks.get(type);
     if (!callback) {
       console.warn(`Unhandled online message type: ${type}`);
       return;
