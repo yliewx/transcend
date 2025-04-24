@@ -152,3 +152,47 @@ LEFT JOIN
   profiles p ON u.id = p.user_id
 WHERE
   ps.games_played > 0;
+
+
+-- Tournaments table
+CREATE TABLE IF NOT EXISTS tournaments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  description TEXT,
+  status TEXT NOT NULL CHECK(status IN ('pending', 'active', 'completed', 'cancelled')) DEFAULT 'pending',
+  max_participants INTEGER NOT NULL DEFAULT 4,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tournament Participants table
+CREATE TABLE IF NOT EXISTS tournament_participants (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  tournament_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL,
+  alias TEXT NOT NULL,
+  seed INTEGER,
+  status TEXT CHECK(status IN ('registered', 'active', 'eliminated', 'winner')) DEFAULT 'registered',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (tournament_id) REFERENCES tournaments(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  UNIQUE(tournament_id, user_id)
+);
+
+-- Tournament Matches table
+CREATE TABLE IF NOT EXISTS tournament_matches (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  tournament_id INTEGER NOT NULL,
+  round INTEGER NOT NULL,
+  match_number INTEGER NOT NULL,
+  player1_id INTEGER,
+  player2_id INTEGER,
+  winner_id INTEGER,
+  game_id TEXT,
+  status TEXT CHECK(status IN ('scheduled', 'in_progress', 'completed', 'cancelled')) DEFAULT 'scheduled',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (tournament_id) REFERENCES tournaments(id) ON DELETE CASCADE,
+  FOREIGN KEY (player1_id) REFERENCES users(id) ON DELETE SET NULL,
+  FOREIGN KEY (player2_id) REFERENCES users(id) ON DELETE SET NULL,
+  FOREIGN KEY (winner_id) REFERENCES users(id) ON DELETE SET NULL,
+  UNIQUE(tournament_id, round, match_number)
+);

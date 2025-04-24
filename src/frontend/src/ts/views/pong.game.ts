@@ -80,6 +80,7 @@ export class PongGamePage implements Page {
 
   async update() {
     // When revisiting the page: Reconnect if there is an existing game
+    console.log("Pong game update method called")
     const reconnected = await this.restoreGameSession();
     if (!reconnected) {
       this.resetGame();
