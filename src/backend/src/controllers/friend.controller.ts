@@ -70,13 +70,8 @@ async function notifyRecipient(
   const request = await formatIncomingRequest(db, requestId, recipientId, requestStatus);
   const sender = await formatSenderData(db, senderId);
 
-  console.log('Status:', requestStatus);
-  console.log('Sender:', JSON.stringify(sender, null, 2));
-  console.log('Request:', JSON.stringify(request, null, 2))
-
   const recipientSocket = onlineUsers.get(recipientId);
   if (recipientSocket && recipientSocket.readyState === WebSocket.OPEN) {
-    console.log('SENDING MESSAGE');
     recipientSocket.send(JSON.stringify({
       type: 'friend-request',
       data: {
@@ -280,7 +275,6 @@ export async function sendFriendRequest(request: AuthenticatedRequest, reply: Fa
         
         await db.run('COMMIT');
 
-        console.log('REQUESTDATA:', JSON.stringify(requestData, null, 2));
         await notifyRecipient(
           db,
           requestData.id,
@@ -387,7 +381,8 @@ export async function acceptFriendRequest(request: AuthenticatedRequest, reply: 
         friend: {
           id: userData.id,
           username: userData.username,
-          displayName: userData.display_name || userData.username
+          displayName: userData.display_name || userData.username,
+          online: onlineUsers.has(userData.id)
         }
       });
     } catch (error) {

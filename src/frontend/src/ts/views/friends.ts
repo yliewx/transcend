@@ -419,19 +419,12 @@ export class FriendsPage implements Page {
       const actions = document.createElement('div');
       actions.className = 'flex space-x-2';
       
-      const challengeBtn = document.createElement('button');
-      challengeBtn.className = 'px-3 py-1 text-sm bg-pink-600 text-white rounded hover:bg-pink-700';
-      challengeBtn.textContent = 'Challenge';
-      challengeBtn.dataset.friendId = friend.id.toString();
-      //challengeBtn.addEventListener('click', () => this.friendService.challengeFriend(friend.id));
-      
       const removeBtn = document.createElement('button');
       removeBtn.className = 'px-3 py-1 text-sm bg-red-100 text-red-600 rounded hover:bg-red-200';
       removeBtn.textContent = 'Remove';
       removeBtn.dataset.friendId = friend.id.toString();
       removeBtn.addEventListener('click', () => this.friendService.removeFriend(friend.id));
       
-      actions.appendChild(challengeBtn);
       actions.appendChild(removeBtn);
       
       friendCard.appendChild(avatarWrapper);
