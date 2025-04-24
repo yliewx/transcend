@@ -8,6 +8,7 @@ export class Router {
   private currentPath: string = '';
   private protectedRoutes: string[] = ['/home', '/play', '/stats', '/profile', '/friends', '/tournaments/:id'];
   private wss: WebSocketManager;
+  private isHandlingPopState: boolean = false;
 
   /*------------------------------CONSTRUCTOR-------------------------------*/
 
@@ -21,10 +22,12 @@ export class Router {
 
     // Handle popstate events (browser back/forward buttons)
     window.addEventListener('popstate', (event) => {
+      this.isHandlingPopState = true;
       const newPath = window.location.pathname;
       if (newPath !== this.currentPath) {
-        this.navigateTo(newPath);
+        this.navigateTo(newPath, false); // Don't push state when handling popstate
       }
+      this.isHandlingPopState = false;
     });
     
     // Listen for authentication state changes
@@ -48,7 +51,7 @@ export class Router {
   }
   
   // Navigate to a specific route
-  async navigateTo(path: string): Promise<void> {
+  async navigateTo(path: string, pushState: boolean = true): Promise<void> {
     if (path === '/')
       path = '/home'; // Redirect root to home
 
@@ -83,8 +86,11 @@ export class Router {
       }
     }
 
-    // Update browser history
-    window.history.pushState({ path }, '', path);
+    // Only update browser history if not handling a popstate event
+    if (pushState && !this.isHandlingPopState) {
+      window.history.pushState({ path }, '', path);
+    }
+    
     this.currentPath = path;
     await this.showPage(routePath, tournamentId);
   }
@@ -92,7 +98,11 @@ export class Router {
   // Redirect to login
   private async redirectToLogin(message?: string): Promise<void> {
     console.log('Redirecting to login page.', message);
-    window.history.pushState({ path: '/login' }, '', '/login');
+    // Only push state if not handling a popstate event
+    if (!this.isHandlingPopState) {
+      window.history.pushState({ path: '/login' }, '', '/login');
+    }
+    this.currentPath = '/login';
     await this.showPage('/login');
   }
   
@@ -140,97 +150,7 @@ export class Router {
   }
   
 
-/*
-// Show the page for the given path with optional parameter
-private async showPage(routePath: string, tournamentId: string | null = null): Promise<void> {
-  // Clear container
-  while (this.container.firstChild) {
-    this.container.removeChild(this.container.firstChild);
-  }
 
-  // Get the page component for the current route
-  const page = this.routes.get(routePath) || this.routes.get('/404');
-  
-  if (!page) {
-    console.error(`No page component found for route: ${routePath}`);
-    return;
-  }
-  
-  try {
-    // If we have a tournament ID, set it directly
-    if (routePath === '/tournaments/:id' && tournamentId) {
-      if (typeof page.setTournamentId === 'function') {
-        page.setTournamentId(tournamentId);
-      } else {
-        console.error('Tournament page component is missing setTournamentId method');
-      }
-    }
-    
-    // For tournament pages, we need to clear the element first to ensure re-render
-    if (routePath === '/tournaments/:id' && typeof page.destroy === 'function') {
-      page.destroy(); // This will set element to null in the page component
-    }
-    
-    // Get the rendered element from the component
-    const element = await Promise.resolve(page.update());
-    
-    // Append to container
-    this.container.appendChild(element);
-  } catch (error) {
-    console.error(`Error rendering page for route ${routePath}:`, error);
-  }
-}
-*/
-
-/*
-// Show the page for the given path with optional parameter
-private async showPage(routePath: string, tournamentId: string | null = null): Promise<void> {
-  console.log('[Router] showPage called with routePath:', routePath, 'tournamentId:', tournamentId);
-  
-  // Clear container
-  while (this.container.firstChild) {
-    this.container.removeChild(this.container.firstChild);
-  }
-
-  // Get the page component for the current route
-  const page = this.routes.get(routePath) || this.routes.get('/404');
-  
-  if (!page) {
-    console.error(`[Router] No page component found for route: ${routePath}`);
-    return;
-  }
-  
-  try {
-    // If we have a tournament ID, set it directly
-    if (routePath === '/tournaments/:id' && tournamentId) {
-      console.log('[Router] Setting tournament ID on page component:', tournamentId);
-      if (typeof page.setTournamentId === 'function') {
-        page.setTournamentId(tournamentId);
-      } else {
-        console.error('[Router] Tournament page component is missing setTournamentId method');
-      }
-    } else if (routePath === '/tournaments/:id') {
-      console.error('[Router] Tournament route matched but tournamentId is null or undefined');
-    }
-    
-    // For tournament pages, we need to clear the element first to ensure re-render
-    if (routePath === '/tournaments/:id' && typeof page.destroy === 'function') {
-      console.log('[Router] Calling destroy() on tournament page to ensure fresh render');
-      page.destroy(); // This will set element to null in the page component
-    }
-    
-    // Get the rendered element from the component
-    console.log('[Router] Calling render() on page component');
-    const element = await Promise.resolve(page.render());
-    
-    // Append to container
-    console.log('[Router] Appending rendered element to container');
-    this.container.appendChild(element);
-  } catch (error) {
-    console.error(`[Router] Error rendering page for route ${routePath}:`, error);
-  }
-}
-*/
   /*-------------------------------INIT ROUTER------------------------------*/
 
   // Initialize the router
@@ -252,12 +172,12 @@ private async showPage(routePath: string, tournamentId: string | null = null): P
     // Check if initialPath matches tournament pattern
     const tournamentMatch = initialPath.match(/^\/tournaments\/(\d+)$/);
     if (tournamentMatch && this.routes.has('/tournaments/:id')) {
-      await this.navigateTo(initialPath);
+      await this.navigateTo(initialPath, false); // Don't push state for initial route
     } else if (this.routes.has(initialPath)) {
-      await this.navigateTo(initialPath);
+      await this.navigateTo(initialPath, false); // Don't push state for initial route
     } else {
       window.history.replaceState({ path: defaultPath }, '', defaultPath);
-      await this.navigateTo(defaultPath);
+      await this.navigateTo(defaultPath, false); // Don't push state for initial route
     }
   }
 
