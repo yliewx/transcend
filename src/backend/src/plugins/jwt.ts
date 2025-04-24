@@ -95,4 +95,20 @@ export default fp(async function setupJwt(server: FastifyInstance) {
       reply.status(401).send({ error: 'Unauthorized' });
     }
   });
+
+  // Verify auth token: websocket routes
+  server.decorate("authenticateUser", async (request: FastifyRequest) => {
+    try {
+      const accessToken = request.cookies.accessToken;
+      if (!accessToken)
+        throw new Error('No authentication token found');
+
+      const secret = await getJwtSecret(server, accessToken);
+      request.user = await server.jwtVerify(accessToken, secret) as AuthTokenPayload;
+      return request.user;
+    }
+    catch (err) {
+      throw err;
+    }
+  });
 })

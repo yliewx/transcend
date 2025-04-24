@@ -25,17 +25,17 @@ export class OTPVerificationPage implements Page {
       <div class="py-10">
         <main>
           <div class="max-w-md mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="bg-white shadow-md rounded-lg p-8">
+            <div class="bg-gray-800 shadow-md rounded-lg p-8">
               <div class="text-center">
-                <h1 class="text-2xl font-bold text-gray-900">Enter OTP Code</h1>
-                <p class="mt-2 text-sm text-gray-600">We have sent a 6-digit verification code to your registered device.</p>
+                <h1 class="text-2xl font-bold text-white">Enter OTP Code</h1>
+                <p class="mt-2 text-sm text-gray-300">We have sent a 6-digit verification code to your registered device.</p>
               </div>
               
               <form id="otp-form" class="mt-8 space-y-6">
                 <div class="flex justify-center gap-2">
                   ${Array.from({ length: 6 }).map((_, i) => `
                     <input id="otp-${i}" type="text" maxlength="1" 
-                      class="w-12 h-12 text-center text-xl font-semibold border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                      class="w-12 h-12 text-center text-xl font-semibold border border-gray-500 bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-white"
                     />
                   `).join('')}
                 </div>
@@ -43,13 +43,13 @@ export class OTPVerificationPage implements Page {
                 <div id="error-message" class="text-red-600 text-sm hidden text-center mt-2"></div>
                 
                 <div>
-                  <button type="button" id="verify-otp"
+                  <button type="submit" id="verify-otp"
                     class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                     Verify OTP
                   </button>
                 </div>
-                <p class="text-sm text-center text-gray-600 mt-2">
-                  Didn't receive the code? <button id="resend-otp" class="text-indigo-600 hover:text-indigo-500">Resend OTP</button>
+                <p class="text-sm text-center text-gray-300 mt-2">
+                  Didn't receive the code? <button id="resend-otp" class="text-indigo-400 hover:text-indigo-300">Resend OTP</button>
                 </p>
               </form>
             </div>
@@ -90,44 +90,43 @@ export class OTPVerificationPage implements Page {
 
   private setupEventHandlers(): void {
     if (!this.element) return;
-    
-    const otpInputs = Array.from({ length: 6 }).map((_, i) => 
+  
+    const otpInputs = Array.from({ length: 6 }).map((_, i) =>
       this.element?.querySelector(`#otp-${i}`) as HTMLInputElement
     );
-    
-    const verifyButton = this.element.querySelector('#verify-otp');
-    const resendButton = this.element.querySelector('#resend-otp');
-    
-    // Set up OTP input behavior
+  
+    // OTP input behavior
     otpInputs.forEach((input, index) => {
       if (!input) return;
-      
-      // Auto-advance to next input on entry
+  
       input.addEventListener('input', () => {
         if (input.value.length === 1 && index < 5 && otpInputs[index + 1]) {
           otpInputs[index + 1].focus();
         }
       });
-      
-      // Handle backspace to go to previous input
+  
       input.addEventListener('keydown', (e) => {
         if (e.key === 'Backspace' && !input.value && index > 0 && otpInputs[index - 1]) {
           otpInputs[index - 1].focus();
         }
       });
     });
+  
+    const form = this.element.querySelector('#otp-form') as HTMLFormElement;
+    const resendButton = this.element.querySelector('#resend-otp');
     
-    // Verify OTP button
-    verifyButton?.addEventListener('click', () => {
+    // Submit OTP on enter or button click
+    form?.addEventListener('submit', (e) => {
+      e.preventDefault();
       this.handleOTPVerification();
     });
-    
+  
     // Resend OTP button
     resendButton?.addEventListener('click', (e) => {
       e.preventDefault();
       this.resendOTP();
     });
-  }
+  }  
 
   private async handleOTPVerification(): Promise<void> {
     if (!this.element) return;

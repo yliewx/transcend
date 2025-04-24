@@ -22,6 +22,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { SignOptions, VerifyOptions } from 'jsonwebtoken';
 import "@fastify/jwt";
 import { TokenPayload } from 'google-auth-library';
+import { MultipartFile } from '@fastify/multipart';
 
 // Extend FastifyInstance
 declare module "fastify" {
@@ -30,6 +31,7 @@ declare module "fastify" {
     authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
     preAuthenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
     reAuthenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
+    authenticateUser: (request: FastifyRequest) => Promise<any>;
     jwtSign: (payload: string | object | Buffer, secretOrPrivateKey: string, options?: SignOptions) => string;
     jwtVerify: (token: string, secretOrPublicKey: string, options?: VerifyOptions) => any;
     
@@ -69,4 +71,35 @@ export interface AuthenticatedRequest extends FastifyRequest {
     id?: string;
     [key: string]: string | undefined;
   };
+  // Add multipart file method
+  file(): Promise<MultipartFile | undefined>;
+  files(): AsyncIterableIterator<MultipartFile>;
 }
+
+// export interface AuthenticatedRequest extends FastifyRequest {
+//   user: {
+//     id: number;
+//     username: string;
+//     email: string;
+//   };
+//   body: any;
+//   query: SearchQuery | LeaderboardQuery | OtherQuery;
+//   params: {
+//     id?: string;
+//     [key: string]: any;
+//   };
+// }
+
+// interface SearchQuery {
+//   q: string;
+//   [key: string]: any;
+// }
+
+// interface LeaderboardQuery {
+//   offset: number;
+//   [key: string]: any;
+// }
+
+// interface OtherQuery {
+//   [key: string]: any;
+// }

@@ -13,6 +13,7 @@ services:
       - ft_transcendence
     volumes:
       - sqlite_data:/db
+      - avatar_data:/usr/src/app/public/uploads/avatars 
     restart: always
 
 #--------------------------------FRONTEND--------------------------------
@@ -22,6 +23,9 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        - BASE_API_URL=${BASE_API_URL}
+        - BASE_WSS_URL=${BASE_WSS_URL}
     environment:
       - NODE_ENV=development
     env_file:
@@ -56,6 +60,8 @@ volumes:
   sqlite_data:
     driver: local
   frontend_data:
+    driver: local
+  avatar_data:
     driver: local
 
 #--------------------------------NETWORKS--------------------------------
