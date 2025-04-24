@@ -109,6 +109,22 @@ class Friend {
     );
   }
 
+  // Get a specific incoming request by ID, only if recipient is the current user
+  static async getIncomingRequestById(db: Database, requestId: number, userId: number) {
+    return db.get(`
+      SELECT 
+        id,
+        sender_id as user_id,
+        sender_username as username,
+        sender_display_name as display_name,
+        created_at
+      FROM 
+        pending_incoming_requests_view
+      WHERE 
+        id = ? AND recipient_id = ?
+    `, [requestId, userId]);
+  }
+
   // Create friend request
   static async createRequest(db: Database, senderId: number, recipientId: number) {
     const result = await db.run(

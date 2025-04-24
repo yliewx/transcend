@@ -4,6 +4,7 @@ import { AuthenticatedRequest } from '../../@types/fastify';
 import User from '../models/user';
 import Friend from '../models/friend';
 import { onlineUsers } from '../game/ws.types.js';
+import { Database } from 'sqlite';
 
 interface FriendRecord {
   id: number;
@@ -12,6 +13,96 @@ interface FriendRecord {
   display_name?: string;
   created_at: string;
 }
+
+/*-----------------------------NOTIFY RECIPIENT-----------------------------*/
+
+async function formatIncomingRequest(
+  db: Database,
+  requestId: number,
+  recipientId: number,
+  requestStatus: 'pending' | 'accepted' | 'declined' | 'cancelled'
+) {
+  if (requestStatus !== 'pending') {
+    return { id: requestId };
+  }
+
+  const request = await Friend.getIncomingRequestById(db, requestId, recipientId);
+  if (!request) return null;
+
+  const formattedRequest = {
+    id: request.id,
+    username: request.username,
+    displayName: request.display_name ?? request.username,
+    requestType: 'incoming',
+    status: request.status ?? 'pending',
+    requestDate: new Date(request.created_at).toISOString(),
+  };
+
+  return formattedRequest;
+}
+
+async function formatSenderData(db: Database, senderId: number) {
+  const senderData = await db.get(
+    `SELECT u.id, u.username, p.display_name
+     FROM users u
+     LEFT JOIN profiles p ON u.id = p.user_id
+     WHERE u.id = ?`,
+    senderId
+  );
+
+  return senderData
+    ? {
+        ...senderData,
+        displayName: senderData.display_name ?? senderData.username,
+        online: onlineUsers.has(senderId),
+      }
+    : null;
+}
+
+async function notifyRecipient(
+  db: Database,
+  requestId: number,
+  recipientId: number,
+  senderId: number,
+  requestStatus: 'pending' | 'accepted' | 'declined' | 'cancelled',
+  message: string
+) {
+  const request = await formatIncomingRequest(db, requestId, recipientId, requestStatus);
+  const sender = await formatSenderData(db, senderId);
+
+  console.log('Status:', requestStatus);
+  console.log('Sender:', JSON.stringify(sender, null, 2));
+  console.log('Request:', JSON.stringify(request, null, 2))
+
+  const recipientSocket = onlineUsers.get(recipientId);
+  if (recipientSocket && recipientSocket.readyState === WebSocket.OPEN) {
+    console.log('SENDING MESSAGE');
+    recipientSocket.send(JSON.stringify({
+      type: 'friend-request',
+      data: {
+        friend: sender,
+        request: request,
+        requestStatus: requestStatus,
+        message: message
+      }
+    }));
+  }
+}
+
+async function notifyRemovedFriend(friendId: number, userId: number) {
+  const friendSocket = onlineUsers.get(friendId);
+  if (friendSocket && friendSocket.readyState === WebSocket.OPEN) {
+    friendSocket.send(JSON.stringify({
+      type: 'friend-removed',
+      data: {
+        friendId: userId,
+        message: 'You were removed from someone\'s friends list'
+      }
+    }));
+  }
+}
+
+/*------------------------------FRIEND ROUTES-------------------------------*/
 
 // Get a user's friends list
 export async function getFriends(request: AuthenticatedRequest, reply: FastifyReply) {
@@ -189,6 +280,16 @@ export async function sendFriendRequest(request: AuthenticatedRequest, reply: Fa
         
         await db.run('COMMIT');
 
+        console.log('REQUESTDATA:', JSON.stringify(requestData, null, 2));
+        await notifyRecipient(
+          db,
+          requestData.id,
+          recipientId,
+          senderId,
+          'pending',
+          'You received a friend request'
+        );
+
         return reply.send({
           success: true,
           message: 'Friend request sent',
@@ -252,6 +353,7 @@ export async function acceptFriendRequest(request: AuthenticatedRequest, reply: 
       }
 
       const senderId = friendRequest.sender_id;
+      const recipientId = friendRequest.recipient_id;
 
       // Delete the request instead of updating status
       await Friend.deleteRequestById(db, parseInt(requestId));
@@ -269,6 +371,15 @@ export async function acceptFriendRequest(request: AuthenticatedRequest, reply: 
       );
 
       await db.run('COMMIT');
+
+      await notifyRecipient(
+        db,
+        parseInt(requestId),
+        senderId,
+        recipientId,
+        'accepted',
+        'Your friend request was accepted'
+      );
 
       return reply.send({
         success: true,
@@ -323,8 +434,19 @@ export async function declineFriendRequest(request: AuthenticatedRequest, reply:
       });
     }
 
+    const senderId = friendRequest.sender_id;
+
     // Delete the request instead of updating status
     await Friend.deleteRequestById(db, parseInt(requestId));
+
+    await notifyRecipient(
+      db,
+      parseInt(requestId),
+      senderId,
+      userId,
+      'declined',
+      'Your friend request was declined'
+    );
 
     return reply.send({
       success: true,
@@ -370,8 +492,19 @@ export async function cancelFriendRequest(request: AuthenticatedRequest, reply: 
       });
     }
 
+    const recipientId = friendRequest.recipient_id;
+
     // Delete the request instead of updating status
     await Friend.deleteRequestById(db, parseInt(requestId));
+
+    await notifyRecipient(
+      db,
+      parseInt(requestId),
+      recipientId,
+      userId,
+      'cancelled',
+      'Your friend request was cancelled'
+    );
 
     return reply.send({
       success: true,
@@ -419,6 +552,8 @@ export async function removeFriend(request: AuthenticatedRequest, reply: Fastify
       await Friend.removeFriend(db, userId, parseInt(friendId));
 
       await db.run('COMMIT');
+
+      await notifyRemovedFriend(parseInt(friendId), userId);
 
       return reply.send({
         success: true,

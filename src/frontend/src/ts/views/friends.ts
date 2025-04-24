@@ -1,18 +1,20 @@
-import { Page } from '../types';
+import { FriendRequestMessage, Page } from '../types';
 import { Router } from '../router';
 import { FriendService } from '../services/friend.service';
 import { WebSocketManager } from '../services/websocket.manager';
+import { onFriendRemoved, onFriendRequestAccepted, onFriendRequestCancelled, onFriendRequestDeclined, onFriendRequestSent, onNotification } from '../friends/friends.event';
+import { handleFriendRemoved, handleFriendRequest } from '../friends/friends.socket';
 
 export class FriendsPage implements Page {
   private router: Router;
   private wss: WebSocketManager;
   private friendService: FriendService;
   private userId: number | null = null;
-  private currentTab: 'friends' | 'pending' | 'search' = 'friends';
+  public currentTab: 'friends' | 'pending' | 'search' = 'friends';
   private searchQuery: string = '';
   private searchResults: any[] = [];
-  private currentFriends: any[] = [];
-  private pendingRequests: any[] = [];
+  public currentFriends: any[] = [];
+  public pendingRequests: any[] = [];
   private hasError: boolean = false;
   private boundEventHandlers: {[key: string]: EventListener} = {};
   
@@ -148,6 +150,8 @@ export class FriendsPage implements Page {
     return container;
   }
 
+  /*------------------------------REFRESH DATA------------------------------*/
+
   update(): void {
     if (this.element) {
       // Refresh data when page is revisited
@@ -193,6 +197,8 @@ export class FriendsPage implements Page {
     }
   }
 
+  /*--------------------------CLICK EVENT HANDLERS--------------------------*/
+
   private setupEventHandlers(): void {
     if (!this.element) return;
     
@@ -222,6 +228,52 @@ export class FriendsPage implements Page {
     this.hasError = false;
     this.updateUI();
   }
+
+  /*----------------------------MESSAGE HANDLERS----------------------------*/
+
+  // WebSocket notification handlers
+  private setupMessageHandlers(): void {
+    this.wss.onUserEvent('online-status', (data: any) => this.updateFriendOnlineStatus(data));
+    this.wss.onUserEvent('friend-request', handleFriendRequest.bind(this));
+    this.wss.onUserEvent('friend-removed', handleFriendRemoved.bind(this));
+  }
+
+  private updateFriendOnlineStatus(data: any): void {
+    const { userId, online } = data;
+    if (userId == null || online == null) {
+      console.error('Required fields missing from online status message');
+      return;
+    }
+    const badge = document.querySelector(`[data-friend-id="${userId}"] .online-badge`);
+    if (badge) {
+      badge.classList.remove('bg-green-500', 'bg-gray-300');
+      badge.classList.add(online ? 'bg-green-500' : 'bg-gray-300');
+    }
+  }
+
+  /*--------------------------DATA EVENT HANDLERS---------------------------*/
+
+  // Local notification event handlers
+  private setupDataEventListeners(): void {
+    this.removeDataEventListeners();
+    
+    // Define event handlers (implemented in friends.socket.ts)
+    this.boundEventHandlers = {
+      friendRequestSent: onFriendRequestSent.bind(this) as (e: Event) => void,
+      friendRequestAccepted: onFriendRequestAccepted.bind(this) as (e: Event) => void,
+      friendRequestDeclined: onFriendRequestDeclined.bind(this) as (e: Event) => void,
+      friendRequestCancelled: onFriendRequestCancelled.bind(this) as (e: Event) => void,
+      friendRemoved: onFriendRemoved.bind(this) as (e: Event) => void,
+      notification: onNotification.bind(this) as (e: Event) => void
+    };
+    
+    // Register all event handlers
+    Object.entries(this.boundEventHandlers).forEach(([eventName, handler]) => {
+      document.addEventListener(eventName, handler);
+    });
+  }
+
+  /*-------------------------------UPDATE UI--------------------------------*/
 
   private updateUI(): void {
     if (!this.element) return;
@@ -263,7 +315,7 @@ export class FriendsPage implements Page {
     this.updatePendingBadge();
   }
 
-  private updatePendingBadge(): void {
+  public updatePendingBadge(): void {
     const pendingBadge = this.element?.querySelector('#pending-badge');
     const hasPendingRequests = this.pendingRequests.length > 0;
     
@@ -273,25 +325,18 @@ export class FriendsPage implements Page {
     }
   }
 
-  /*-------------------------ONLINE MESSAGE HANDLERS------------------------*/
-
-  private setupMessageHandlers(): void {
-    this.wss.onlineStatusEvent('online-status', (data: any) => this.updateFriendOnlineState(data));
-  }
-
-  private updateFriendOnlineState(data: any): void {
-    const { userId, online } = data;
-    if (userId == null || online == null) {
-      console.error('Required fields missing from online status message');
-      return;
-    }
-  
-    const badge = document.querySelector(`[data-friend-id="${userId}"] .online-badge`);
-    if (badge) {
-      badge.classList.remove('bg-green-500', 'bg-gray-300');
-      badge.classList.add(online ? 'bg-green-500' : 'bg-gray-300');
+  // Helper function for empty list handling
+  public showEmptyState(listSelector: string, emptyStateSelector: string): void {
+    const list = this.element?.querySelector(listSelector);
+    const emptyState = this.element?.querySelector(emptyStateSelector);
+    
+    if (list && emptyState) {
+      list.classList.add('hidden');
+      emptyState.classList.remove('hidden');
     }
   }
+
+  /*-----------------------------SEARCH FRIENDS-----------------------------*/
 
   private async performSearch(): Promise<void> {
     if (!this.element) return;
@@ -323,8 +368,10 @@ export class FriendsPage implements Page {
       
     }
   }
-  
-  private renderFriendsList(): void {
+
+  /*-----------------------------RENDER FRIENDS-----------------------------*/
+
+  public renderFriendsList(): void {
     if (!this.element) return;
     
     const friendsList = this.element.querySelector('#friends-list');
@@ -394,8 +441,10 @@ export class FriendsPage implements Page {
       friendsList.appendChild(friendCard);
     });
   }
-  
-  private renderPendingRequests(): void {
+
+  /*-----------------------------RENDER REQUESTS----------------------------*/
+
+  public renderPendingRequests(): void {
     if (!this.element) return;
     
     const pendingList = this.element.querySelector('#pending-requests-list');
@@ -472,8 +521,10 @@ export class FriendsPage implements Page {
       pendingList.appendChild(requestCard);
     });
   }
-  
-  private renderSearchResults(): void {
+
+  /*-----------------------------RENDER SEARCH------------------------------*/
+
+  public renderSearchResults(): void {
     if (!this.element) return;
     
     const searchResults = this.element.querySelector('#search-results');
@@ -568,133 +619,9 @@ export class FriendsPage implements Page {
     
     this.updateUI();
   }
-
-  private setupDataEventListeners(): void {
-    this.removeDataEventListeners();
-    
-    // Common helper function for empty list handling
-    const showEmptyState = (listSelector: string, emptyStateSelector: string): void => {
-      const list = this.element?.querySelector(listSelector);
-      const emptyState = this.element?.querySelector(emptyStateSelector);
-      
-      if (list && emptyState) {
-        list.classList.add('hidden');
-        emptyState.classList.remove('hidden');
-      }
-    };
-    
-    // Define event handlers with their implementations
-    const eventHandlers = {
-      friendRequestSent: (event: CustomEvent) => {
-        const { userId, request } = event.detail;
-        
-        this.pendingRequests.push({
-          ...request,
-          userId: request.userId || userId
-        });
-  
-        this.updatePendingBadge();
-        
-        if (this.currentTab === 'search') {
-          this.updateSearchUserCard(userId, 'pending');
-        }
-      },
-      
-      friendRequestAccepted: (event: CustomEvent) => {
-        const { requestId, userId, friend } = event.detail;
-  
-        this.pendingRequests = this.pendingRequests.filter(req => req.id !== requestId);
-        this.currentFriends.push(friend);
-        this.updatePendingBadge();
-        
-        if (this.currentTab === 'pending') {
-          this.removeRequestCard(requestId);
-          
-          if (this.pendingRequests.length === 0) {
-            showEmptyState('#pending-requests-list', '#no-pending');
-          }
-        }
-        
-        if (this.currentTab === 'search') {
-          this.updateSearchUserCard(userId, 'friend');
-        }
-      },
-      
-      friendRequestDeclined: (event: CustomEvent) => {
-        const { requestId } = event.detail;
-  
-        const request = this.pendingRequests.find(req => req.id === requestId);
-        const userId = request?.userId;      
-        this.pendingRequests = this.pendingRequests.filter(req => req.id !== requestId);
-        
-        this.updatePendingBadge();
-        
-        if (this.currentTab === 'pending') {
-          this.removeRequestCard(requestId);
-          
-          if (this.pendingRequests.length === 0) {
-            showEmptyState('#pending-requests-list', '#no-pending');
-          }
-        }
-        
-        if (this.currentTab === 'search' && userId) {
-          this.updateSearchUserCard(userId, 'add');
-        }
-      },
-      
-      friendRequestCancelled: (event: CustomEvent) => {
-        const { requestId } = event.detail;
-        
-        const request = this.pendingRequests.find(req => req.id === requestId);
-        const userId = request?.userId;      
-        this.pendingRequests = this.pendingRequests.filter(req => req.id !== requestId);      
-        this.updatePendingBadge();
-        
-        if (this.currentTab === 'pending') {
-          this.removeRequestCard(requestId);
-          
-          if (this.pendingRequests.length === 0) {
-            showEmptyState('#pending-requests-list', '#no-pending');
-          }
-        }
-        
-        if (this.currentTab === 'search' && userId) {
-          this.updateSearchUserCard(userId, 'add');
-        }
-      },
-      
-      friendRemoved: (event: CustomEvent) => {
-        const { friendId } = event.detail;
-        
-        this.currentFriends = this.currentFriends.filter(friend => friend.id !== friendId);
-        
-        if (this.currentTab === 'friends') {
-          this.removeFriendCard(friendId);
-          
-          if (this.currentFriends.length === 0) {
-            showEmptyState('#friends-list', '#no-friends');
-          }
-        }
-        
-        if (this.currentTab === 'search') {
-          this.updateSearchUserCard(friendId, 'add');
-        }
-      },
-      
-      notification: (event: CustomEvent) => {
-        this.showNotification(event.detail.type, event.detail.message);
-      }
-    };
-    
-    // Register all event handlers
-    Object.entries(eventHandlers).forEach(([eventName, handler]) => {
-      this.boundEventHandlers[eventName] = handler as EventListener;
-      document.addEventListener(eventName, this.boundEventHandlers[eventName]);
-    });
-  }
   
   // Helper method to remove a friend card from the DOM
-  private removeFriendCard(friendId: number): void {
+  public removeFriendCard(friendId: number): void {
     if (!this.element) return;
     
     const friendCard = this.element.querySelector(`button[data-friend-id="${friendId}"]`)?.closest('.bg-gray-50');
@@ -711,7 +638,7 @@ export class FriendsPage implements Page {
   }
   
   // Helper method to remove a request card from the DOM
-  private removeRequestCard(requestId: number): void {
+  public removeRequestCard(requestId: number): void {
     if (!this.element) return;
     
     const requestCard = this.element.querySelector(`button[data-request-id="${requestId}"]`)?.closest('.bg-gray-50');
@@ -728,7 +655,7 @@ export class FriendsPage implements Page {
   }
   
   // Helper method to update a user card in search results
-  private updateSearchUserCard(userId: number, newStatus: 'add' | 'pending' | 'friend'): void {
+  public updateSearchUserCard(userId: number, newStatus: 'add' | 'pending' | 'friend'): void {
     const userCard = document.querySelector(`button[data-user-id="${userId}"]`)?.closest('.bg-gray-50');
     
     if (userCard) {
@@ -763,12 +690,14 @@ export class FriendsPage implements Page {
     }
   }
 
-  private showNotification(type: 'success' | 'error' | 'info', message: string): void {
+  public showNotification(type: 'success' | 'error' | 'info', message: string): void {
     const notification = document.createElement('div');
     notification.className = `fixed bottom-4 right-4 p-4 rounded-md shadow-lg transition-opacity duration-500 opacity-0 max-w-md ${
-      type === 'success' ? 'bg-green-100 text-green-800' :
-      type === 'error' ? 'bg-red-100 text-red-800' :
-      'bg-blue-100 text-bluce-800'
+      type === 'success' ? 
+        'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100' :
+      type === 'error' ? 
+        'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100' :
+        'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100'
     }`;
     
     notification.innerHTML = `
@@ -787,9 +716,9 @@ export class FriendsPage implements Page {
         <div class="ml-auto pl-3">
           <div class="-mx-1.5 -my-1.5">
             <button class="notification-close inline-flex rounded-md p-1.5 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-              type === 'success' ? 'text-green-500 hover:text-green-600 focus:ring-green-400' :
-              type === 'error' ? 'text-red-500 hover:text-red-600 focus:ring-red-400' :
-              'text-blue-500 hover:text-blue-600 focus:ring-blue-400'
+              type === 'success' ? 'text-green-500 hover:text-green-600 focus:ring-green-400 dark:text-green-300 dark:hover:text-green-200' :
+              type === 'error' ? 'text-red-500 hover:text-red-600 focus:ring-red-400 dark:text-red-300 dark:hover:text-red-200' :
+              'text-blue-500 hover:text-blue-600 focus:ring-blue-400 dark:text-blue-300 dark:hover:text-blue-200'
             }">
               <span class="sr-only">Dismiss</span>
               <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -799,7 +728,7 @@ export class FriendsPage implements Page {
           </div>
         </div>
       </div>
-    `;
+    `;    
     
     document.body.appendChild(notification);
     
