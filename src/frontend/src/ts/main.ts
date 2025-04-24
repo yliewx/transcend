@@ -14,6 +14,9 @@ import { StatsPage } from './views/stats';
 import { GameStatsService } from './services/game.stats.service';
 import { PongGameService } from './services/pong.game.service';
 import { PongGamePage } from './views/pong.game';
+import { TournamentPage } from './views/tournaments';
+import { TournamentDetailPage } from './views/tournament.detail';
+
 import { FriendService } from './services/friend.service';
 import { FriendsPage } from './views/friends';
 import { NotFoundPage } from './views/notfound';
@@ -47,6 +50,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   router.addRoute('/stats', new PageWithHeader(new StatsPage(router, gameStatsService), router));
   router.addRoute('/profile', new PageWithHeader(new ProfilePage(router, userService), router));
   router.addRoute('/friends', new PageWithHeader(new FriendsPage(router, friendService), router));
+  router.addRoute('/tournaments', new PageWithHeader(new TournamentPage(router), router));
+  router.addRoute('/tournaments/:id', new PageWithHeader(new TournamentDetailPage(router), router));
 
   // 404 route
   router.addRoute('/404', new PageWithHeader(new NotFoundPage(), router));

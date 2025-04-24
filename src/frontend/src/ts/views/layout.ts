@@ -8,6 +8,12 @@ export class PageWithHeader implements Page {
 
   constructor(private contentPage: Page, private router: Router) {}
 
+  setTournamentId(id: string): void {
+    if (typeof this.contentPage.setTournamentId === 'function') {
+      this.contentPage.setTournamentId(id);
+    }
+  }
+
   async render(): Promise<HTMLElement> {
     if (this.element) return this.element;
 

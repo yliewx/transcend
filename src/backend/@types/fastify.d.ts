@@ -22,6 +22,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { SignOptions, VerifyOptions } from 'jsonwebtoken';
 import "@fastify/jwt";
 import { TokenPayload } from 'google-auth-library';
+import { MultipartFile } from '@fastify/multipart';
 
 // Extend FastifyInstance
 declare module "fastify" {
@@ -70,6 +71,9 @@ export interface AuthenticatedRequest extends FastifyRequest {
     id?: string;
     [key: string]: string | undefined;
   };
+  // Add multipart file method
+  file(): Promise<MultipartFile | undefined>;
+  files(): AsyncIterableIterator<MultipartFile>;
 }
 
 // export interface AuthenticatedRequest extends FastifyRequest {
