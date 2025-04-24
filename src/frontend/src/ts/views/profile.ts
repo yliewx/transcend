@@ -41,7 +41,7 @@ export class ProfilePage implements Page {
                   <div class="avatar-container mb-4">
                     <img 
                       id="current-avatar" 
-                      src="/assets/default-avatar.png" 
+                      src="/uploads/avatars/default-avatar.png" 
                       alt="Profile picture" 
                       class="w-40 h-40 rounded-full mx-auto object-cover border-4 border-indigo-200"
                     >
@@ -218,7 +218,26 @@ export class ProfilePage implements Page {
     // Update avatar
     const avatarImg = this.element.querySelector('#current-avatar') as HTMLImageElement;
     if (avatarImg) {
-      avatarImg.src = this.userProfile?.profileData?.avatarPath || '/assets/default-avatar.png';
+      const defaultAvatarPath = '/uploads/avatars/default-avatar.png';
+      const avatarPath = this.userProfile?.profileData?.avatarPath;
+      
+      // Set a flag to prevent infinite loop during error handling
+      let handlingError = false;
+      
+      avatarImg.onerror = () => {
+        if (!handlingError) {
+          handlingError = true;
+          console.error('Failed to load profile image');
+          avatarImg.src = defaultAvatarPath;
+        }
+      };
+      
+      // Set the source with cache-busting only if we have a custom avatar
+      if (avatarPath) {
+        avatarImg.src = `${avatarPath}?t=${new Date().getTime()}`;
+      } else {
+        avatarImg.src = defaultAvatarPath;
+      }
     }
     
     // Update form fields
@@ -262,70 +281,70 @@ export class ProfilePage implements Page {
     }
   }
   
-   private async handleAvatarUpload(event: Event): Promise<void> {
-  const input = event.target as HTMLInputElement;
-  
-  // Check if files were selected
-  if (!input.files || input.files.length === 0) {
-    return;
-  }
-  
-  const file = input.files[0];
-  
-  // Validate file type
-  const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
-  if (!allowedTypes.includes(file.type)) {
-    this.showNotification('Please select a valid image file (JPG, PNG, or GIF)', 'error');
-    return;
-  }
-  
-  // Validate file size (5MB max)
-  const maxSize = 5 * 1024 * 1024; // 5MB in bytes
-  if (file.size > maxSize) {
-    this.showNotification('Image size must be less than 5MB', 'error');
-    return;
-  }
-  
-  try {
-    // Create FormData to send the file
-    const formData = new FormData();
-    formData.append('avatar', file);
+  private async handleAvatarUpload(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
     
-    // Display loading state (optional)
-    const avatarContainer = this.element?.querySelector('.avatar-container');
-    if (avatarContainer) {
-      avatarContainer.classList.add('opacity-50');
+    // Check if files were selected
+    if (!input.files || input.files.length === 0) {
+      return;
     }
     
-    // Send the file to the server
-    const result = await this.userService.uploadAvatar(formData);
+    const file = input.files[0];
     
-    if (result.success) {
-      // Update the profile image
-      const avatarImg = this.element?.querySelector('#current-avatar') as HTMLImageElement;
-      if (avatarImg) {
-        // Add cache-busting query parameter to force browser to load the new image
-        avatarImg.src = `${result.avatarPath}?t=${new Date().getTime()}`;
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+    if (!allowedTypes.includes(file.type)) {
+      this.showNotification('Please select a valid image file (JPG, PNG, or GIF)', 'error');
+      return;
+    }
+    
+    // Validate file size (5MB max)
+    const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+    if (file.size > maxSize) {
+      this.showNotification('Image size must be less than 5MB', 'error');
+      return;
+    }
+    
+    try {
+      // Create FormData to send the file
+      const formData = new FormData();
+      formData.append('avatar', file);
+      
+      // Display loading state (optional)
+      const avatarContainer = this.element?.querySelector('.avatar-container');
+      if (avatarContainer) {
+        avatarContainer.classList.add('opacity-50');
       }
       
-      this.showNotification('Profile picture updated successfully', 'success');
-    } else {
-      this.showNotification(`Failed to upload image: ${result.error}`, 'error');
+      // Send the file to the server
+      const result = await this.userService.uploadAvatar(formData);
+      
+      if (result.success) {
+        // Update the profile image
+        const avatarImg = this.element?.querySelector('#current-avatar') as HTMLImageElement;
+        if (avatarImg) {
+          // Add cache-busting query parameter to force browser to load the new image
+          avatarImg.src = `${result.avatarPath}?t=${new Date().getTime()}`;
+        }
+        
+        this.showNotification('Profile picture updated successfully', 'success');
+      } else {
+        this.showNotification(`Failed to upload image: ${result.error}`, 'error');
+      }
+    } catch (error) {
+      console.error('Avatar upload error:', error);
+      this.showNotification('Failed to upload profile picture', 'error');
+    } finally {
+      // Remove loading state
+      const avatarContainer = this.element?.querySelector('.avatar-container');
+      if (avatarContainer) {
+        avatarContainer.classList.remove('opacity-50');
+      }
+      
+      // Reset the file input
+      input.value = '';
     }
-  } catch (error) {
-    console.error('Avatar upload error:', error);
-    this.showNotification('Failed to upload profile picture', 'error');
-  } finally {
-    // Remove loading state
-    const avatarContainer = this.element?.querySelector('.avatar-container');
-    if (avatarContainer) {
-      avatarContainer.classList.remove('opacity-50');
-    }
-    
-    // Reset the file input
-    input.value = '';
   }
-}
   
   private async handleFormSubmit(event: Event): Promise<void> {
     event.preventDefault();
