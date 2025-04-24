@@ -2,6 +2,9 @@
 
 FROM node:23-bullseye
 
+ARG BASE_API_URL
+ARG BASE_WSS_URL
+
 WORKDIR /usr/src/app
 
 # copy package.json and package-lock.json into container
@@ -14,11 +17,10 @@ RUN npm install --include-dev
 COPY . .
 
 # build project
-RUN npm run build
+RUN BASE_API_URL=$BASE_API_URL \
+    BASE_WSS_URL=$BASE_WSS_URL \
+    npm run build
 
 EXPOSE 8080
 
-# use nginx later for secure https connection
-# serve -s: always return index.html for client-side routing
-# CMD [ "npx", "serve", "-s", "public", "-l", "8080" ]
-# CMD [ "npm", "start" ]
+# serve with nginx to ensure secure https connection

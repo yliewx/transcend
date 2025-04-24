@@ -1,3 +1,5 @@
+import { WebSocket } from 'ws';
+
 export interface GameState {
   id: string;
   status: 'waiting' | 'playing' | 'paused' | 'finished';
@@ -10,7 +12,6 @@ export interface GameState {
   winner?: 'left' | 'right';
   lastUpdateTime: number;
 }
-
 
 export class PongGame {
   private gameWidth: number = 800;
@@ -30,7 +31,13 @@ export class PongGame {
   private state: GameState;
   private updateInterval: NodeJS.Timeout | null = null;
 
-  constructor(gameId: string) {
+  /*------------------------------CONSTRUCTOR-------------------------------*/
+
+  constructor(
+    gameId: string,
+    private updateCallback: () => void, // Send game state updates in GameRoom
+    private endgameCallback: (state: GameState) => void // Handle game end in GameRoom
+  ) {
       this.state = {
         id: gameId,
         status: 'waiting',
@@ -44,25 +51,31 @@ export class PongGame {
         lastUpdateTime: Date.now()
       };
   }
-  
+
+  /*------------------------------START GAME--------------------------------*/
+
   public startGame(): void {
-      if (this.state.status !== 'waiting' )
-          return;
-     
-      this.state.status = 'playing';
+    if (this.state.status !== 'waiting' )
+      return;
+    
+    this.state.status = 'playing';
 
-      if (this.updateInterval !== null)
-          clearInterval(this.updateInterval);
+    if (this.updateInterval !== null)
+      clearInterval(this.updateInterval);
 
-      this.updateInterval = setInterval(() => {
-          if (this.state.status === 'playing') 
-          {
-              this.moveBall(); 
-              this.movePaddles();
-              this.state.lastUpdateTime = Date.now();
-          }
-      }, 16);   
+    this.updateInterval = setInterval(() => {
+      if (this.state.status === 'playing') {
+        this.moveBall(); 
+        this.movePaddles();
+        this.state.lastUpdateTime = Date.now();
+        
+        // Send game state updates to players
+        this.updateCallback();
+      }
+    }, 16);   
   }
+
+  /*------------------------------GAME STATE--------------------------------*/
 
   private moveBall(): void {
     this.state.ballX += this.ballSpeedX;
@@ -107,18 +120,33 @@ export class PongGame {
     }
   }
 
-  public updatePaddleInput(input: {
-    leftPaddleUp: boolean;
-    leftPaddleDown: boolean;
-    rightPaddleUp: boolean;
-    rightPaddleDown: boolean;
+  // public updatePaddleInput(input: {
+  //   leftPaddleUp: boolean;
+  //   leftPaddleDown: boolean;
+  //   rightPaddleUp: boolean;
+  //   rightPaddleDown: boolean;
+  // }): void {
+  //   if (this.state.status !== 'playing' && this.state.status !== 'paused') return;
+    
+  //   this.leftPaddleUp = input.leftPaddleUp;
+  //   this.leftPaddleDown = input.leftPaddleDown;
+  //   this.rightPaddleUp = input.rightPaddleUp;
+  //   this.rightPaddleDown = input.rightPaddleDown;
+  // }
+
+  public updatePaddleInput(side: string, input: {
+    paddleUp: boolean;
+    paddleDown: boolean;
   }): void {
     if (this.state.status !== 'playing' && this.state.status !== 'paused') return;
-    
-    this.leftPaddleUp = input.leftPaddleUp;
-    this.leftPaddleDown = input.leftPaddleDown;
-    this.rightPaddleUp = input.rightPaddleUp;
-    this.rightPaddleDown = input.rightPaddleDown;
+
+    if (side === 'left') {
+      this.leftPaddleUp = input.paddleUp;
+      this.leftPaddleDown = input.paddleDown;
+    } else {
+      this.rightPaddleUp = input.paddleUp;
+      this.rightPaddleDown = input.paddleDown;
+    }
   }
 
   private movePaddles(): void {
@@ -162,26 +190,36 @@ export class PongGame {
       this.ballSpeedY = Math.random() > 0.5 ? 5 : -5;
   }
 
-  public pauseGame(): void {
+  /*-------------------------------PAUSE GAME-------------------------------*/
+
+  public pauseGame(): string {
+    console.log(`[pauseGame] initial status: ${this.state.status}`);
       if (this.state.status === 'playing' || this.state.status === 'paused') {
         this.state.status = this.state.status === 'playing' ? 'paused' : 'playing';
       }
+      console.log(`[pauseGame] after: ${this.state.status}`);
+      return this.state.status;
   }
 
+  /*--------------------------------END GAME--------------------------------*/
+
   private endGame(winner: 'left' | 'right'): void {
-      this.state.status = 'finished';
-      this.state.winner = winner;
-      this.cleanup();
+    this.state.status = 'finished';
+    this.state.winner = winner;
+    this.cleanup();
+
+    // Notify GameRoom of the winner
+    this.endgameCallback(this.getState());
   }
 
   public cleanup(): void {
-      if (this.updateInterval) {
-        clearInterval(this.updateInterval);
-        this.updateInterval = null;
-      }
+    if (this.updateInterval) {
+      clearInterval(this.updateInterval);
+      this.updateInterval = null;
+    }
   }
 
   public getState(): GameState {
-        return { ...this.state };
+    return { ...this.state };
   }
 }

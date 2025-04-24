@@ -1,23 +1,9 @@
 export class BaseApiService {
   protected baseUrl: string;
   
-  constructor(baseUrl = "https://localhost:8080/api") {
-    this.baseUrl = baseUrl;
+  constructor() {
+    this.baseUrl = process.env.BASE_API_URL as string;
   }
-
-  /*--------------------------REFRESH ACCESS TOKEN--------------------------*/
-
-  // protected async refreshAccessToken(): Promise<{ success: boolean; message?: string }> {
-  //   const response = await this.request<{ success: boolean, message?: string }>(
-  //     '/auth/refresh',
-  //     'POST',
-  //     undefined,
-  //     true,
-  //     { omitContentType: true }
-  //   );
-    
-  //   return response;
-  // }
 
   /*----------------------------REQUEST HANDLER-----------------------------*/
 

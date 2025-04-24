@@ -19,7 +19,7 @@ export const accessCookieOptions: CookieOptions = {
   httpOnly: true,
   secure: true,
   sameSite: 'strict',
-  path: '/api/'
+  path: '/'
 };
 
 export const refreshCookieOptions: CookieOptions = {

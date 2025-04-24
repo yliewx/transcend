@@ -13,6 +13,12 @@ COPY ./package*.json ./
 # install dependencies
 RUN npm install
 
+# Create necessary directories
+RUN mkdir -p /usr/src/app/public/uploads/avatars
+
+# Copy default avatar
+COPY ./assets/default-avatar.png /usr/src/app/public/uploads/avatars/
+
 # copy source files
 COPY . .
 

@@ -1,20 +1,12 @@
 // routes.ts
-import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { FastifyInstance, FastifyRequest, FastifyReply, RouteHandlerMethod, RouteShorthandOptions } from 'fastify';
 import { registerUser } from './controllers/user.register';
-import { profileHandler, updatePasswordHandler, updateProfileDataHandler, updateUserDataHandler } from './controllers/user.profile';
+import { profileHandler, updatePasswordHandler, updateProfileDataHandler, updateUserDataHandler, uploadAvatarHandler } from './controllers/user.profile';
 import fp from 'fastify-plugin';
 import { AuthenticatedRequest } from '../@types/fastify';
 import * as GameController from './controllers/game.controller';
-import { 
-  getFriends, 
-  getPendingRequests, 
-  searchUsers, 
-  sendFriendRequest, 
-  acceptFriendRequest, 
-  declineFriendRequest, 
-  cancelFriendRequest, 
-  removeFriend 
-} from './controllers/friend.controller'
+import * as FriendController from './controllers/friend.controller'
+import * as TournamentController from './controllers/tour.controller';
 
 // Game route interface types
 interface GameParams {
@@ -29,40 +21,61 @@ interface FriendRequestParams {
   id: string;
 }
 
+// Helper function to define authenticated routes
+// function defineAuthRoute<T = any>(
+//   server: FastifyInstance,
+//   method: 'get' | 'post' | 'put' | 'delete',
+//   url: string,
+//   handler: (request: AuthenticatedRequest, reply: FastifyReply) => Promise<any>,
+//   options: RouteShorthandOptions = {}
+// ) {
+//   const opts = { ...options, preHandler: server.authenticate };
+  
+//   // The type error occurs here. The wrapped handler needs to be properly typed
+//   // to return a Promise
+//   const wrappedHandler: RouteHandlerMethod = async (req, reply) => {
+//     // Await the handler result to ensure we return a Promise
+//     return await handler(req as AuthenticatedRequest, reply);
+//   };
+  
+//   server[method](url, opts, wrappedHandler);
+// }
+
+function defineAuthRoute<T = any>(
+  server: FastifyInstance,
+  method: 'get' | 'post' | 'put' | 'delete',
+  url: string,
+  handler: (request: AuthenticatedRequest, reply: FastifyReply) => Promise<any>,
+  options: RouteShorthandOptions = {}
+) {
+  const opts = { ...options, preHandler: server.authenticate };
+  
+  // The wrapped handler now uses explicit type assertion
+  const wrappedHandler: RouteHandlerMethod = async (req, reply) => {
+    // Use 'as unknown as' to safely convert between the types
+    return await handler(req as unknown as AuthenticatedRequest, reply);
+  };
+  
+  server[method](url, opts, wrappedHandler);
+}
+
 export default fp(async function setupRoutes(server: FastifyInstance) {
-  // User registration
+  // User registration (no auth needed)
   server.post('/api/register', registerUser);
 
   // User routes
-  server.get('/api/profile', { preHandler: server.authenticate }, (request, reply) => {
-    return profileHandler(request as AuthenticatedRequest, reply);
-  });
-  server.put('/api/profile/update', { preHandler: server.authenticate }, (request, reply) => {
-    return updateProfileDataHandler(request as AuthenticatedRequest, reply);
-  });
-  server.put('/api/user/update', { preHandler: server.authenticate }, (request, reply) => {
-    return updateUserDataHandler(request as AuthenticatedRequest, reply);
-  });
-  server.put('/api/user/password', { preHandler: server.authenticate }, (request, reply) => {
-    console.log('Password update route hit');
-    return updatePasswordHandler(request as AuthenticatedRequest, reply);
-  });
-
-   // FRIEND ROUTES
-  server.get('/api/friends', { preHandler: server.authenticate }, (request, reply) => {
-    return getFriends(request as AuthenticatedRequest, reply);
-  });
+  defineAuthRoute(server, 'get', '/api/profile', profileHandler);
+  defineAuthRoute(server, 'put', '/api/profile/update', updateProfileDataHandler);
+  defineAuthRoute(server, 'put', '/api/user/update', updateUserDataHandler);
+  defineAuthRoute(server, 'put', '/api/user/password', updatePasswordHandler);
+  defineAuthRoute(server, 'post', '/api/profile/avatar', uploadAvatarHandler);
   
-  server.get('/api/friends/pending', { preHandler: server.authenticate }, (request, reply) => {
-    return getPendingRequests(request as AuthenticatedRequest, reply);
-  });
+  // FRIEND ROUTES
+  defineAuthRoute(server, 'get', '/api/friends', FriendController.getFriends);
+  defineAuthRoute(server, 'get', '/api/friends/pending', FriendController.getPendingRequests);
   
-  // server.get('/api/users/search', { preHandler: server.authenticate }, (request, reply) => {
-  //   return searchUsers(request as AuthenticatedRequest, reply);
-  // });
-
-  server.get('/api/users/search', { 
-    preHandler: server.authenticate,
+  // Search users with schema
+  defineAuthRoute(server, 'get', '/api/users/search', FriendController.searchUsers, {
     schema: {
       querystring: {
         type: 'object',
@@ -71,70 +84,54 @@ export default fp(async function setupRoutes(server: FastifyInstance) {
           q: { type: 'string' }
         }
       }
-    } 
-  }, (request, reply) => {
-    return searchUsers(request as AuthenticatedRequest, reply);
+    }
   });
   
-  server.post('/api/friends/request', { preHandler: server.authenticate }, (request, reply) => {
-    return sendFriendRequest(request as AuthenticatedRequest, reply);
-  });
+  defineAuthRoute(server, 'post', '/api/friends/request', FriendController.sendFriendRequest);
   
-  server.post<{ Params: FriendRequestParams }>('/api/friends/request/:id/accept', 
-    { preHandler: server.authenticate }, 
-    (request, reply) => {
-      return acceptFriendRequest(request as AuthenticatedRequest, reply);
-    }
-  );
-  
-  server.post<{ Params: FriendRequestParams }>('/api/friends/request/:id/decline', 
-    { preHandler: server.authenticate }, 
-    (request, reply) => {
-      return declineFriendRequest(request as AuthenticatedRequest, reply);
-    }
-  );
-  
-  server.post<{ Params: FriendRequestParams }>('/api/friends/request/:id/cancel', 
-    { preHandler: server.authenticate }, 
-    (request, reply) => {
-      return cancelFriendRequest(request as AuthenticatedRequest, reply);
-    }
-  );
-  
-  server.delete<{ Params: FriendRequestParams }>('/api/friends/:id', 
-    { preHandler: server.authenticate }, 
-    (request, reply) => {
-      return removeFriend(request as AuthenticatedRequest, reply);
-    }
-  );
+  // Routes with params
+  defineAuthRoute(server, 'post', '/api/friends/request/:id/accept', FriendController.acceptFriendRequest);
+  defineAuthRoute(server, 'post', '/api/friends/request/:id/decline', FriendController.declineFriendRequest);
+  defineAuthRoute(server, 'post', '/api/friends/request/:id/cancel', FriendController.cancelFriendRequest);
+  defineAuthRoute(server, 'delete', '/api/friends/:id', FriendController.removeFriend);
 
   // GAME ROUTES
-  // Create a new game
-  server.post('/api/createGame', { preHandler: server.authenticate }, GameController.createGame);
+  defineAuthRoute(server, 'post', '/api/game/create', GameController.createGame);
+  //defineAuthRoute(server, 'get', '/api/game/restore', GameController.getExistingGame);
+  // server.get('/api/game/restore', { preHandler: server.authenticate }, (request, reply) => {
+  //   return GameController.getExistingGame(request as AuthenticatedRequest, reply);
+  // });
 
-  // Start game
-  server.post<{ Params: GameParams }>('/api/games/:id/start', { preHandler: server.authenticate }, GameController.startGame);
-
-  // Pause/Resume game
-  server.post<{ Params: GameParams }>('/api/games/:id/pause', GameController.pauseGame);
-
-  // Delete game
-  server.delete<{ Params: GameParams }>('/api/games/:id', { preHandler: server.authenticate }, GameController.deleteGame);
-
-  // Polling
-  server.post<{ Params: GameParams, Querystring: PollQuery, Body?: { input?: any } }>(
-    '/api/games/:id/poll', 
-    GameController.pollGameState
-  );
- 
-
-  // STAT ROUTES 
-  server.post('/api/games/record-match', { preHandler: server.authenticate }, GameController.recordMatch);
-
-  server.get('/api/user/match-history', { preHandler: server.authenticate }, GameController.getMatchHistory);
+  server.get('/api/game/restore', { preHandler: server.authenticate }, (request, reply) => {
+    // Use the same type assertion pattern
+    return GameController.getExistingGame(request as unknown as AuthenticatedRequest, reply);
+  });
   
-  server.get('/api/user/game-stats', { preHandler: server.authenticate }, GameController.getGameStats);
+  // STAT ROUTES
+  defineAuthRoute(server, 'get', '/api/user/match-history', GameController.getMatchHistory);
+  defineAuthRoute(server, 'get', '/api/user/game-stats', GameController.getGameStats);
+  defineAuthRoute(server, 'get', '/api/user/leaderboard', GameController.getLeaderboard);
 
+  // Tournament routes
+  defineAuthRoute(server, 'get', '/api/tournaments', TournamentController.getTournaments);
+  defineAuthRoute(server, 'get', '/api/tournaments/:id', TournamentController.getTournamentDetails);
+  //defineAuthRoute(server, 'post', '/api/tournaments/:id/register', TournamentController.registerForTournament);
+  defineAuthRoute(server, 'post', '/api/tournaments/:id/register', TournamentController.registerForTournament, {
+    schema: {
+      body: {
+        type: 'object',
+        required: ['alias'],
+        properties: {
+          alias: { type: 'string', minLength: 1 }
+        }
+      }
+    }
+  });
+  defineAuthRoute(server, 'get', '/api/user/tournaments', TournamentController.getUserTournaments);
+  defineAuthRoute(server, 'post', '/api/tournaments/matches/:id/join', TournamentController.joinTournamentMatch);
+
+  // Admin routes
+  defineAuthRoute(server, 'post', '/api/admin/tournaments', TournamentController.createTournament);
 
   // Catch-all route for SPA
   server.setNotFoundHandler((request, reply) => {

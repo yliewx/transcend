@@ -16,7 +16,6 @@ export class ControlAccess {
     const result = await this.authService.getGoogleClientId();
 
     if (result.success && result.googleClientId) {
-      console.log("Google Client ID:", result.googleClientId);
       this.googleClientId = result.googleClientId;
     } else {
       console.error("Error fetching Google Client ID:", result.error);
@@ -97,6 +96,11 @@ export class ControlAccess {
       if (!result.status) {
         throw new Error('Token status is missing in response');
       }
+
+      // Set user ID in session storage if it doesn't exist
+      if (result.status.userId !== null && sessionStorage.getItem('userId') === null) {
+        sessionStorage.setItem('userId', String(result.status.userId));
+      }      
 
       // Set token expiry
       this.accessTokenExpiry = result.status.accessTokenExpiry ? new Date(result.status.accessTokenExpiry) : null;

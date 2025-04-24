@@ -1,3 +1,4 @@
+import '../css/input.css';
 import { AuthService } from './services/auth.service';
 import { ControlAccess } from './services/control.access';
 import { Router } from './router';
@@ -13,41 +14,13 @@ import { StatsPage } from './views/stats';
 import { GameStatsService } from './services/game.stats.service';
 import { PongGameService } from './services/pong.game.service';
 import { PongGamePage } from './views/pong.game';
+import { TournamentPage } from './views/tournaments';
+import { TournamentDetailPage } from './views/tournament.detail';
+
 import { FriendService } from './services/friend.service';
 import { FriendsPage } from './views/friends';
 import { NotFoundPage } from './views/notfound';
-
-// function initGoogleAuth(googleClientId: string) {
-//   // Initialise GoogleAuth object
-//   if (googleClientId) {
-//     gapi.load('auth2', function() {
-//       gapi.auth2.init({
-//         client_id: googleClientId,
-//         scope: 'profile email' // allow access to personal info and gmail address
-//       }).then(() => {
-//         console.log("GoogleAuth initialized");
-//       }).catch((error: Error) => {
-//         console.error("GoogleAuth init error:", error);
-//       });
-//     });
-//   }
-// }
-
-// function loadGoogleAuth(googleClientId: string) {
-//   // Append meta tag with Google client ID
-//   const metaTag = document.createElement('meta');
-//   metaTag.name = 'google-signin-client_id';
-//   metaTag.content = googleClientId;
-//   document.head.appendChild(metaTag);
-
-//   // Append script tag to load Google API
-//   const scriptTag = document.createElement('script');
-//   scriptTag.src = 'https://accounts.google.com/gsi/client';
-//   scriptTag.async = true;
-//   scriptTag.defer = true;
-//   scriptTag.onload = () => initGoogleAuth(googleClientId);
-//   document.head.appendChild(scriptTag);
-// }
+import { WebSocketManager } from './services/websocket.manager';
 
 document.addEventListener('DOMContentLoaded', async () => {  
   // Initialize application dependencies
@@ -77,6 +50,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   router.addRoute('/stats', new PageWithHeader(new StatsPage(router, gameStatsService), router));
   router.addRoute('/profile', new PageWithHeader(new ProfilePage(router, userService), router));
   router.addRoute('/friends', new PageWithHeader(new FriendsPage(router, friendService), router));
+  router.addRoute('/tournaments', new PageWithHeader(new TournamentPage(router), router));
+  router.addRoute('/tournaments/:id', new PageWithHeader(new TournamentDetailPage(router), router));
 
   // 404 route
   router.addRoute('/404', new PageWithHeader(new NotFoundPage(), router));
