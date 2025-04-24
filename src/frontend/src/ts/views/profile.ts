@@ -41,7 +41,7 @@ export class ProfilePage implements Page {
                   <div class="avatar-container mb-4">
                     <img 
                       id="current-avatar" 
-                      src="/uploads/avatars/default-avatar.png" 
+                      src="" 
                       alt="Profile picture" 
                       class="w-40 h-40 rounded-full mx-auto object-cover border-4 border-indigo-200"
                     >
