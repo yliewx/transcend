@@ -3,7 +3,6 @@ import fastifyStatic from '@fastify/static';
 import { join } from 'path';
 import fastifyCookie from '@fastify/cookie';
 import websocket from '@fastify/websocket';
-import { WebSocket } from 'ws';
 import fs from 'fs';
 // From ./plugins
 import setupJwt from './plugins/jwt';
@@ -27,7 +26,10 @@ const server = fastify({
 });
 
 // Ensure public directories exist
-const publicDir = join(__dirname, '../../public');
+//const publicDir = join(__dirname, '../../public');
+const publicDir = '/usr/src/app/public';
+
+
 const uploadsDir = join(publicDir, 'uploads');
 const avatarsDir = join(uploadsDir, 'avatars');
 
@@ -66,6 +68,7 @@ server.register(fastifyStatic, {
   root: publicDir,
   prefix: '/'
 });
+
 
 // Register other plugins
 server.register(setupMailer);
