@@ -4,9 +4,17 @@ export const homeIcon = `
 </svg>
 `;
 
+// https://www.svgrepo.com/svg/73/game-controller
 export const gamepadIcon = `
+<svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+  <path stroke-linecap="round" stroke-linejoin="round" d="M6 15l-2 2a2 2 0 11-2-2l2-6a4 4 0 014-3h8a4 4 0 014 3l2 6a2 2 0 11-2 2l-2-2M10 13h.01M8 13h.01M16 10h.01M18 12h.01" />
+</svg>
+`;
+
+export const trophyIcon = `
 <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-  <path d="M7 4h10M7 8h10M7 12h10M7 16h10M5 5h1M5 9h1M5 13h1M5 17h1M19 5h1M19 9h1M19 13h1M19 17h1" />
+  <path stroke-linecap="round" stroke-linejoin="round" d="M8 21h8M12 17v4M5 3h14v2a5 5 0 01-5 5h-4a5 5 0 01-5-5V3z" />
+  <path stroke-linecap="round" stroke-linejoin="round" d="M3 5a2 2 0 002 2h1M21 5a2 2 0 01-2 2h-1" />
 </svg>
 `;
 
