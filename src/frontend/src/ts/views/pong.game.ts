@@ -228,7 +228,8 @@ export class PongGamePage implements Page {
       'cancel-join-game-btn': () => this.hideJoinGameForm(),
       'start-game-btn': () => this.startGame(),
       'pause-game-btn': () => this.pauseGame(),
-      'reset-game-btn': () => this.resetGame()
+      'reset-game-btn': () => this.resetGame(),
+      'cli-btn': () => this.showCLIToken()
     };
 
     Object.entries(buttonActions).forEach(([id, action]) => {
@@ -434,6 +435,15 @@ export class PongGamePage implements Page {
       gameId: this.gameId,
       playerId: this.userId
     });
+  }
+
+  /*-------------------=-----------PAUSE GAME-------------------------------*/
+
+  private async showCLIToken(): Promise<void> {
+    const response = await this.pongService.generateCLIToken();
+    if (!response.success) {
+      console.error('Server returned error:', response.error);;
+    }
   }
 
   /*------------------------------GAME STATE--------------------------------*/

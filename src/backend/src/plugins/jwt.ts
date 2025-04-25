@@ -7,7 +7,8 @@ import { AuthTokenPayload } from '../../@types/global';
 export const jwtSecrets = new Map<string, string>([
   ['preAuth', process.env.PREAUTH_TOKEN_SECRET as string],
   ['access', process.env.ACCESS_TOKEN_SECRET as string],
-  ['refresh', process.env.REFRESH_TOKEN_SECRET as string]
+  ['refresh', process.env.REFRESH_TOKEN_SECRET as string],
+  ['cli', process.env.CLI_TOKEN_SECRET as string]
 ]);
 
 /*-----------------------------HELPER FUNCTIONS-----------------------------*/
@@ -33,7 +34,7 @@ async function getJwtSecret(server: FastifyInstance, token: string): Promise<str
 
 // Define authentication middleware
 export default fp(async function setupJwt(server: FastifyInstance) {
-  if (!process.env.PREAUTH_TOKEN_SECRET || !process.env.ACCESS_TOKEN_SECRET || !process.env.REFRESH_TOKEN_SECRET) {
+  if (!process.env.PREAUTH_TOKEN_SECRET || !process.env.ACCESS_TOKEN_SECRET || !process.env.REFRESH_TOKEN_SECRET || !process.env.CLI_TOKEN_SECRET) {
     throw new Error("JWT token secret is not defined!");
   }
   
@@ -81,6 +82,33 @@ export default fp(async function setupJwt(server: FastifyInstance) {
     }
   });
 
+  // Verify auth and cli token for game routes
+  server.decorate("authenticateGame", async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      // Check for Bearer token in Authorization header (CLI token)
+      const authHeader = request.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const cliToken = authHeader.substring(7); // Remove 'Bearer ' prefix
+        
+        // Verify CLI token (assuming you have a method for this)
+        const secret = await getJwtSecret(server, cliToken);
+        request.user = await server.jwtVerify(cliToken, secret) as AuthTokenPayload;
+      } 
+      // Otherwise check for cookie authentication (access token)
+      else {
+        const accessToken = request.cookies.accessToken;
+        if (!accessToken)
+          throw new Error('No authentication token found');
+          
+        const secret = await getJwtSecret(server, accessToken);
+        request.user = await server.jwtVerify(accessToken, secret) as AuthTokenPayload;
+      }
+    }
+    catch (err) {
+      reply.status(401).send({ error: 'Unauthorized' });
+    }
+  });
+
   // Verify refresh token
   server.decorate("reAuthenticate", async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -97,15 +125,43 @@ export default fp(async function setupJwt(server: FastifyInstance) {
   });
 
   // Verify auth token: websocket routes
+  // server.decorate("authenticateUser", async (request: FastifyRequest) => {
+  //   try {
+  //     const accessToken = request.cookies.accessToken;
+  //     if (!accessToken)
+  //       throw new Error('No authentication token found');
+
+  //     const secret = await getJwtSecret(server, accessToken);
+  //     request.user = await server.jwtVerify(accessToken, secret) as AuthTokenPayload;
+  //     return request.user;
+  //   }
+  //   catch (err) {
+  //     throw err;
+  //   }
+  // });
+
   server.decorate("authenticateUser", async (request: FastifyRequest) => {
     try {
-      const accessToken = request.cookies.accessToken;
-      if (!accessToken)
-        throw new Error('No authentication token found');
-
-      const secret = await getJwtSecret(server, accessToken);
-      request.user = await server.jwtVerify(accessToken, secret) as AuthTokenPayload;
-      return request.user;
+      // Check for Bearer token in Authorization header (CLI token)
+      const authHeader = request.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const cliToken = authHeader.substring(7); // Remove 'Bearer ' prefix
+        
+        // Verify CLI token
+        const secret = await getJwtSecret(server, cliToken);
+        request.user = await server.jwtVerify(cliToken, secret) as AuthTokenPayload;
+        return request.user;
+      } 
+      // Otherwise check for cookie authentication (access token)
+      else {
+        const accessToken = request.cookies.accessToken;
+        if (!accessToken)
+          throw new Error('No authentication token found');
+          
+        const secret = await getJwtSecret(server, accessToken);
+        request.user = await server.jwtVerify(accessToken, secret) as AuthTokenPayload;
+        return request.user;
+      }
     }
     catch (err) {
       throw err;

@@ -31,6 +31,7 @@ declare module "fastify" {
     authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
     preAuthenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
     reAuthenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
+    authenticateGame: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
     authenticateUser: (request: FastifyRequest) => Promise<any>;
     jwtSign: (payload: string | object | Buffer, secretOrPrivateKey: string, options?: SignOptions) => string;
     jwtVerify: (token: string, secretOrPublicKey: string, options?: VerifyOptions) => any;
