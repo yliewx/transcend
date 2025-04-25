@@ -52,7 +52,7 @@ export class GameManager {
 
   /*-------------------------------JOIN GAME--------------------------------*/
 
-  public joinRoom(data: { gameId: string; playerId: number }, connection: WebSocket): boolean {
+  public joinRoom(data: { gameId: string, playerId: number }, connection: WebSocket): boolean {
     const room = this.getRoom(data.gameId);
     if (room && room.handleJoin(data, connection)) {
       this.activePlayers.set(data.playerId, room);
@@ -60,6 +60,10 @@ export class GameManager {
     }
     return false;
   }
+
+  // public joinRoomByCLI(data: { gameId: string, playerId: number }, connection: WebSocket): boolean {
+
+  // }
 
   /*------------------------------CREATE GAME-------------------------------*/
 

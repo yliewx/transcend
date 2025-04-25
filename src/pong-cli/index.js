@@ -64,7 +64,6 @@ function showHelp() {
   console.log('\nControls:');
   console.log('  UP arrow    - Move paddle up');
   console.log('  DOWN arrow  - Move paddle down');
-  console.log('  SPACE       - Stop paddle movement');
   console.log('  S           - Start game');
   console.log('  P           - Pause game');
   console.log('  Q           - Quit');
@@ -133,44 +132,28 @@ function setupKeyboardInput(socket, gameId) {
   process.stdin.resume();
   process.stdin.setEncoding('utf8');
   
-  // Current state of paddle
-  let currentState = {
-    paddleUp: false,
-    paddleDown: false
-  };
-  
-  // Send initial state
-  sendPaddleInput(socket, gameId, currentState);
+
   
   process.stdin.on('data', (key) => {
-    // Check for ctrl-c or q to exit
+    // Exit on Ctrl+C, q, or Q
     if (key === '\u0003' || key === 'q' || key === 'Q') {
       console.log(chalk.yellow('\nExiting pong-cli'));
       socket.close();
       process.exit(0);
     }
-    
-    let stateChanged = false;
-    let previousState = { ...currentState };
-    
-    // Arrow up pressed
+  
+    // Arrow up
     if (key === '\u001B\u005B\u0041') {
-      currentState = { paddleUp: true, paddleDown: false };
-      stateChanged = true;
       console.log(chalk.cyan('▲ UP'));
+      sendPaddleInput(socket, gameId, { paddleUp: true, paddleDown: false });
     }
-    // Arrow down pressed
+  
+    // Arrow down
     else if (key === '\u001B\u005B\u0042') {
-      currentState = { paddleUp: false, paddleDown: true };
-      stateChanged = true;
       console.log(chalk.cyan('▼ DOWN'));
+      sendPaddleInput(socket, gameId, { paddleUp: false, paddleDown: true });
     }
-    // Space pressed - stop movement
-    else if (key === ' ') {
-      currentState = { paddleUp: false, paddleDown: false };
-      stateChanged = true;
-      console.log(chalk.cyan('■ STOP'));
-    }
+  
     // S pressed - start game
     else if (key === 's' || key === 'S') {
       console.log(chalk.cyan('► Starting game'));
@@ -179,6 +162,7 @@ function setupKeyboardInput(socket, gameId) {
         data: { gameId }
       }));
     }
+  
     // P pressed - pause game
     else if (key === 'p' || key === 'P') {
       console.log(chalk.cyan('❚❚ Pausing game'));
@@ -187,13 +171,8 @@ function setupKeyboardInput(socket, gameId) {
         data: { gameId }
       }));
     }
-    
-    // Only send updates when the state has changed
-    if (stateChanged && (previousState.paddleUp !== currentState.paddleUp || 
-                          previousState.paddleDown !== currentState.paddleDown)) {
-      sendPaddleInput(socket, gameId, currentState);
-    }
   });
+  
   
   // Function to send paddle input to server
   function sendPaddleInput(socket, gameId, state) {
@@ -275,7 +254,6 @@ async function connectToGame(token, gameId) {
     
     console.log(chalk.green('\nReady to play! Use arrow keys to control your paddle:'));
     console.log(chalk.cyan('↑/↓') + ' - Move paddle');
-    console.log(chalk.cyan('SPACE') + ' - Stop paddle');
     console.log(chalk.cyan('S') + ' - Start game');
     console.log(chalk.cyan('P') + ' - Pause game');
     console.log(chalk.cyan('Q') + ' - Quit');
