@@ -96,12 +96,15 @@ export default fp(async function setupRoutes(server: FastifyInstance) {
   defineAuthRoute(server, 'delete', '/api/friends/:id', FriendController.removeFriend);
 
   // GAME ROUTES
-  defineAuthRoute(server, 'post', '/api/game/create', GameController.createGame);
+  //defineAuthRoute(server, 'post', '/api/game/create', GameController.createGame);
   //defineAuthRoute(server, 'get', '/api/game/restore', GameController.getExistingGame);
   // server.get('/api/game/restore', { preHandler: server.authenticate }, (request, reply) => {
   //   return GameController.getExistingGame(request as AuthenticatedRequest, reply);
   // });
-
+  server.post('/api/game/create', { preHandler: server.authenticateGame }, (request, reply) => {
+    // Use the same type assertion pattern
+    return GameController.createGame(request as unknown as AuthenticatedRequest, reply);
+  });
   server.get('/api/game/restore', { preHandler: server.authenticate }, (request, reply) => {
     // Use the same type assertion pattern
     return GameController.getExistingGame(request as unknown as AuthenticatedRequest, reply);
