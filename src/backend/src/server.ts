@@ -45,7 +45,7 @@ if (!fs.existsSync(avatarsDir)) {
 }
 
 // Register CORS first (often needs to be early)
-server.register(setupCors);
+// server.register(setupCors);
 
 // Register plugins for authentication
 server.register(setupJwt);
