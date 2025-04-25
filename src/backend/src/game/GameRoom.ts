@@ -84,7 +84,7 @@ export class GameRoom {
     this.broadcast(JSON.stringify({
       type: 'player-joined',
       data: {
-        message: `Player ${user.username} joined!`,
+        message: `Player joined side: ${side}!`,
         side: side,
         ready: this.roomIsFull(),
         state: this.game.getState()
@@ -217,7 +217,7 @@ export class GameRoom {
       paddleDown: boolean;
     };
   }; */
-  private handleInput(data: InputMessage, socket: WebSocket) {
+  public handleInput(data: InputMessage, socket: WebSocket) {
     let side;
     if (this.mode === 'local') {
       // Local: Player side must be included in input message
@@ -249,7 +249,7 @@ export class GameRoom {
     );
   }
 
-  private startGame(socket: WebSocket) {
+  public startGame(socket: WebSocket) {
     if (!this.roomIsFull()) {
       sendError(socket, 'Not enough players to start the game.');
       return;
@@ -263,7 +263,7 @@ export class GameRoom {
     this.broadcastGameState('start');
   }
 
-  private pauseGame(socket: WebSocket) {
+  public pauseGame(socket: WebSocket) {
     const status = this.game.pauseGame();
     if (status === 'paused' || status === 'playing') {
       this.broadcastGameState('update');

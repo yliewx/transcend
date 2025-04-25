@@ -115,6 +115,56 @@ async function websocketRoutes(server: FastifyInstance) {
       }
     });    
   });
+
+  /*----------------------------GAME CLI SESSION----------------------------*/
+
+  server.get('/pong/cli/:gameId', { websocket: true }, async (connection: WebSocket, request: FastifyRequest<{ Params: PongParams }>) => {
+    // Check for access token
+    let user;
+    try {
+        user = await request.server.authenticateUser(request);
+    } catch (error) {
+        console.log('Connection failed:', error);
+        connection.close();
+        return;
+    }
+    // On connection: Extract game ID and get game instance
+    const gameId = request.params.gameId;
+    const room = gameManager.getRoom(gameId);
+    if (!room) {
+      sendError(connection, 'Game not found');
+      return;
+    }
+    connection.send(`Connected to game ID: ${gameId}`);
+    const playerId = user.id;
+
+    // Message handler
+    connection.on('message', (msg: string) => {
+      const message = JSON.parse(msg.toString());
+      console.log('[ws.routes] Full message:', message.type, JSON.stringify(message.data, null, 2));
+
+      switch (message.type) {
+        case 'join':
+          const joinSuccess = gameManager.joinRoom(message.data, connection);
+          if (joinSuccess) {
+            console.log('Successfully joined game via CLI');
+          }
+          break ;
+        case 'input':
+          room.handleInput({ ...message.data, playerId }, connection);
+          break;
+        case 'start':
+          room.startGame(connection);
+          break;
+        case 'pause':
+          room.pauseGame(connection);
+          break;
+        default:
+          sendError(connection, `Unrecognized message type: ${message.type}.`);
+          break;
+      }
+    });    
+  });
 }
 
 export default fp(async function setupWebSocket(server: FastifyInstance) {
