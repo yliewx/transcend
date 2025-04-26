@@ -1,6 +1,5 @@
 import fastify, { FastifyInstance } from 'fastify';
 import fastifyStatic from '@fastify/static';
-import { join } from 'path';
 import fastifyCookie from '@fastify/cookie';
 import websocket from '@fastify/websocket';
 import fs from 'fs';
@@ -27,23 +26,7 @@ const server = fastify({
   logger: true
 });
 
-// Ensure public directories exist
-//const publicDir = join(__dirname, '../../public');
-// const publicDir = '/usr/src/app/public';
-// const uploadsDir = join(publicDir, 'uploads');
-// const avatarsDir = join(uploadsDir, 'avatars');
-
-// Create directories if they don't exist
-// if (!fs.existsSync(publicDir)) {
-//   fs.mkdirSync(publicDir, { recursive: true });
-// }
-// if (!fs.existsSync(uploadsDir)) {
-//   fs.mkdirSync(uploadsDir, { recursive: true });
-// }
-// if (!fs.existsSync(avatarsDir)) {
-//   fs.mkdirSync(avatarsDir, { recursive: true });
-// }
-
+// Ensure directories exist
 fs.mkdirSync(avatarsDir, { recursive: true });
 
 // Register CORS first (often needs to be early)
