@@ -14,11 +14,6 @@ const CONFIG = {
   wsUrl: process.env.PONG_WS_URL || 'wss://localhost:8080/ws'
 };
 
-// Create https agent for self-signed certs (development only)
-const httpsAgent = new https.Agent({
-  rejectUnauthorized: false
-});
-
 // CLI options
 const optionDefinitions = [
   { name: 'help', alias: 'h', type: Boolean, description: 'Display this help message' },
@@ -65,7 +60,7 @@ function showHelp() {
   console.log('  UP arrow    - Move paddle up');
   console.log('  DOWN arrow  - Move paddle down');
   console.log('  S           - Start game');
-  console.log('  P           - Pause game');
+  console.log('  P           - Pause / Resume game');
   console.log('  Q           - Quit');
 }
 
@@ -123,17 +118,21 @@ function clearConfig() {
   }
 }
 
-// Setup keyboard input for raw mode
+
 function setupKeyboardInput(socket, gameId) {
   if (process.stdin.isTTY) {
     process.stdin.setRawMode(true);
   }
-  
+
   process.stdin.resume();
   process.stdin.setEncoding('utf8');
-  
 
-  
+  // Flag to prevent holding down the key from spamming
+  let pressedKeys = {};
+
+  // Frequency for sending paddle movement events (in milliseconds)
+  const movementInterval = 60; // Send every 100ms when a key is held down
+
   process.stdin.on('data', (key) => {
     // Exit on Ctrl+C, q, or Q
     if (key === '\u0003' || key === 'q' || key === 'Q') {
@@ -141,19 +140,58 @@ function setupKeyboardInput(socket, gameId) {
       socket.close();
       process.exit(0);
     }
-  
+
+    // Detect keyup manually by clearing pressedKeys
+    if (pressedKeys[key]) {
+      // Ignore repeat key events (debounce)
+      return;
+    }
+    pressedKeys[key] = true;
+
     // Arrow up
     if (key === '\u001B\u005B\u0041') {
       console.log(chalk.cyan('▲ UP'));
       sendPaddleInput(socket, gameId, { paddleUp: true, paddleDown: false });
+
+      // Continuously send the "up" input every interval while the key is pressed
+      const intervalId = setInterval(() => {
+        if (!pressedKeys[key]) {
+          clearInterval(intervalId); // Stop sending once key is released
+        } else {
+          sendPaddleInput(socket, gameId, { paddleUp: true, paddleDown: false });
+        }
+      }, movementInterval);
+
+      // Clean up the interval when the key is released
+      process.stdin.on('data', (releaseKey) => {
+        if (releaseKey === key) {
+          pressedKeys[key] = false; // Mark key as released
+        }
+      });
     }
-  
+
     // Arrow down
     else if (key === '\u001B\u005B\u0042') {
       console.log(chalk.cyan('▼ DOWN'));
       sendPaddleInput(socket, gameId, { paddleUp: false, paddleDown: true });
+
+      // Continuously send the "down" input every interval while the key is pressed
+      const intervalId = setInterval(() => {
+        if (!pressedKeys[key]) {
+          clearInterval(intervalId); // Stop sending once key is released
+        } else {
+          sendPaddleInput(socket, gameId, { paddleUp: false, paddleDown: true });
+        }
+      }, movementInterval);
+
+      // Clean up the interval when the key is released
+      process.stdin.on('data', (releaseKey) => {
+        if (releaseKey === key) {
+          pressedKeys[key] = false; // Mark key as released
+        }
+      });
     }
-  
+
     // S pressed - start game
     else if (key === 's' || key === 'S') {
       console.log(chalk.cyan('► Starting game'));
@@ -162,31 +200,37 @@ function setupKeyboardInput(socket, gameId) {
         data: { gameId }
       }));
     }
-  
+
     // P pressed - pause game
     else if (key === 'p' || key === 'P') {
-      console.log(chalk.cyan('❚❚ Pausing game'));
+      console.log(chalk.cyan('❚❚ Pausing / Resuming game'));
       socket.send(JSON.stringify({
         type: 'pause',
         data: { gameId }
       }));
     }
+
+    // After short delay, allow the key to be sent again
+    setTimeout(() => {
+      pressedKeys[key] = false;
+    }, 100); // 200ms debounce to avoid rapid spam
   });
-  
-  
+
   // Function to send paddle input to server
-  function sendPaddleInput(socket, gameId, state) {
-    if (socket.readyState !== WebSocket.OPEN) return;
-    
-    socket.send(JSON.stringify({
-      type: 'input',
-      data: {
-        gameId,
-        input: state
-      }
-    }));
-  }
-  
+function sendPaddleInput(socket, gameId, state) {
+  if (socket.readyState !== WebSocket.OPEN) return;
+
+  // Send the move command
+  socket.send(JSON.stringify({
+    type: 'input',
+    data: {
+      gameId,
+      input: state
+    }
+  }));
+}
+
+
   return function cleanup() {
     if (process.stdin.isTTY) {
       process.stdin.setRawMode(false);
@@ -194,6 +238,7 @@ function setupKeyboardInput(socket, gameId) {
     process.stdin.pause();
   };
 }
+
 
 async function startCli() {
   // Handle clear config command
@@ -255,7 +300,7 @@ async function connectToGame(token, gameId) {
     console.log(chalk.green('\nReady to play! Use arrow keys to control your paddle:'));
     console.log(chalk.cyan('↑/↓') + ' - Move paddle');
     console.log(chalk.cyan('S') + ' - Start game');
-    console.log(chalk.cyan('P') + ' - Pause game');
+    console.log(chalk.cyan('P') + ' - Pause / Resume game');
     console.log(chalk.cyan('Q') + ' - Quit');
     
     // Setup keyboard input
