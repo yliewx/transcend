@@ -78,6 +78,9 @@ export class GameManager {
   /*------------------------------DESTROY GAME------------------------------*/
 
   public deleteGame(gameId: string): void {
+    if (this.sessions.size === 0) {
+      return;
+    }
     console.log(`[GameManager] Cleaning up game with ID: ${gameId}`);
     const room = this.sessions.get(gameId);
     if (room && room.game) {
