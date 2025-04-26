@@ -197,23 +197,6 @@ export class ProfilePage implements Page {
       this.updateUIWithProfileData();
     }
   }
-  
-  // private async fetchProfileData(): Promise<void> {
-  //   try {
-  //     const profileData = await this.userService.getProfile();
-      
-  //     if (profileData.success) {
-  //       this.userProfile = profileData;
-  //       console.log('User profile data:', this.userProfile);
-  //       // Fetch avatar image using the new getAvatar API
-  //       await this.fetchAvatar();
-  //     } else {
-  //       console.error('Failed to fetch profile:', profileData.error);
-  //     }
-  //   } catch (error) {
-  //     console.error('Failed to fetch user profile:', error);
-  //   }
-  // }
 
   private async fetchProfileData(): Promise<void> {
     try {
@@ -232,88 +215,38 @@ export class ProfilePage implements Page {
     } catch (error) {
       console.error('Failed to fetch user data:', error);
     }
-}
-
-private updateUIWithProfileData(): void {
-  if (!this.element) return;
-  
-  // Update avatar - directly use the API endpoint
-  const avatarImg = this.element.querySelector('#current-avatar') as HTMLImageElement;
-  if (avatarImg) {
-    // The browser will make a request to this endpoint
-    // Your backend will stream the appropriate image in response
-    avatarImg.src = `/api/profile/avatar?t=${new Date().getTime()}`;
   }
-  
-  // Update form fields with profile data
-  if (this.userProfile) {
-    const usernameInput = this.element.querySelector('#username') as HTMLInputElement;
-    if (usernameInput) {
-      usernameInput.value = this.userProfile?.userData?.username || '';
-    }
-    
-    const displayNameInput = this.element.querySelector('#displayName') as HTMLInputElement;
-    if (displayNameInput) {
-      displayNameInput.value = this.userProfile?.profileData?.displayName || '';
-    }
-    
-    const emailInput = this.element.querySelector('#email') as HTMLInputElement;
-    if (emailInput) {
-      emailInput.value = this.userProfile?.userData?.email || '';
-    }
-  }
-}
-  
-  
 
-  
-  /*
   private updateUIWithProfileData(): void {
-    if (!this.element || !this.userProfile) return;
+    if (!this.element) return;
     
-    // Update avatar
+    // Update avatar - directly use the API endpoint
     const avatarImg = this.element.querySelector('#current-avatar') as HTMLImageElement;
     if (avatarImg) {
-      const defaultAvatarPath = '/uploads/avatars/default-avatar.png';
-      const avatarPath = this.userProfile?.profileData?.avatarPath;
+      // The browser will make a request to this endpoint
+      // Your backend will stream the appropriate image in response
+      avatarImg.src = `/api/profile/avatar?t=${new Date().getTime()}`;
+    }
+    
+    // Update form fields with profile data
+    if (this.userProfile) {
+      const usernameInput = this.element.querySelector('#username') as HTMLInputElement;
+      if (usernameInput) {
+        usernameInput.value = this.userProfile?.userData?.username || '';
+      }
       
-      // Set a flag to prevent infinite loop during error handling
-      let handlingError = false;
+      const displayNameInput = this.element.querySelector('#displayName') as HTMLInputElement;
+      if (displayNameInput) {
+        displayNameInput.value = this.userProfile?.profileData?.displayName || '';
+      }
       
-      avatarImg.onerror = () => {
-        if (!handlingError) {
-          handlingError = true;
-          console.error('Failed to load profile image');
-          avatarImg.src = defaultAvatarPath;
-        }
-      };
-      
-      // Set the source with cache-busting only if we have a custom avatar
-      if (avatarPath) {
-        avatarImg.src = `${avatarPath}?t=${new Date().getTime()}`;
-      } else {
-        avatarImg.src = defaultAvatarPath;
+      const emailInput = this.element.querySelector('#email') as HTMLInputElement;
+      if (emailInput) {
+        emailInput.value = this.userProfile?.userData?.email || '';
       }
     }
-    
-    // Update form fields
-    const usernameInput = this.element.querySelector('#username') as HTMLInputElement;
-    if (usernameInput) {
-      usernameInput.value = this.userProfile?.userData?.username || '';
-    }
-    
-    const displayNameInput = this.element.querySelector('#displayName') as HTMLInputElement;
-    if (displayNameInput) {
-      displayNameInput.value = this.userProfile?.profileData?.displayName || '';
-    }
-    
-    const emailInput = this.element.querySelector('#email') as HTMLInputElement;
-    if (emailInput) {
-      emailInput.value = this.userProfile?.userData?.email || '';
-    }
   }
-  */
- 
+   
   private setupEventHandlers(): void {
     if (!this.element) return;
     
