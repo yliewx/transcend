@@ -41,7 +41,8 @@ export class ProfilePage implements Page {
                   <div class="avatar-container mb-4">
                     <img 
                       id="current-avatar" 
-                      src="" 
+                      crossorigin="use-credentials"
+                      src="/api/profile/avatar"
                       alt="Profile picture" 
                       class="w-40 h-40 rounded-full mx-auto object-cover border-4 border-pink-200 dark:border-pink-900"
                     >
@@ -197,21 +198,76 @@ export class ProfilePage implements Page {
     }
   }
   
+  // private async fetchProfileData(): Promise<void> {
+  //   try {
+  //     const profileData = await this.userService.getProfile();
+      
+  //     if (profileData.success) {
+  //       this.userProfile = profileData;
+  //       console.log('User profile data:', this.userProfile);
+  //       // Fetch avatar image using the new getAvatar API
+  //       await this.fetchAvatar();
+  //     } else {
+  //       console.error('Failed to fetch profile:', profileData.error);
+  //     }
+  //   } catch (error) {
+  //     console.error('Failed to fetch user profile:', error);
+  //   }
+  // }
+
   private async fetchProfileData(): Promise<void> {
     try {
-      const profileData = await this.userService.getProfile();
+      // Fetch only the profile data
+      const profileResponse = await this.userService.getProfile();
       
-      if (profileData.success) {
-        this.userProfile = profileData;
+      if (profileResponse.success) {
+        this.userProfile = profileResponse;
         console.log('User profile data:', this.userProfile);
+        
+        // Update UI with the profile data
+        this.updateUIWithProfileData();
       } else {
-        console.error('Failed to fetch profile:', profileData.error);
+        console.error('Failed to fetch profile:', profileResponse.error);
       }
     } catch (error) {
-      console.error('Failed to fetch user profile:', error);
+      console.error('Failed to fetch user data:', error);
     }
+}
+
+private updateUIWithProfileData(): void {
+  if (!this.element) return;
+  
+  // Update avatar - directly use the API endpoint
+  const avatarImg = this.element.querySelector('#current-avatar') as HTMLImageElement;
+  if (avatarImg) {
+    // The browser will make a request to this endpoint
+    // Your backend will stream the appropriate image in response
+    avatarImg.src = `/api/profile/avatar?t=${new Date().getTime()}`;
   }
   
+  // Update form fields with profile data
+  if (this.userProfile) {
+    const usernameInput = this.element.querySelector('#username') as HTMLInputElement;
+    if (usernameInput) {
+      usernameInput.value = this.userProfile?.userData?.username || '';
+    }
+    
+    const displayNameInput = this.element.querySelector('#displayName') as HTMLInputElement;
+    if (displayNameInput) {
+      displayNameInput.value = this.userProfile?.profileData?.displayName || '';
+    }
+    
+    const emailInput = this.element.querySelector('#email') as HTMLInputElement;
+    if (emailInput) {
+      emailInput.value = this.userProfile?.userData?.email || '';
+    }
+  }
+}
+  
+  
+
+  
+  /*
   private updateUIWithProfileData(): void {
     if (!this.element || !this.userProfile) return;
     
@@ -256,6 +312,7 @@ export class ProfilePage implements Page {
       emailInput.value = this.userProfile?.userData?.email || '';
     }
   }
+  */
  
   private setupEventHandlers(): void {
     if (!this.element) return;
@@ -292,9 +349,9 @@ export class ProfilePage implements Page {
     const file = input.files[0];
     
     // Validate file type
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+    const allowedTypes = ['image/jpeg', 'image/png'];
     if (!allowedTypes.includes(file.type)) {
-      this.showNotification('Please select a valid image file (JPG, PNG, or GIF)', 'error');
+      this.showNotification('Please select a valid image file (JPG or PNG)', 'error');
       return;
     }
     
@@ -324,7 +381,8 @@ export class ProfilePage implements Page {
         const avatarImg = this.element?.querySelector('#current-avatar') as HTMLImageElement;
         if (avatarImg) {
           // Add cache-busting query parameter to force browser to load the new image
-          avatarImg.src = `${result.avatarPath}?t=${new Date().getTime()}`;
+          //avatarImg.src = `${result.avatarPath}?t=${new Date().getTime()}`;
+          avatarImg.src = `/api/profile/avatar?t=${new Date().getTime()}`;
         }
         
         this.showNotification('Profile picture updated successfully', 'success');

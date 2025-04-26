@@ -107,7 +107,7 @@ async uploadAvatar(formData: FormData): Promise<any> {
         error: result.error || 'Failed to upload avatar'
       };
     }
-    
+    console.log('Upload response:', result);
     return {
       success: true,
       avatarPath: result.avatarPath
