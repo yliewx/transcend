@@ -16,13 +16,17 @@ import { PongGameService } from './services/pong.game.service';
 import { PongGamePage } from './views/pong.game';
 import { TournamentPage } from './views/tournaments';
 import { TournamentDetailPage } from './views/tournament.detail';
-
 import { FriendService } from './services/friend.service';
 import { FriendsPage } from './views/friends';
 import { NotFoundPage } from './views/notfound';
-import { WebSocketManager } from './services/websocket.manager';
+import  { BrowserWarning } from './components/warning';
 
 document.addEventListener('DOMContentLoaded', async () => {  
+  if (!isSupportedBrowser()) {
+    const warning = new BrowserWarning().render();
+    document.body.prepend(warning);
+  }
+
   // Initialize application dependencies
   const appContainer = document.getElementById('app') as HTMLElement;
   const controlAccess = new ControlAccess(new AuthService());
@@ -62,3 +66,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 });
 
+function isSupportedBrowser(): boolean {
+  const userAgent = navigator.userAgent;
+  const isChrome = /Chrome/.test(userAgent) && !/Edge|Edg|OPR/.test(userAgent);
+  const isFirefox = /Firefox/.test(userAgent);
+
+  return isChrome || isFirefox;
+}
