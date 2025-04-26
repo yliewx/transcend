@@ -9,7 +9,7 @@ export class BlackjackGame {
   private deck: Card[] = [];
   private cardDeck: Card[] = [];
   private userName: string = '';
-  private gameMode: string = 'awaiting username';
+  private gameMode: string = 'start game';
   private playerHand: Card[] = [];
   private dealerHand: Card[] = [];
   private playerSum: number = 0;
@@ -21,17 +21,8 @@ export class BlackjackGame {
     this.cardDeck = this.shuffleCards(this.deck);
   }
 
-  public playGame(input: string): string {
-    if (this.gameMode === 'awaiting username') {
-      if (!input.trim()) {
-        return 'Please enter your name to start the game.';
-      }
-      this.userName = input.trim();
-      this.gameMode = 'deal cards';
-      return `Welcome, ${this.userName}! Let's play Blackjack!`;
-    }
-
-    if (this.gameMode === 'deal cards') {
+  public playGame(): string {
+    if (this.gameMode === 'start game') {
       this.gameMode = 'player turn';
       return this.dealCards();
     }
@@ -138,34 +129,50 @@ export class BlackjackGame {
 
   // Function to deal two cards to player and dealer
   public dealCards(): string {
+    console.log("dealing cards")
     for (let i = 0; i < 2; i++) {
       this.playerHand.push(this.deal());
       this.dealerHand.push(this.deal());
     }
-
+  
     this.playerSum = this.calcCurrentSum(this.playerHand);
     this.dealerSum = this.calcCurrentSum(this.dealerHand);
-
+  
     const playerBlackjack = this.isBlackjack(this.playerHand);
     const dealerBlackjack = this.isBlackjack(this.dealerHand);
-
+  
     if (playerBlackjack) {
       this.points += 10;
-      return `Wow! You got Blackjack!<br>You drew: ${this.printCards(
-        this.playerHand
-      )}<br><b>Points: ${this.points}</b>`;
+      return `
+        <div>
+          <p>You got Blackjack!</p>
+          <div class="cards">${this.printCards(this.playerHand)}</div>
+          <p><b>Points: ${this.points}</b></p>
+        </div>`;
     }
-
+  
     if (dealerBlackjack) {
       this.points -= 10;
-      return `Dealer got Blackjack!<br>Dealer drew: ${this.printCards(
-        this.dealerHand
-      )}<br><b>Points: ${this.points}</b>`;
+      return `
+        <div>
+          <p>Dealer got Blackjack!</p>
+          <div class="cards">${this.printCards(this.dealerHand)}</div>
+          <p><b>Points: ${this.points}</b></p>
+        </div>`;
     }
-
-    return `You drew: ${this.printCards(this.playerHand)}<br>Dealer drew: ${
-      this.dealerHand[0].name
-    } of ${this.dealerHand[0].suit} (${this.dealerHand[0].emoji})<br>`;
+  
+    return `
+      <div>
+        <p>You drew:</p>
+        <div class="cards">${this.printCards(this.playerHand)}</div>
+        <p>Dealer drew:</p>
+        <div class="cards">
+          <div class="card">
+            <div class="card-rank">${this.dealerHand[0].name}</div>
+            <div class="card-suit">${this.dealerHand[0].emoji}</div>
+          </div>
+        </div>
+      </div>`;
   }
 
   // Function to check for Blackjack

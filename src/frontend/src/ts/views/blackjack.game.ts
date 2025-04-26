@@ -21,14 +21,8 @@ export class BlackjackGamePage implements Page {
       <h1 class="text-2xl font-bold text-gray-900">Blackjack Game</h1>
       <div class="mt-6">
         <div id="game-output" class="mt-4 p-4 border rounded bg-gray-100">
-          Welcome to Blackjack! Enter your name to start.
+          Welcome to Blackjack!
         </div>
-        <input
-          type="text"
-          id="player-name"
-          placeholder="Enter your name"
-          class="mt-2 p-2 border rounded w-full"
-        />
         <button
           id="start-button"
           class="mt-4 px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
@@ -68,12 +62,7 @@ export class BlackjackGamePage implements Page {
     const restartButton = container.querySelector('#restart-button') as HTMLButtonElement;
 
     startButton.addEventListener('click', () => {
-      const playerName = nameInput.value.trim();
-      if (!playerName) {
-        output.innerHTML = 'Please enter your name to start the game.';
-        return;
-      }
-      output.innerHTML = this.blackjackGame.playGame(playerName);
+      output.innerHTML = this.blackjackGame.playGame();
       hitButton.disabled = false;
       standButton.disabled = false;
       restartButton.disabled = false;
@@ -98,7 +87,7 @@ export class BlackjackGamePage implements Page {
 
     restartButton.addEventListener('click', () => {
       this.blackjackGame = new BlackjackGame(); // Reset the game logic
-      output.innerHTML = 'Welcome to Blackjack! Enter your name to start.';
+      output.innerHTML = 'Welcome to Blackjack!';
       hitButton.disabled = true;
       standButton.disabled = true;
       restartButton.disabled = true;
