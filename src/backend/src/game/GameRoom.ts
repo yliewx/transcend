@@ -183,6 +183,9 @@ export class GameRoom {
         case 'pause':
           this.pauseGame(socket);
           break;
+        case 'reset':
+          this.game.resetGame();
+          break;
         default:
           sendError(socket, 'Unknown message type');
           break;
@@ -278,12 +281,11 @@ export class GameRoom {
     this.scheduleCleanup();
   }
   
-  // Notify GameManager to delete game 15s after it ends
+  // Notify GameManager to delete game after it ends
   private scheduleCleanup(): void {
     setTimeout(() => {
-      console.log(`[GameRoom] Cleaning up game with ID: ${this.id}`);
       this.onCleanup(this.id);
-    }, 15 * 1000);
+    }, 5 * 1000);
   }
 
   /*---------------------------RECORD GAME RESULTS--------------------------*/
@@ -334,6 +336,12 @@ export class GameRoom {
   }
 
   async recordResults(state: GameState) {
+    const winScore = state.winner === 'left' ? state.scoreLeft : state.scoreRight;
+    if (winScore !== 5) {
+      console.log("Game ended before reaching a score of 5. Match result not recorded.");
+      return;
+    }
+
     const db = await getDb();
     const leftPlayerId = this.players.left?.id ?? null;
     const rightPlayerId = this.players.right?.id ?? null;

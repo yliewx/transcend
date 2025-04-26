@@ -206,6 +206,15 @@ export class PongGamePage implements Page {
 
   /*-----------------------------EVENT HANDLERS-----------------------------*/
 
+  private cleanResetGame(): void {
+    console.log(`Reset button pressed. Ending previous game`);
+    this.wss.sendMessage('reset', {
+      gameId: this.gameId,
+      playerId: this.userId
+    });
+    this.resetGame();
+  }
+
   private setupEventHandlers(): void {
     // Remove any existing event listeners first
     window.removeEventListener('keyup', this.keyUpHandler);
@@ -228,7 +237,7 @@ export class PongGamePage implements Page {
       'cancel-join-game-btn': () => this.hideJoinGameForm(),
       'start-game-btn': () => this.startGame(),
       'pause-game-btn': () => this.pauseGame(),
-      'reset-game-btn': () => this.resetGame(),
+      'reset-game-btn': () => this.cleanResetGame(),
       'cli-btn': () => this.showCLIToken()
     };
 
