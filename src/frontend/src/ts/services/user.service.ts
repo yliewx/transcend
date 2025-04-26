@@ -85,39 +85,45 @@ export class UserService extends BaseApiService {
   }
 
 
-  // Add this method to your UserService class
-
-async uploadAvatar(formData: FormData): Promise<any> {
-  try {
-    const response = await fetch('/api/profile/avatar', {
-      method: 'POST',
-      headers: {
-        // Don't set Content-Type when using FormData
-        // It will be set automatically with the correct boundary
-        credentials: 'include',
-      },
-      body: formData
-    });
-    
-    const result = await response.json();
-    
-    if (!response.ok) {
-      return {
-        success: false,
-        error: result.error || 'Failed to upload avatar'
-      };
-    }
-    console.log('Upload response:', result);
-    return {
-      success: true,
-      avatarPath: result.avatarPath
-    };
-  } catch (error) {
-    console.error('Avatar upload error:', error);
-    return {
-      success: false,
-      error: 'Network error while uploading avatar'
-    };
+  // async uploadAvatar(formData: FormData): Promise<any> {
+  //   try {
+  //     const response = await fetch('/api/profile/avatar', {
+  //       method: 'POST',
+  //       headers: {
+  //         // Don't set Content-Type when using FormData
+  //         // It will be set automatically with the correct boundary
+  //         credentials: 'include',
+  //       },
+  //       body: formData
+  //     });
+      
+  //     const result = await response.json();
+      
+  //     if (!response.ok) {
+  //       return {
+  //         success: false,
+  //         error: result.error || 'Failed to upload avatar'
+  //       };
+  //     }
+  //     console.log('Upload response:', result);
+  //     return {
+  //       success: true,
+  //     };
+  //   } catch (error) {
+  //     console.error('Avatar upload error:', error);
+  //     return {
+  //       success: false,
+  //       error: 'Network error while uploading avatar'
+  //     };
+  //   }
+  // }
+  public async uploadAvatar(formData: FormData): Promise<any> {
+    return this.request<{}>(
+      '/profile/avatar',
+      'POST',
+      formData,
+      true,
+      { isFormData: true }
+    );
   }
-}
 }
