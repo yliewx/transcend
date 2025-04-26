@@ -1,4 +1,4 @@
-import { FastifyRequest, FastifyReply } from 'fastify';
+import {FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import bcrypt from 'bcrypt';
 import User from '../models/user';
 import Profile from '../models/profile';
@@ -8,7 +8,7 @@ import fs from 'fs';
 import path from 'path';
 import { pipeline } from 'stream/promises';
 import { v4 as uuidv4 } from 'uuid';
-import { MultipartFile } from '@fastify/multipart';
+import { avatarsDir, publicDir, uploadsDir } from '../constants';
 
 export async function profileHandler(request: AuthenticatedRequest, reply: FastifyReply) {
     try {
@@ -219,12 +219,12 @@ export async function updatePasswordHandler(request: AuthenticatedRequest, reply
 
 
 // Define the upload directory - make sure this path exists and is writable
-const UPLOAD_DIR = path.join(process.cwd(), 'public', 'uploads', 'avatars');
+// const UPLOAD_DIR = path.join(process.cwd(), 'public', 'uploads', 'avatars');
 
-// Create directory if it doesn't exist
-if (!fs.existsSync(UPLOAD_DIR)) {
-  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-}
+// // Create directory if it doesn't exist
+// if (!fs.existsSync(UPLOAD_DIR)) {
+//   fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+// }
 
 export async function uploadAvatarHandler(request: AuthenticatedRequest, reply: FastifyReply) {
   try {
@@ -246,8 +246,9 @@ export async function uploadAvatarHandler(request: AuthenticatedRequest, reply: 
     
     // Generate a unique filename to prevent collisions
     const fileExtension = data.filename.split('.').pop() || 'jpg';
-    const filename = `user_${userId}_${uuidv4()}.${fileExtension}`;
-    const filePath = path.join(UPLOAD_DIR, filename);
+    //const filename = `user_${userId}_${uuidv4()}.${fileExtension}`;
+    const filename = `${uuidv4()}.${fileExtension}`; // <<<< no user id!
+    const filePath = path.join(avatarsDir, filename);
     
     // Save the file to disk
     await pipeline(data.file, fs.createWriteStream(filePath));
@@ -268,7 +269,7 @@ export async function uploadAvatarHandler(request: AuthenticatedRequest, reply: 
       // Extract the filename from the path
       const oldFilename = existingProfile.avatar_path.split('/').pop();
       if (oldFilename) {
-        const oldFilePath = path.join(UPLOAD_DIR, oldFilename);
+        const oldFilePath = path.join(avatarsDir, oldFilename);
         // Check if file exists before attempting to delete
         if (fs.existsSync(oldFilePath)) {
           fs.unlinkSync(oldFilePath); // Delete the old file
@@ -294,5 +295,117 @@ export async function uploadAvatarHandler(request: AuthenticatedRequest, reply: 
     return reply.status(500).send({ 
       error: 'Failed to process avatar upload'
     });
+  }
+}
+
+/*
+export async function getAvatarHandler(request: AuthenticatedRequest, reply: FastifyReply) {
+  const userId = request.user.id;
+  const db = await getDb();
+  const user = await User.findById(db, userId);
+
+  let filename: string;
+
+  if (user && user.avatarPath) {
+    // User has uploaded an avatar
+    // Extract just the filename from the stored path
+    filename = user.avatarPath.split('/').pop() || 'default-avatar.jpg';
+  } else {
+    // No avatar uploaded — serve a default avatar image
+    filename = 'default-avatar.jpg';
+  }
+  
+  // Build the complete file system path
+  const avatarFilePath = path.join(avatarsDir, filename);
+
+  // Always try to send the file
+  if (fs.existsSync(avatarFilePath)) {
+    reply
+      .header('Cache-Control', 'public, max-age=3600')
+      .type('image/jpeg')
+      .send(fs.createReadStream(avatarFilePath));
+  } else {
+    // If somehow even default-avatar.jpg doesn't exist, send 404
+    reply.code(404).send('Avatar not found');
+  }
+}
+*/
+
+// export async function getAvatarHandler(request: AuthenticatedRequest, reply: FastifyReply) {
+//   const userId = request.user.id;
+//   console.log('GET Avatar - User ID:', userId);
+  
+//   const db = await getDb();
+//   const user = await User.findById(db, userId);
+//   console.log('GET Avatar - User found:', !!user);
+//   console.log('GET Avatar - User avatar path:', user?.avatarPath);
+  
+//   let filename: string;
+  
+//   if (user && user.avatarPath) {
+//     filename = user.avatarPath.split('/').pop();
+//   } else {
+//     filename = 'default-avatar.png';
+//   }
+//   console.log('GET Avatar - Filename:', filename);
+  
+//   const avatarFilePath = path.join(avatarsDir, filename);
+//   console.log('GET Avatar - Full path:', avatarFilePath);
+//   console.log('GET Avatar - File exists:', fs.existsSync(avatarFilePath));
+
+//   if (filename.endsWith('.png')) {
+//     reply.type('image/png');
+//   } else {
+//     reply.type('image/jpeg'); // Default to jpeg
+//   }
+  
+//   if (fs.existsSync(avatarFilePath)) {
+//     console.log('GET Avatar - Sending file');
+//     reply
+//       .header('Cache-Control', 'public, max-age=3600')
+//       .send(fs.createReadStream(avatarFilePath));
+//   } else {
+//     console.log('GET Avatar - File not found, sending 404');
+//     reply.code(404).send('Avatar not found');
+//   }
+// }
+
+export async function getAvatarHandler(request: AuthenticatedRequest, reply: FastifyReply) {
+  const userId = request.user.id;
+  console.log('GET Avatar - User ID:', userId);
+  
+  const db = await getDb();
+  //const user = await User.findById(db, userId);
+  const profile = await Profile.findByUserId(db, userId);
+
+  console.log('GET Avatar - User found:', !!profile);
+  console.log('GET Avatar - User avatar path:', profile?.avatar_path);
+  
+  let filename: string;
+  
+  if (profile && profile.avatar_path) {
+    filename = profile.avatar_path.split('/').pop();
+  } else {
+    filename = 'default-avatar.png';
+  }
+  console.log('GET Avatar - Filename:', filename);
+  
+  // Check if file exists
+  const avatarFilePath = path.join(avatarsDir, filename);
+  const fileExists = fs.existsSync(avatarFilePath);
+  console.log('GET Avatar - Full path:', avatarFilePath);
+  console.log('GET Avatar - File exists:', fileExists);
+  
+  if (fileExists) {
+    console.log('GET Avatar - Sending file using sendFile');
+    
+    // Set Cache-Control header
+    reply.header('Cache-Control', 'public, max-age=3600');
+    
+    // Let Fastify handle the file sending
+    return reply.sendFile(filename, avatarsDir);
+  } else {
+    console.log('GET Avatar - File not found, sending 404');
+    return reply.code(404).send('Avatar not found');
   }
 }
