@@ -145,131 +145,248 @@ function clearConfig() {
 
 
 function setupKeyboardInput(socket, gameId) {
-  if (process.stdin.isTTY) {
-    process.stdin.setRawMode(true);
-  }
-
-  process.stdin.resume();
-  process.stdin.setEncoding('utf8');
-
-  let pressedKeys = {};
-  let movementIntervals = {};  // Store active intervals for each key
-
-  const movementInterval = 60; // ms
-
-  process.stdin.on('data', (key) => {
-    if (EXIT_KEYS.has(key)) { // Ctrl+C, Ctrl+D, or Escape
-      console.log(chalk.yellow('\nExiting pong-cli'));
-      socket.close();
-      process.exit(0);
-    }
-
-    if (PAUSE_KEYS.has(key)) {
-      console.log(chalk.cyan('❚❚ Pausing / Resuming game'));
-      socket.send(JSON.stringify({ type: 'pause', data: { gameId } }));
-    }
-
-    if (key === START_KEY && !gameStarted) {
-      console.log(chalk.cyan('► Starting game'));
-      socket.send(JSON.stringify({ type: 'start', data: { gameId } }));
-      gameStarted = true;
-    }
-
-    if (pressedKeys[key]) {
-      return; // Ignore repeated keypress events
-    }
-    pressedKeys[key] = true;
-
-    // Handle inputs based on game mode
-    if (gameMode === 'local') {
-      handleLocalInput(key);
-    } else {
-      handleRemoteInput(key);
-    }
-
-    // Debounce: Clear key after a delay
-    setTimeout(() => {
-      pressedKeys[key] = false;
-    }, 100);
-  });
-
-  function handleRemoteInput(key) {
-    if (key === KEYS.UP_ARROW) { // Up arrow
-      console.log(chalk.cyan('▲ UP'));
-      sendPaddleInput(socket, gameId, { paddleUp: true, paddleDown: false });
-      startMovementInterval(key, { paddleUp: true, paddleDown: false });
-    } else if (key === KEYS.DOWN_ARROW) { // Down arrow
-      console.log(chalk.cyan('▼ DOWN'));
-      sendPaddleInput(socket, gameId, { paddleUp: false, paddleDown: true });
-      startMovementInterval(key, { paddleUp: false, paddleDown: true });
-    }
-  }
-
-  function handleLocalInput(key) {
-    if (key === KEYS.UP_ARROW) { // Up arrow for right paddle
-      console.log(chalk.cyan('▲ RIGHT UP'));
-      sendPaddleInput(socket, gameId, { paddleUp: true, paddleDown: false, side: 'right' });
-      startMovementInterval(key, { paddleUp: true, paddleDown: false, side: 'right' });
-    } else if (key === KEYS.DOWN_ARROW) { // Down arrow for right paddle
-      console.log(chalk.cyan('▼ RIGHT DOWN'));
-      sendPaddleInput(socket, gameId, { paddleUp: false, paddleDown: true, side: 'right' });
-      startMovementInterval(key, { paddleUp: false, paddleDown: true, side: 'right' });
-    } else if (LEFT_UP_KEYS.has(key)) { // W for left paddle up
-      console.log(chalk.cyan('▲ LEFT UP'));
-      sendPaddleInput(socket, gameId, { paddleUp: true, paddleDown: false, side: 'left' });
-      startMovementInterval(key, { paddleUp: true, paddleDown: false, side: 'left' });
-    } else if (LEFT_DOWN_KEYS.has(key)) { // S for left paddle down
-      console.log(chalk.cyan('▼ LEFT DOWN'));
-      sendPaddleInput(socket, gameId, { paddleUp: false, paddleDown: true, side: 'left' });
-      startMovementInterval(key, { paddleUp: false, paddleDown: true, side: 'left' });
-    }
-  }
-
-  function startMovementInterval(key, input) {
-    // If there's already an interval for the key, don't start a new one
-    if (movementIntervals[key]) return;
-
-    const intervalId = setInterval(() => {
-      if (!pressedKeys[key]) {
-        clearInterval(intervalId);
-        movementIntervals[key] = null; // Clear the interval reference
-      } else {
-        sendPaddleInput(socket, gameId, input);
-      }
-    }, movementInterval);
-
-    // Store the intervalId so it can be cleared when needed
-    movementIntervals[key] = intervalId;
-  }
-
-  function sendPaddleInput(socket, gameId, state) {
-    if (socket.readyState !== WebSocket.OPEN) return;
-  
-    const payload = {
-      type: 'input',
-      data: {
-        gameId,
-        input: {
-          paddleUp: state.paddleUp,
-          paddleDown: state.paddleDown
-        }
-      }
-    };
-  
-    // Local mode: If side exists in the input state
-    if (gameMode === 'local' && state.side) {
-      payload.data.side = state.side;
-    }
-  
-    socket.send(JSON.stringify(payload));
-  }  
-
-  return function cleanup() {
     if (process.stdin.isTTY) {
-      process.stdin.setRawMode(false);
+        process.stdin.setRawMode(true);
     }
-    process.stdin.pause();
-  };
+
+    process.stdin.resume();
+    process.stdin.setEncoding('utf8');
+
+    let pressedKeys = {};
+    let movementIntervals = {};  // Store active intervals for each key
+    let keyHoldTimeouts = {};    // Store timeouts to detect if key is held
+
+    const movementInterval = 20; // ms
+    const holdThreshold = 100;   // Time in ms to consider a key as "held" vs "tapped"
+
+    process.stdin.on('data', (key) => {
+        if (EXIT_KEYS.has(key)) { // Ctrl+C, Ctrl+D, or Escape
+        console.log(chalk.yellow('\nExiting pong-cli'));
+        socket.close();
+        process.exit(0);
+        }
+
+        if (PAUSE_KEYS.has(key)) {
+        console.log(chalk.cyan('❚❚ Pausing / Resuming game'));
+        socket.send(JSON.stringify({ type: 'pause', data: { gameId } }));
+        return;
+        }
+
+        if (key === START_KEY && !gameStarted) {
+        console.log(chalk.cyan('► Starting game'));
+        socket.send(JSON.stringify({ type: 'start', data: { gameId } }));
+        gameStarted = true;
+        return;
+        }
+
+        // Handle key press
+        handleKeyPress(key);
+    });
+
+    function handleKeyPress(key) {
+        // If this is a new key press
+        if (!pressedKeys[key]) {
+        pressedKeys[key] = true;
+        
+        // Handle inputs immediately (for responsive single taps)
+        if (gameMode === 'local') {
+            handleLocalInput(key);
+        } else {
+            handleRemoteInput(key);
+        }
+        
+        // Set a timeout to detect if the key is being held
+        keyHoldTimeouts[key] = setTimeout(() => {
+            // The key has been held long enough, start continuous movement
+            startMovementInterval(key);
+            // Clear the timeout reference
+            keyHoldTimeouts[key] = null;
+        }, holdThreshold);
+
+        // Handle key release after a delay (in case keyup event is missed)
+        setTimeout(() => {
+            if (pressedKeys[key]) {
+            // Setup listener for key release
+            const checkKeyReleased = setInterval(() => {
+                // This will run periodically to check if the key press is still registered
+                // If a key release was detected elsewhere, this will be false
+                if (!pressedKeys[key]) {
+                clearInterval(checkKeyReleased);
+                }
+            }, 100);
+            }
+        }, 50);
+        }
+    }
+
+    // Handle key release for a specific key
+    process.stdin.once('keyup', (key) => {
+        handleKeyRelease(key);
+    });
+
+    function handleKeyRelease(key) {
+        // Clear the key pressed state
+        pressedKeys[key] = false;
+
+        // Clear any pending hold detection timeout
+        if (keyHoldTimeouts[key]) {
+        clearTimeout(keyHoldTimeouts[key]);
+        keyHoldTimeouts[key] = null;
+        }
+
+        // Clear any movement interval
+        if (movementIntervals[key]) {
+        clearInterval(movementIntervals[key]);
+        movementIntervals[key] = null;
+        }
+
+        // Send paddle stop command if needed
+        sendPaddleStop(key);
+    }
+
+    function sendPaddleStop(key) {
+        let side = null;
+        if (gameMode === 'local') {
+        if (key === KEYS.UP_ARROW || key === KEYS.DOWN_ARROW) {
+            side = 'right';
+        } else if (LEFT_UP_KEYS.has(key) || LEFT_DOWN_KEYS.has(key)) {
+            side = 'left';
+        }
+        }
+
+        const payload = {
+        type: 'input',
+        data: {
+            gameId,
+            input: {
+            paddleUp: false,
+            paddleDown: false
+            }
+        }
+        };
+
+        if (side) {
+        payload.data.side = side;
+        }
+
+        socket.send(JSON.stringify(payload));
+    }
+
+    function handleRemoteInput(key) {
+        if (key === KEYS.UP_ARROW) { // Up arrow
+        console.log(chalk.cyan('▲ UP'));
+        sendPaddleInput(socket, gameId, { paddleUp: true, paddleDown: false });
+        } else if (key === KEYS.DOWN_ARROW) { // Down arrow
+        console.log(chalk.cyan('▼ DOWN'));
+        sendPaddleInput(socket, gameId, { paddleUp: false, paddleDown: true });
+        }
+    }
+
+    function handleLocalInput(key) {
+        if (key === KEYS.UP_ARROW) { // Up arrow for right paddle
+        console.log(chalk.cyan('▲ RIGHT UP'));
+        sendPaddleInput(socket, gameId, { paddleUp: true, paddleDown: false, side: 'right' });
+        } else if (key === KEYS.DOWN_ARROW) { // Down arrow for right paddle
+        console.log(chalk.cyan('▼ RIGHT DOWN'));
+        sendPaddleInput(socket, gameId, { paddleUp: false, paddleDown: true, side: 'right' });
+        } else if (LEFT_UP_KEYS.has(key)) { // W for left paddle up
+        console.log(chalk.cyan('▲ LEFT UP'));
+        sendPaddleInput(socket, gameId, { paddleUp: true, paddleDown: false, side: 'left' });
+        } else if (LEFT_DOWN_KEYS.has(key)) { // S for left paddle down
+        console.log(chalk.cyan('▼ LEFT DOWN'));
+        sendPaddleInput(socket, gameId, { paddleUp: false, paddleDown: true, side: 'left' });
+        }
+    }
+
+    function startMovementInterval(key) {
+        // If there's already an interval for the key, don't start a new one
+        if (movementIntervals[key]) return;
+
+        let input;
+        if (gameMode === 'local') {
+        if (key === KEYS.UP_ARROW) {
+            input = { paddleUp: true, paddleDown: false, side: 'right' };
+        } else if (key === KEYS.DOWN_ARROW) {
+            input = { paddleUp: false, paddleDown: true, side: 'right' };
+        } else if (LEFT_UP_KEYS.has(key)) {
+            input = { paddleUp: true, paddleDown: false, side: 'left' };
+        } else if (LEFT_DOWN_KEYS.has(key)) {
+            input = { paddleUp: false, paddleDown: true, side: 'left' };
+        }
+        } else {
+        if (key === KEYS.UP_ARROW) {
+            input = { paddleUp: true, paddleDown: false };
+        } else if (key === KEYS.DOWN_ARROW) {
+            input = { paddleUp: false, paddleDown: true };
+        }
+        }
+
+        if (!input) return; // Not a movement key
+
+        const intervalId = setInterval(() => {
+        if (!pressedKeys[key]) {
+            clearInterval(intervalId);
+            movementIntervals[key] = null; // Clear the interval reference
+        } else {
+            sendPaddleInput(socket, gameId, input);
+        }
+        }, movementInterval);
+
+        // Store the intervalId so it can be cleared when needed
+        movementIntervals[key] = intervalId;
+    }
+
+    function sendPaddleInput(socket, gameId, state) {
+        if (socket.readyState !== WebSocket.OPEN) return;
+
+        const payload = {
+        type: 'input',
+        data: {
+            gameId,
+            input: {
+            paddleUp: state.paddleUp,
+            paddleDown: state.paddleDown
+            }
+        }
+        };
+
+        // Local mode: If side exists in the input state
+        if (gameMode === 'local' && state.side) {
+        payload.data.side = state.side;
+        }
+
+        socket.send(JSON.stringify(payload));
+    }  
+
+    // Update pressedKeys state for keyup events
+    const originalStdinListener = process.stdin._events.data;
+    process.stdin.on('data', function keyupDetection(key) {
+        // This will mark keys as no longer pressed after a very short delay
+        // to simulate keyup events which aren't directly available in raw mode
+        setTimeout(() => {
+        if (pressedKeys[key]) {
+            handleKeyRelease(key);
+        }
+        }, 50); // Very short delay to allow for the normal key handler to process first
+    });
+
+    return function cleanup() {
+        if (process.stdin.isTTY) {
+        process.stdin.setRawMode(false);
+        }
+        process.stdin.pause();
+        // Clean up all intervals and timeouts
+        Object.keys(movementIntervals).forEach(key => {
+        if (movementIntervals[key]) {
+            clearInterval(movementIntervals[key]);
+        }
+        });
+        Object.keys(keyHoldTimeouts).forEach(key => {
+        if (keyHoldTimeouts[key]) {
+            clearTimeout(keyHoldTimeouts[key]);
+        }
+        });
+    };
 }
 
 async function startCli() {
