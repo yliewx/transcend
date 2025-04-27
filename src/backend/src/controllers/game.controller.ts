@@ -39,14 +39,14 @@ export function getExistingGame(request: AuthenticatedRequest, reply: FastifyRep
   const playerId = request.user.id;
   const existingGame = gameManager.getPlayerSession(playerId);
   if (!existingGame) {
-    return reply.status(404).send({
-      success: false,
+    return reply.status(200).send({
+      hasExistingGame: false,
       message: 'No existing game found.'
     });
   }
 
-  const { gameId, gameMode, isCreator } = existingGame;
-  return { success: true, gameId, gameMode, isCreator };
+  const { gameId, gameMode, state, isCreator } = existingGame;
+  return { hasExistingGame: true, gameId, gameMode, state, isCreator };
 }
 /*
 export async function startGame(request: FastifyRequest<{ Params: GameParams }>, reply: FastifyReply) {

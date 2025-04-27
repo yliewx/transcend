@@ -221,6 +221,7 @@ export class GameRoom {
     };
   }; */
   public handleInput(data: InputMessage, socket: WebSocket) {
+    console.log('[GameRoom handleInput] Full data:', JSON.stringify(data, null, 2));
     let side;
     if (this.mode === 'local') {
       // Local: Player side must be included in input message
@@ -245,7 +246,7 @@ export class GameRoom {
 
   // Local: Check if local socket is set
   // Remote: Check if both players are present
-  private roomIsFull(): boolean {
+  public roomIsFull(): boolean {
     return (
       (this.mode === 'local' && !!this.localSocket) ||
       (this.mode === 'remote' && !!this.players?.left && !!this.players?.right)
@@ -285,7 +286,7 @@ export class GameRoom {
   private scheduleCleanup(): void {
     setTimeout(() => {
       this.onCleanup(this.id);
-    }, 5 * 1000);
+    }, 1000);
   }
 
   /*---------------------------RECORD GAME RESULTS--------------------------*/
