@@ -98,7 +98,7 @@ async function websocketRoutes(server: FastifyInstance) {
       sendError(connection, 'Game not found');
       return;
     }
-    connection.send(`Connected to game ID: ${gameId}`);
+    // connection.send(`Connected to game ID: ${gameId}`);
 
     // Message handler
     connection.on('message', function onFirstMessage (msg: any) {
@@ -135,7 +135,7 @@ async function websocketRoutes(server: FastifyInstance) {
       sendError(connection, 'Game not found');
       return;
     }
-    connection.send(`Connected to game ID: ${gameId}`);
+    // connection.send(`Connected to game ID: ${gameId}`);
     const playerId = user.id;
 
     // Message handler

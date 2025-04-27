@@ -29,63 +29,121 @@ export class WebSocketManager {
 
   /*------------------------------GAME SOCKET-------------------------------*/
 
-  // Join a specific room by game ID
   public async connectGame(gameId: string, userId: number): Promise<boolean> {
-    return new Promise((resolve, reject) => {
-      this.gameId = gameId;
-      this.playerId = userId;
+    if (this.gameSocket) {
+      this.gameSocket.close();
+    }
+    this.gameId = gameId;
+    this.playerId = userId;
+    this.retryCount = 0;
+  
+    try {
       this.gameSocket = new WebSocket(`${this.baseUrl}/pong/${gameId}`);
-
-      let hasResolved = false;
-
-      this.gameSocket.onopen = () => {
-        console.log("Connected to the game room:", gameId);
-        this.retryCount = 0; // reset no. of attempts to reconnect
-        this.sendMessage('join', { gameId: this.gameId, playerId: this.playerId }); // join game
-        hasResolved = true;
-        resolve(true);
-      };
-
-      // Handle WebSocket messages for the game room
-      this.gameSocket.onmessage = (event) => {
+      await this.waitForSocketOpen(this.gameSocket);
+  
+      console.log(`Connected to the game room: ${gameId}. Waiting to join game...`);
+  
+      const joinSuccess = await this.waitForJoin(this.gameSocket);
+      if (!joinSuccess) {
+        console.warn("Join failed: game not found or other error.");
+        this.gameSocket.close();
+        throw new Error('join-failed');
+      }
+  
+      this.setupGameSocketHandlers();
+      return true;
+    } catch (err) {
+      console.error("Failed to connect or join game:", err);
+      this.gameSocket?.close();
+      throw err;
+    }
+  }  
+  
+  private waitForSocketOpen(socket: WebSocket): Promise<void> {
+    return new Promise((resolve, reject) => {
+      socket.onopen = () => resolve();
+      socket.onerror = (err) => reject(err);
+      socket.onclose = () => reject(new Error('Socket closed before opening.'));
+    });
+  }
+  
+  private waitForJoin(socket: WebSocket): Promise<boolean> {
+    return new Promise((resolve) => {
+      // Set up initial message handler: only handle player-joined
+      // Remove message handler after joining (or on error)
+      const onMessage = (event: MessageEvent) => {
         let message;
         try {
           message = JSON.parse(event.data);
         } catch (error) {
-          console.log('Non-JSON message received:', event.data);
+          console.error('Invalid JSON from server:', event.data);
+          resolve(false);
+          socket.removeEventListener('message', onMessage);
           return;
         }
+  
         const { type, data } = message;
-        this.handleGameMessages(type, data);
-      };
-  
-      this.gameSocket.onerror = (error) => {
-        console.error("WebSocket error:", error);
-        if (!hasResolved) {
-          hasResolved = true;
-          resolve(false);
+
+        switch (type) {
+          case 'error':
+            console.error('[Game Socket] Error from server:', JSON.stringify(data, null, 2));
+            socket.removeEventListener('message', onMessage);
+            resolve(false);
+            break;
+          case 'player-joined':
+            const callback = this.gameEventCallbacks.get(type);
+            if (callback) {
+              callback(data);
+            }
+            console.log('[Game Socket] Successfully joined game.');
+            socket.removeEventListener('message', onMessage);
+            resolve(true);
+            break;
+          default:
+            console.warn('[Game Socket] No handler registered for event type:', type);
+            break
         }
       };
   
-      // Handle disconnect/attempt to reconnect
-      this.gameSocket.onclose = async () => {
-        console.log("Game room connection closed.");
-        if (!hasResolved) {
-          hasResolved = true;
-          resolve(false);
-        }
-        const success = await this.reconnectGame();
-        if (!success) {
-          console.warn("Could not reconnect after multiple attempts.");
-        }
-      };
+      socket.addEventListener('message', onMessage);
+  
+      // Send join message
+      this.sendMessage('join', { gameId: this.gameId, playerId: this.playerId });
     });
+  }
+
+  // Set up actual game message handlers after joining
+  private setupGameSocketHandlers(): void {
+    if (!this.gameSocket) {
+      console.error('[Game Socket] No active socket to set handlers on.');
+      return;
+    }
+  
+    this.gameSocket.onmessage = (event: MessageEvent) => {
+      let message;
+      try {
+        message = JSON.parse(event.data);
+      } catch (error) {
+        console.error('Received invalid JSON:', event.data);
+        return;
+      }
+      this.handleGameMessages(message.type, message.data);
+    };
+  
+    this.gameSocket.onclose = () => {
+      console.warn('[Game Socket] Connection closed.');
+      this.reconnectGame();
+    };
+  
+    this.gameSocket.onerror = (err) => {
+      console.error('[Game Socket] Socket error:', err);
+    };
   }
 
   private async reconnectGame(): Promise<boolean> {
     if (this.isReconnecting) return false;
     this.isReconnecting = true;
-
+  
     if (!this.gameId || !this.playerId) {
       console.error("[Game Socket] Missing gameId or playerId.");
       this.isReconnecting = false;
@@ -95,16 +153,24 @@ export class WebSocketManager {
     while (this.retryCount < this.maxRetryCount) {
       this.retryCount++;
       const delay = 1000 * Math.pow(2, this.retryCount);
-      // console.log(`[Game Socket] Reconnecting in ${delay}ms...`);
   
-      // Delay execution of next reconnect attempt
+      console.log(`[Game Socket] Reconnecting attempt ${this.retryCount} in ${delay}ms...`);
+  
       await new Promise(res => setTimeout(res, delay));
   
-      const success = await this.connectGame(this.gameId, this.playerId);
-      if (success)
-      {
-        this.isReconnecting = false;
-        return true;
+      try {
+        const success = await this.connectGame(this.gameId, this.playerId);
+        if (success) {
+          console.log("[Game Socket] Reconnected successfully!");
+          this.isReconnecting = false;
+          return true;
+        }
+      } catch (err: any) {
+        if (err?.message === 'join-failed') {
+          console.error("[Game Socket] Cannot rejoin: Game not found.");
+          this.isReconnecting = false;
+          return false; // stop retrying if game doesn't exist
+        }
       }
     }
   
@@ -112,6 +178,90 @@ export class WebSocketManager {
     this.isReconnecting = false;
     return false;
   }  
+  
+  // Join a specific room by game ID
+  // public async connectGame(gameId: string, userId: number): Promise<boolean> {
+  //   return new Promise((resolve, reject) => {
+  //     this.gameId = gameId;
+  //     this.playerId = userId;
+  //     this.gameSocket = new WebSocket(`${this.baseUrl}/pong/${gameId}`);
+
+  //     let hasResolved = false;
+
+  //     this.gameSocket.onopen = () => {
+  //       console.log("Connected to the game room:", gameId);
+  //       this.retryCount = 0; // reset no. of attempts to reconnect
+  //       this.sendMessage('join', { gameId: this.gameId, playerId: this.playerId }); // join game
+  //       hasResolved = true;
+  //       resolve(true);
+  //     };
+
+  //     // Handle WebSocket messages for the game room
+  //     this.gameSocket.onmessage = (event) => {
+  //       let message;
+  //       try {
+  //         message = JSON.parse(event.data);
+  //       } catch (error) {
+  //         console.log('Non-JSON message received:', event.data);
+  //         return;
+  //       }
+  //       const { type, data } = message;
+  //       this.handleGameMessages(type, data);
+  //     };
+  
+  //     this.gameSocket.onerror = (error) => {
+  //       console.error("WebSocket error:", error);
+  //       if (!hasResolved) {
+  //         hasResolved = true;
+  //         resolve(false);
+  //       }
+  //     };
+  
+  //     // Handle disconnect/attempt to reconnect
+  //     this.gameSocket.onclose = async () => {
+  //       console.log("Game room connection closed.");
+  //       if (!hasResolved) {
+  //         hasResolved = true;
+  //         resolve(false);
+  //       }
+  //       const success = await this.reconnectGame();
+  //       if (!success) {
+  //         console.warn("Could not reconnect after multiple attempts.");
+  //       }
+  //     };
+  //   });
+  // }
+
+  // private async reconnectGame(): Promise<boolean> {
+  //   if (this.isReconnecting) return false;
+  //   this.isReconnecting = true;
+
+  //   if (!this.gameId || !this.playerId) {
+  //     console.error("[Game Socket] Missing gameId or playerId.");
+  //     this.isReconnecting = false;
+  //     return false;
+  //   }
+  
+  //   while (this.retryCount < this.maxRetryCount) {
+  //     this.retryCount++;
+  //     const delay = 1000 * Math.pow(2, this.retryCount);
+  //     console.log(`[Game Socket] Reconnecting in ${delay}ms...`);
+  
+  //     // Delay execution of next reconnect attempt
+  //     await new Promise(res => setTimeout(res, delay));
+  
+  //     const success = await this.connectGame(this.gameId, this.playerId);
+  //     if (success)
+  //     {
+  //       this.isReconnecting = false;
+  //       return true;
+  //     }
+  //   }
+  
+  //   console.error("[Game Socket] Max retries reached. Giving up.");
+  //   this.isReconnecting = false;
+  //   return false;
+  // }  
 
   /*--------------------------GAME MESSAGE HANDLERS-------------------------*/
 
@@ -119,6 +269,12 @@ export class WebSocketManager {
   private handleGameMessages(type: string, data: any): void {
     if (type === 'error') {
       console.error('[Game Socket] Error from server:', JSON.stringify(data, null, 2));
+      if (typeof data === 'object' && data !== null && 'message' in data) {
+        if (data.message === 'Game not found') {
+          this.isReconnecting = false;
+          this.gameSocket?.close();
+        }
+      }
       return;
     }
     if (type !== 'update') {
