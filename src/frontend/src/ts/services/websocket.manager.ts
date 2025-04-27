@@ -165,7 +165,7 @@ export class WebSocketManager {
           return true;
         }
       } catch (err: any) {
-        if (err?.message === 'join-failed') {
+        if (err?.message === 'Failed to join game' || err?.message === 'Game not found') {
           console.error("[Game Socket] Cannot rejoin: Game not found.");
           this.isReconnecting = false;
           return false; // stop retrying if game doesn't exist
