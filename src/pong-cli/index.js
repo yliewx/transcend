@@ -354,7 +354,7 @@ async function connectToGame(token, gameId) {
         } else if (message.type === 'player-joined') {
           gameMode = message.data.gameMode;
           if (message.data.ready) {
-            console.log(chalk.green('All players connected. Press S to start the game.'));
+            console.log(chalk.green('All players connected. Press Enter to start the game.'));
           } else {
             console.log(chalk.yellow('Waiting for opponent to connect...'));
           }
