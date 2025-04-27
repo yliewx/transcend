@@ -137,6 +137,7 @@ async function websocketRoutes(server: FastifyInstance) {
     }
     // connection.send(`Connected to game ID: ${gameId}`);
     const playerId = user.id;
+    console.log(`[/pong/cli] Player ID ${playerId} connected to game ID: ${gameId}`);
 
     // Message handler
     connection.on('message', (msg: string) => {
@@ -145,9 +146,12 @@ async function websocketRoutes(server: FastifyInstance) {
 
       switch (message.type) {
         case 'join':
-          const joinSuccess = gameManager.joinRoom(message.data, connection);
+          const joinSuccess = gameManager.joinRoomByCLI({ ...message.data, playerId }, connection);
           if (joinSuccess) {
             console.log('Successfully joined game via CLI');
+          } else {
+            console.error('Could not join game via CLI');
+            sendError(connection, 'Please open the game in the browser.');
           }
           break ;
         case 'input':

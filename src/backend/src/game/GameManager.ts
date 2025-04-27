@@ -21,14 +21,14 @@ export class GameManager {
   // Search for game room by game ID
   public getRoom(gameId: string): GameRoom | undefined {
     console.log(`[GameManager] Fetching game with ID: ${gameId}`);
-    console.log(`[GameManager] Current sessions: ${Array.from(this.sessions.keys())}`);
+    // console.log(`[GameManager] Current sessions: ${Array.from(this.sessions.keys())}`);
     return this.sessions.get(gameId);
   }
 
   // Search for game by player ID
   public getPlayerSession(playerId: number): { gameId: string, gameMode: string, state: GameState, isCreator: boolean } | undefined {
-    console.log(`[GameManager] Fetching game with player ID: ${playerId}`);
-    console.log(`[GameManager] Current player sessions:`);
+    console.log(`[GameManager] Fetching sessions with player ID: ${playerId}`);
+    // console.log(`[GameManager] Current player sessions:`);
     for (const [key, value] of this.activePlayers.entries()) {
       console.log(key, value);
     }
@@ -45,11 +45,15 @@ export class GameManager {
     return undefined;
   }
 
-  // // Get pong game instance directly
-  // public getGame(gameId: string): PongGame | undefined {
-  //   const room = this.getRoom(gameId);
-  //   return room ? room.game : undefined;
-  // }
+  /*------------------------------CREATE GAME-------------------------------*/
+
+  public createGame(mode: 'local' | 'remote'): string {
+    const gameId = uuidv4();
+    console.log(`[GameManager] Creating game with ID: ${gameId}`);
+    const room = new GameRoom(gameId, mode, this.deleteGame.bind(this));
+    this.sessions.set(gameId, room);
+    return gameId;
+  }
 
   /*-------------------------------JOIN GAME--------------------------------*/
 
@@ -62,18 +66,39 @@ export class GameManager {
     return false;
   }
 
-  // public joinRoomByCLI(data: { gameId: string, playerId: number }, connection: WebSocket): boolean {
+  private notifyCLISocket(room: GameRoom, cliSocket: WebSocket) {
+    if (cliSocket.readyState === WebSocket.OPEN) {
+      cliSocket.send(JSON.stringify({
+        type: 'player-joined',
+        data: {
+          message: `Joined game!`,
+          gameMode: room.getGameMode(),
+          ready: room.roomIsFull(),
+          state: room.game.getState()
+        }
+      }));
+    }
+  }
 
-  // }
-
-  /*------------------------------CREATE GAME-------------------------------*/
-
-  public createGame(mode: 'local' | 'remote'): string {
-    const gameId = uuidv4();
-    console.log(`[GameManager] Creating game with ID: ${gameId}`);
-    const room = new GameRoom(gameId, mode, this.deleteGame.bind(this));
-    this.sessions.set(gameId, room);
-    return gameId;
+  // Check whether player has already joined via web
+  public joinRoomByCLI(data: { gameId: string, playerId: number }, cliSocket: WebSocket): boolean {
+    console.log('Joining room by CLI. Player ID:', data.playerId);
+    const room = this.getRoom(data.gameId);
+    if (room) {
+      const players = room.getPlayerIds();
+      console.log('Players:', players.toString());
+      for (let existingPlayerId of players) {
+        // If player joined via web, CLI socket should only be used to forward player input
+        if (existingPlayerId === data.playerId) {
+          console.log('Found existing player ID:', existingPlayerId);
+          this.notifyCLISocket(room, cliSocket);
+          return true;
+        }
+      };
+    } else {
+      console.log('Room not found.');
+    }
+    return false;
   }
 
   /*------------------------------DESTROY GAME------------------------------*/
