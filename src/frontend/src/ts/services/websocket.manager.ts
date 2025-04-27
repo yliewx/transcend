@@ -45,15 +45,14 @@ export class WebSocketManager {
   
       const joinSuccess = await this.waitForJoin(this.gameSocket);
       if (!joinSuccess) {
-        console.warn("Join failed: game not found or other error.");
         this.gameSocket.close();
-        throw new Error('join-failed');
+        throw new Error('Failed to join game');
       }
   
       this.setupGameSocketHandlers();
       return true;
     } catch (err) {
-      console.error("Failed to connect or join game:", err);
+      console.error("[Game Socket] Error:", err);
       this.gameSocket?.close();
       throw err;
     }
