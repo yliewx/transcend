@@ -1,6 +1,15 @@
 import { BaseApiService } from "./base.api";
 import { GameState, MatchRecord } from "../types";
 
+interface ExistingGameResponse {
+  hasExistingGame: boolean,
+  gameId?: string,
+  gameMode?: 'local' | 'remote',
+  state?: GameState,
+  isCreator?: boolean,
+  message?: string
+}
+
 export class PongGameService extends BaseApiService {
   /**
    * Create a new pong game
@@ -14,8 +23,8 @@ export class PongGameService extends BaseApiService {
     );
   }
 
-  public async getExistingGame(playerId: number): Promise<{success: boolean, gameId?: string, gameMode?: 'local' | 'remote', isCreator?: boolean, message?: string}> {
-    return this.request<{success: boolean, gameId?: string, gameMode?: 'local' | 'remote', isCreator?: boolean, message?: string}>(
+  public async getExistingGame(playerId: number): Promise<ExistingGameResponse> {
+    return this.request<ExistingGameResponse>(
       '/game/restore',
       'GET',
       undefined,

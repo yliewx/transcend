@@ -26,7 +26,7 @@ export class GameManager {
   }
 
   // Search for game by player ID
-  public getPlayerSession(playerId: number): { gameId: string, gameMode: string, isCreator: boolean } | undefined {
+  public getPlayerSession(playerId: number): { gameId: string, gameMode: string, state: GameState, isCreator: boolean } | undefined {
     console.log(`[GameManager] Fetching game with player ID: ${playerId}`);
     console.log(`[GameManager] Current player sessions:`);
     for (const [key, value] of this.activePlayers.entries()) {
@@ -38,6 +38,7 @@ export class GameManager {
       return {
         gameId: room.getGameId(),
         gameMode: room.getGameMode(),
+        state: room.game.getState(),
         isCreator: room.playerIsCreator(playerId)
       };
     }
@@ -70,7 +71,7 @@ export class GameManager {
   public createGame(mode: 'local' | 'remote'): string {
     const gameId = uuidv4();
     console.log(`[GameManager] Creating game with ID: ${gameId}`);
-    const room = new GameRoom(gameId, mode, this.deleteGame);
+    const room = new GameRoom(gameId, mode, this.deleteGame.bind(this));
     this.sessions.set(gameId, room);
     return gameId;
   }
@@ -78,7 +79,7 @@ export class GameManager {
   /*------------------------------DESTROY GAME------------------------------*/
 
   public deleteGame(gameId: string): void {
-    if (this.sessions.size === 0) {
+    if (!this.sessions || this.sessions.size === 0) {
       return;
     }
     console.log(`[GameManager] Cleaning up game with ID: ${gameId}`);

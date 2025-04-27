@@ -285,7 +285,7 @@ export class GameRoom {
   private scheduleCleanup(): void {
     setTimeout(() => {
       this.onCleanup(this.id);
-    }, 5 * 1000);
+    }, 1000);
   }
 
   /*---------------------------RECORD GAME RESULTS--------------------------*/
