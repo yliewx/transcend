@@ -133,13 +133,15 @@ export class PongGamePage implements Page {
       this.isCreator = response.isCreator ?? false;
 
       if (this.gameId && this.state?.status !== 'finished') {
+        this.updateGameStatusUI('Reconnecting to previous game...');
         console.log(`Attempting to connect to previous game: ${this.gameId}. Creator: ${this.isCreator}.`);
         try {
           const success = await this.wss.connectGame(this.gameId, this.userId);
           if (success) {
             const gameIdElement = this.element?.querySelector('#game-id');
             if (gameIdElement) gameIdElement.textContent = this.gameId;
-            this.updateGameStatusUI('Reconnecting to previous game...');
+            this.updateGameStatusUI('Reconnected to game!`;');
+            this.startGameLoop();
             return true;
           }
         } catch (error) {
@@ -617,6 +619,7 @@ export class PongGamePage implements Page {
 
   /*------------------------------DESTROY GAME------------------------------*/
 
+  /*
   public destroy(): void {
     console.log("Pong game destroy method called");
 
@@ -625,11 +628,40 @@ export class PongGamePage implements Page {
     // Remove warning when leaving game screen
     window.removeEventListener('beforeunload', this.handleBeforeUnload);
 
-    this.resetGame();
+    //this.resetGame();
     
     // if (this.gameId) 
     //   this.pongService.cleanupGame(this.gameId);
   }
+  */
+
+  public destroy(): void {
+    console.log("Pong game destroy method called");
+  
+    // Remove keyboard event listeners
+    window.removeEventListener('keydown', this.keyDownHandler);
+    window.removeEventListener('keyup', this.keyUpHandler);
+    
+    // Remove beforeUnload event listener
+    window.removeEventListener('beforeunload', this.handleBeforeUnload);
+    
+    // Remove all button click event listeners
+    Object.entries(this.buttonHandlers).forEach(([id, handler]) => {
+      const button = document.getElementById(id);
+      if (button) {
+        button.removeEventListener('click', handler);
+      }
+    });
+    
+    this.buttonHandlers = {};
+    this.stopGameLoop();
+    
+    // NOT clearing element reference
+    this.element = null;
+    
+    console.log("All event listeners cleaned up, element preserved");
+  }
+
 
   private handleBeforeUnload = (event: BeforeUnloadEvent) => {
     if (this.state?.status === 'playing') {

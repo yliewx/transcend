@@ -49,21 +49,62 @@ export class Router {
   public addRoute(path: string, page: Page): void {
     this.routes.set(path, page);
   }
-  
+
+  // Helper method to convert URL path to route path
+  private getRoutePath(path: string): { routePath: string, paramId: string | null } {
+    // Check if path matches tournament pattern
+    const tournamentMatch = path.match(/^\/tournaments\/(\d+)$/);
+    if (tournamentMatch) {
+      return { 
+        routePath: '/tournaments/:id',
+        paramId: tournamentMatch[1]
+      };
+    }
+    
+    // Add other path pattern checks here if needed
+    
+    // Default case - path is the route path
+    return {
+      routePath: path,
+      paramId: null
+    };
+  }
+
+  // Helper method to destroy the current page component
+  private destroyCurrentPage(): void {
+    if (!this.currentPath) return;
+    
+    const { routePath: currentRoutePath } = this.getRoutePath(this.currentPath);
+    const currentPage = this.routes.get(currentRoutePath);
+    
+    if (currentPage && typeof currentPage.destroy === 'function') {
+      console.log(`Destroying page component for route: ${this.currentPath}`);
+      currentPage.destroy();
+    }
+}
+
   // Navigate to a specific route
   async navigateTo(path: string, pushState: boolean = true): Promise<void> {
     if (path === '/')
       path = '/home'; // Redirect root to home
 
-    // Check if path matches tournament pattern
-    let routePath = path;
-    let tournamentId: string | null = null;
+    // // Check if path matches tournament pattern
+    // let routePath = path;
+    // let tournamentId: string | null = null;
     
-    // Single pattern check for tournament route
-    const tournamentMatch = path.match(/^\/tournaments\/(\d+)$/);
-    if (tournamentMatch) {
-      routePath = '/tournaments/:id';
-      tournamentId = tournamentMatch[1];
+    // // Single pattern check for tournament route
+    // const tournamentMatch = path.match(/^\/tournaments\/(\d+)$/);
+    // if (tournamentMatch) {
+    //   routePath = '/tournaments/:id';
+    //   tournamentId = tournamentMatch[1];
+    // }
+
+    // Get route path and parameters
+    const { routePath, paramId: tournamentId } = this.getRoutePath(path);
+
+    // Destroy current page if navigating to a different path
+    if (this.currentPath && this.currentPath !== path) {
+      this.destroyCurrentPage();
     }
 
     if (path === this.currentPath) {
@@ -98,6 +139,10 @@ export class Router {
   // Redirect to login
   private async redirectToLogin(message?: string): Promise<void> {
     console.log('Redirecting to login page.', message);
+    // Destroy current page if not already on login
+    if (this.currentPath && this.currentPath !== '/login') {
+      this.destroyCurrentPage();
+    }
     // Only push state if not handling a popstate event
     if (!this.isHandlingPopState) {
       window.history.pushState({ path: '/login' }, '', '/login');
@@ -134,9 +179,9 @@ export class Router {
       // Get the rendered element from the component
       const element = await Promise.resolve(page.render());
 
-      if (routePath === '/tournaments/:id' && typeof page.destroy === 'function') {
-        page.destroy(); // This will set element to null in the page component
-      }
+      // if (routePath === '/tournaments/:id' && typeof page.destroy === 'function') {
+      //   page.destroy(); // This will set element to null in the page component
+      // }
       // Call update method if it exists
       if (typeof page.update === 'function') {
         await Promise.resolve(page.update());
