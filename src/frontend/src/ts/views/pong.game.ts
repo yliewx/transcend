@@ -86,6 +86,7 @@ export class PongGamePage implements Page {
   }
   
   private resetGame(): void {
+    console.log("resetGame() called");
     // Clear any existing game state and intervals
     this.stopGameLoop();
     // Reset game state
@@ -102,6 +103,7 @@ export class PongGamePage implements Page {
       if (gameControlsElement) gameControlsElement.classList.add('hidden');
       if (gameStatusElement) gameStatusElement.textContent = '';
       if (joinButton) joinButton.classList.remove('hidden');
+      this.hideJoinGameForm();
       this.element?.querySelector('#pong-canvas-container')?.classList.add('hidden');
       this.element?.querySelector('#mode-selection')?.classList.remove('hidden');
 
@@ -210,20 +212,33 @@ export class PongGamePage implements Page {
   }
 
   /*-----------------------------EVENT HANDLERS-----------------------------*/
-
   private cleanResetGame(): void {
     if (!window.confirm('Are you sure you want to reset the game?\n \
       Your current result will not be saved.')) {
+      console.log("User canceled reset");
       return;
     }
-
+  
     console.log(`Reset button pressed. Ending previous game`);
+    console.log(`Here - before resetGame`);
+    
+    try {
+      this.resetGame();
+      console.log(`After resetGame - should appear if resetGame completes`);
+    } catch (error) {
+      console.error(`Error in resetGame:`, error);
+    }
+    
+    console.log(`About to send message`);
+    
     this.wss.sendMessage('reset', {
       gameId: this.gameId,
       playerId: this.userId
     });
-    this.resetGame();
+    
+    console.log(`After sendMessage`);
   }
+  
 
   private setupEventHandlers(): void {
     // Remove any existing event listeners first
@@ -380,8 +395,10 @@ export class PongGamePage implements Page {
 
   // On submit or cancel button
   private hideJoinGameForm(): void {
+    console.log('hideJoinGameForm() called');
     const joinGameFormElement = this.element?.querySelector('#join-game-form');
     if (joinGameFormElement) {
+      console.log('Join game form hidden');
       joinGameFormElement.classList.add('hidden');
       
       // Clear the input field
