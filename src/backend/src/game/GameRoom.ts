@@ -24,6 +24,8 @@ export class GameRoom {
     left: Player | null;
     right: Player | null;
   } = { left: null, right: null };
+  private leftUserName: string | null = null;
+  private rightUserName: string | null = null;
 
   /*------------------------------CONSTRUCTOR-------------------------------*/
 
@@ -80,14 +82,17 @@ export class GameRoom {
   private async announceJoin(playerId: number, side: 'left' | 'right') {
     const db = await getDb();
     const user = await User.findById(db, Number(playerId));
-    
+    if (side === 'left') this.leftUserName = user.username;
+    if (side === 'right') this.rightUserName = user.username;
     this.broadcast(JSON.stringify({
       type: 'player-joined',
       data: {
         message: `Player joined side: ${side}!`,
         side: side,
         ready: this.roomIsFull(),
-        state: this.game.getState()
+        state: this.game.getState(),
+        leftUserName: this.leftUserName,
+        rightUserName: this.rightUserName
       }
     }));
   }
