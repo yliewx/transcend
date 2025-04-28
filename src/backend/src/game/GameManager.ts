@@ -47,10 +47,10 @@ export class GameManager {
 
   /*------------------------------CREATE GAME-------------------------------*/
 
-  public createGame(mode: 'local' | 'remote'): string {
+  public createGame(mode: 'local' | 'remote', isTour: boolean): string {
     const gameId = uuidv4();
     console.log(`[GameManager] Creating game with ID: ${gameId}`);
-    const room = new GameRoom(gameId, mode, this.deleteGame.bind(this));
+    const room = new GameRoom(gameId, mode, this.deleteGame.bind(this), isTour);
     this.sessions.set(gameId, room);
     return gameId;
   }
