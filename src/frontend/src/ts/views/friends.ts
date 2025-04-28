@@ -775,9 +775,9 @@ export class FriendsPage implements Page {
   }
 
   public destroy(): void {
-    this.removeDataEventListeners();
+    // this.removeDataEventListeners();
     
-    console.log('FriendsPage destroyed and event listeners removed');
+    // console.log('FriendsPage destroyed and event listeners removed');
   }
 
   // private logPendingRequests(location: string): void {
