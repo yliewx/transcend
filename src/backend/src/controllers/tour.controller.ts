@@ -190,7 +190,7 @@ export async function joinTournamentMatch(request: AuthenticatedRequest, reply: 
     
     // If match doesn't have a game yet, create one
     if (!gameId) {
-      gameId = gameManager.createGame('remote');
+      gameId = gameManager.createGame('remote', true);
       
       // Update match with game ID and status
       await Tournament.setMatchGameId(db, matchId, gameId);
@@ -234,14 +234,14 @@ async function startTournamentInternal(db: Database, tournamentId: number): Prom
     // Update tournament status
     await Tournament.updateStatus(db, tournamentId, 'active');
     
-    // Check for any participants missing aliases and generate default ones if needed
-    const participantsWithMissingAliases = await Tournament.getParticipantsWithMissingAliases(db, tournamentId);
+    // // Check for any participants missing aliases and generate default ones if needed
+    // const participantsWithMissingAliases = await Tournament.getParticipantsWithMissingAliases(db, tournamentId);
     
-    // Generate and set default aliases for participants who didn't set one
-    for (const participant of participantsWithMissingAliases) {
-      const defaultAlias = `Player_${participant.username.substring(0, 8)}`;
-      await Tournament.setParticipantAlias(db, participant.id, defaultAlias);
-    }
+    // // Generate and set default aliases for participants who didn't set one
+    // for (const participant of participantsWithMissingAliases) {
+    //   const defaultAlias = `Player_${participant.username.substring(0, 8)}`;
+    //   await Tournament.setParticipantAlias(db, participant.id, defaultAlias);
+    // }
     
     // Mark all participants as active
     await db.run(`

@@ -30,7 +30,7 @@ export async function createGame(request: FastifyRequest, reply: FastifyReply) {
     });
   }
 
-  const gameId = gameManager.createGame(mode);
+  const gameId = gameManager.createGame(mode, false);
   return { gameId, success: true };
 }
 
