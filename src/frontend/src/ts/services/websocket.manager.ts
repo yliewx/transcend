@@ -139,6 +139,26 @@ export class WebSocketManager {
     };
   }
 
+  // Only call when reset game button is pressed
+  public disconnectGame(): void {
+    if (this.gameSocket) {
+      // Prevent automatic reconnection attempts
+      this.gameSocket.onclose = () => {
+        console.log('[Game Socket] Connection closed during game reset.');
+      };
+      
+      // Close the socket
+      this.gameSocket.close();
+      this.gameSocket = null;
+    }
+    
+    // Clear game state
+    this.gameId = null;
+    this.playerId = null;
+    this.retryCount = 0;
+    this.isReconnecting = false;
+  }
+
   private async reconnectGame(): Promise<boolean> {
     if (this.isReconnecting) return false;
     this.isReconnecting = true;
