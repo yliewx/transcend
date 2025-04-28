@@ -53,7 +53,21 @@ services:
     depends_on:
       - frontend
     restart: always
-    
+  
+#-------------------------------PONG-CLI---------------------------------
+
+  pong-cli:
+    container_name: pong-cli
+    build:
+      context: ./pong-cli
+      dockerfile: Dockerfile
+    networks:
+      - ft_transcendence
+    volumes:
+      - pong_cli_data:/usr/src/app
+    depends_on:
+      - backend
+
 #--------------------------------VOLUMES---------------------------------
 
 volumes:
@@ -63,6 +77,12 @@ volumes:
     driver: local
   avatar_data:
     driver: local
+  pong_cli_data:
+    driver: local
+    driver_opts:
+      type: none
+      device: ./pong-cli
+      o: bind
 
 #--------------------------------NETWORKS--------------------------------
 
