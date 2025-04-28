@@ -14,8 +14,8 @@ interface CookieOptions {
 }
 
 export const accessCookieOptions: CookieOptions = {
-  maxAge: 15 * 60, // expires after 15min (in seconds)
-  expires: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes (in milliseconds)
+  maxAge: 2 * 60 * 60, // expires after 2 hours
+  expires: new Date(Date.now() + 2 * 60 * 60 * 1000), // 2 hours (in milliseconds)
   httpOnly: true,
   secure: true,
   sameSite: 'strict',
@@ -32,8 +32,8 @@ export const refreshCookieOptions: CookieOptions = {
 };
 
 export const cliCookieOptions: CookieOptions = {
-  maxAge: 60 * 60, // expires after 1 hour
-  expires: new Date(Date.now() + 60 * 60 * 1000), // 1 hour (in milliseconds)
+  maxAge: 2 * 60 * 60, // expires after 2 hours
+  expires: new Date(Date.now() + 2 * 60 * 60 * 1000), // 2 hours (in milliseconds)
   httpOnly: true,
   secure: true,
   sameSite: 'strict',
