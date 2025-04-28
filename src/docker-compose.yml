@@ -26,6 +26,7 @@ services:
       args:
         - BASE_API_URL=${BASE_API_URL}
         - BASE_WSS_URL=${BASE_WSS_URL}
+        - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
     environment:
       - NODE_ENV=development
     env_file:

@@ -14,8 +14,8 @@ interface CookieOptions {
 }
 
 export const accessCookieOptions: CookieOptions = {
-  maxAge: 2 * 60 * 60, // expires after 2 hours
-  expires: new Date(Date.now() + 2 * 60 * 60 * 1000), // 2 hours (in milliseconds)
+  maxAge: 60 * 60, // expires after 1 hour (in seconds)
+  expires: new Date(Date.now() + 60 * 60 * 1000), // 1 hour (in milliseconds)
   httpOnly: true,
   secure: true,
   sameSite: 'strict',
@@ -61,7 +61,7 @@ export async function createAccessToken(user: any, reply: FastifyReply) {
     username: user.username,
     email: user.email,
     token_type: 'access'
-  }, process.env.ACCESS_TOKEN_SECRET as string, { expiresIn: '15m' });
+  }, process.env.ACCESS_TOKEN_SECRET as string, { expiresIn: '1h' });
 
   return accessToken;
 }
@@ -73,7 +73,7 @@ export async function createCLIToken(user: any, reply: FastifyReply) {
     username: user.username,
     email: user.email,
     token_type: 'cli'
-  }, process.env.CLI_TOKEN_SECRET as string, { expiresIn: '60m' });
+  }, process.env.CLI_TOKEN_SECRET as string, { expiresIn: '2h' });
 
   return cliToken;
 }

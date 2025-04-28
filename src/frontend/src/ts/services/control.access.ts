@@ -1,30 +1,75 @@
 import { AuthService } from './auth.service';
-import { UserService } from './user.service';
 
 export class ControlAccess {
   private isAuthenticated: boolean = false;
   private authStateChangeListeners: ((isAuthenticated: boolean) => void)[] = [];
   private accessTokenExpiry: Date | null = null;
   private refreshTokenExpiry: Date | null = null;
-  private googleClientId: string | null = null;
+  private googleClientId: string | null = process.env.GOOGLE_CLIENT_ID ?? null;
+  private authCheckTimeoutId: number | null = null;
   
   constructor(private authService: AuthService) {
     // this.checkAuthStatus();
   }
 
-  public async setGoogleClientId(): Promise<void> {
-    const result = await this.authService.getGoogleClientId();
+  /**
+   * Starts a periodic dynamic check loop to refresh authentication status
+   */
+  public startAuthCheckLoop(): void {
+    if (this.authCheckTimeoutId !== null) {
+      return; // Already started
+    }
+    console.log('[ControlAccess] Starting auth check loop...');
+    this.scheduleNextAuthCheck();
+  }
 
-    if (result.success && result.googleClientId) {
-      this.googleClientId = result.googleClientId;
-    } else {
-      console.error("Error fetching Google Client ID:", result.error);
-      throw new Error('Error getting Google Client ID');
+  /**
+   * Stops the dynamic auth check loop
+   */
+  public stopAuthCheckLoop(): void {
+    if (this.authCheckTimeoutId !== null) {
+      console.log('[ControlAccess] Stopping auth check loop...');
+      clearTimeout(this.authCheckTimeoutId);
+      this.authCheckTimeoutId = null;
     }
   }
 
-  public getGoogleClientId(): string | null {
-    return this.googleClientId;
+  /**
+   * Schedules the next authentication check based on token expiry time
+   */
+  private scheduleNextAuthCheck(): void {
+    if (this.authCheckTimeoutId !== null) {
+      clearTimeout(this.authCheckTimeoutId);
+      this.authCheckTimeoutId = null;
+    }
+
+    const now = new Date();
+    let delayMs = 60_000; // Default: check again in 1 minute
+
+    if (this.accessTokenExpiry) {
+      const timeUntilExpiryMs = this.accessTokenExpiry.getTime() - now.getTime();
+      console.log(`[ControlAccess] Time until access token expiry: ${timeUntilExpiryMs / 1000}s`);
+
+      if (timeUntilExpiryMs > 5 * 60_000) {
+        delayMs = 2 * 60_000; // if expiry > 5min away, check in 2 min
+      } else if (timeUntilExpiryMs > 1 * 60_000) {
+        delayMs = 30_000; // if expiry > 1min away, check in 30s
+      } else if (timeUntilExpiryMs > 0) {
+        delayMs = 10_000; // if expiry < 1min away, check every 10s
+      } else {
+        delayMs = 5_000; // already expired or very close — check quickly
+      }
+    }
+
+    this.authCheckTimeoutId = window.setTimeout(async () => {
+      try {
+        await this.checkAuthStatus();
+      } catch (error) {
+        console.error('[ControlAccess] Error during periodic auth check:', error);
+      } finally {
+        this.scheduleNextAuthCheck(); // schedule next check after this one finishes
+      }
+    }, delayMs);
   }
 
   /* valid access: proceed to handleRoute
@@ -259,5 +304,9 @@ export class ControlAccess {
    */
   public getAuthService(): AuthService {
     return this.authService;
+  }
+
+  public getGoogleClientId(): string | null {
+    return this.googleClientId;
   }
 }

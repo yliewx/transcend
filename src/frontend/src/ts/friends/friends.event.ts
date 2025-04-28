@@ -1,4 +1,5 @@
 import type { FriendsPage } from '../views/friends';
+import { Notifications } from '../components/notifications';
 
 /* Event handlers for local notifications:
 - Dispatched in friend.service.ts after receiving API response */
@@ -106,5 +107,6 @@ export function onFriendRemoved(this: FriendsPage, event: CustomEvent) {
 
 // notifySuccess, notifyError
 export function onNotification(this: FriendsPage, event: CustomEvent) {
-  this.showNotification(event.detail.type, event.detail.message);
+  // this.showNotification(event.detail.type, event.detail.message);
+  Notifications.show(event.detail.type, event.detail.message);
 }

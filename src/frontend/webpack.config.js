@@ -47,6 +47,7 @@ module.exports = {
     new webpack.DefinePlugin({ // Inject necessary environment variables
       'process.env.BASE_API_URL': JSON.stringify(process.env.BASE_API_URL),
       'process.env.BASE_WSS_URL': JSON.stringify(process.env.BASE_WSS_URL),
+      'process.env.GOOGLE_CLIENT_ID': JSON.stringify(process.env.GOOGLE_CLIENT_ID),
     })
   ],
   optimization: {

@@ -1,5 +1,6 @@
 import { FriendRequestMessage } from '../types';
 import type { FriendsPage } from '../views/friends';
+import { Notifications } from '../components/notifications';
 
 /* Event handlers for external notifications:
 - Sent by server via websocket messages if user is online
@@ -38,7 +39,8 @@ export function handleFriendRequest(this: FriendsPage, data: FriendRequestMessag
   }
 
   this.updatePendingBadge();
-  this.showNotification('info', data.message);
+  Notifications.show('info', data.message);
+  // this.showNotification('info', data.message);
 }
 
 // type: 'friend-removed'
@@ -56,5 +58,6 @@ export function handleFriendRemoved(this: FriendsPage, data: { friendId: number,
     this.updateSearchUserCard(data.friendId, 'add');
   }
 
-  this.showNotification('info', data.message);
+  Notifications.show('info', data.message);
+  // this.showNotification('info', data.message);
 }
