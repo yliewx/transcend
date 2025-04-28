@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const appContainer = document.getElementById('app') as HTMLElement;
   const controlAccess = new ControlAccess(new AuthService());
   await controlAccess.checkAuthStatus(); // wait for access/refresh token status to be updated
-  await controlAccess.setGoogleClientId(); // so that google library can be loaded properly
+  controlAccess.startAuthCheckLoop(); // monitor for access token expiry
   const userService = new UserService();
   const gameStatsService = new GameStatsService(); 
   const friendService = new FriendService();

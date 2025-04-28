@@ -683,77 +683,77 @@ export class FriendsPage implements Page {
     }
   }
 
-  public showNotification(type: 'success' | 'error' | 'info', message: string): void {
-    const notification = document.createElement('div');
-    notification.className = `fixed bottom-4 right-4 p-4 rounded-md shadow-lg transition-opacity duration-500 opacity-0 max-w-md ${
-      type === 'success' ? 
-        'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100' :
-      type === 'error' ? 
-        'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100' :
-        'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100'
-    }`;
+  // public showNotification(type: 'success' | 'error' | 'info', message: string): void {
+  //   const notification = document.createElement('div');
+  //   notification.className = `fixed bottom-4 right-4 p-4 rounded-md shadow-lg transition-opacity duration-500 opacity-0 max-w-md ${
+  //     type === 'success' ? 
+  //       'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100' :
+  //     type === 'error' ? 
+  //       'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100' :
+  //       'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100'
+  //   }`;
     
-    notification.innerHTML = `
-      <div class="flex items-center">
-        <div class="flex-shrink-0">
-          ${type === 'success' ? 
-            '<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>' :
-            type === 'error' ?
-            '<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>' :
-            '<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>'
-          }
-        </div>
-        <div class="ml-3">
-          <p class="text-sm font-medium">${message}</p>
-        </div>
-        <div class="ml-auto pl-3">
-          <div class="-mx-1.5 -my-1.5">
-            <button class="notification-close inline-flex rounded-md p-1.5 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-              type === 'success' ? 'text-green-500 hover:text-green-600 focus:ring-green-400 dark:text-green-300 dark:hover:text-green-200' :
-              type === 'error' ? 'text-red-500 hover:text-red-600 focus:ring-red-400 dark:text-red-300 dark:hover:text-red-200' :
-              'text-blue-500 hover:text-blue-600 focus:ring-blue-400 dark:text-blue-300 dark:hover:text-blue-200'
-            }">
-              <span class="sr-only">Dismiss</span>
-              <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
-    `;    
+  //   notification.innerHTML = `
+  //     <div class="flex items-center">
+  //       <div class="flex-shrink-0">
+  //         ${type === 'success' ? 
+  //           '<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>' :
+  //           type === 'error' ?
+  //           '<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>' :
+  //           '<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>'
+  //         }
+  //       </div>
+  //       <div class="ml-3">
+  //         <p class="text-sm font-medium">${message}</p>
+  //       </div>
+  //       <div class="ml-auto pl-3">
+  //         <div class="-mx-1.5 -my-1.5">
+  //           <button class="notification-close inline-flex rounded-md p-1.5 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+  //             type === 'success' ? 'text-green-500 hover:text-green-600 focus:ring-green-400 dark:text-green-300 dark:hover:text-green-200' :
+  //             type === 'error' ? 'text-red-500 hover:text-red-600 focus:ring-red-400 dark:text-red-300 dark:hover:text-red-200' :
+  //             'text-blue-500 hover:text-blue-600 focus:ring-blue-400 dark:text-blue-300 dark:hover:text-blue-200'
+  //           }">
+  //             <span class="sr-only">Dismiss</span>
+  //             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+  //               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+  //             </svg>
+  //           </button>
+  //         </div>
+  //       </div>
+  //     </div>
+  //   `;    
     
-    document.body.appendChild(notification);
+  //   document.body.appendChild(notification);
     
-    // Fade in
-    setTimeout(() => {
-      notification.classList.remove('opacity-0');
-      notification.classList.add('opacity-100');
-    }, 10);
+  //   // Fade in
+  //   setTimeout(() => {
+  //     notification.classList.remove('opacity-0');
+  //     notification.classList.add('opacity-100');
+  //   }, 10);
     
-    // Add close button functionality
-    const closeBtn = notification.querySelector('.notification-close');
-    if (closeBtn) {
-      closeBtn.addEventListener('click', () => {
-        notification.classList.remove('opacity-100');
-        notification.classList.add('opacity-0');
-        setTimeout(() => {
-          notification.remove();
-        }, 500);
-      });
-    }
+  //   // Add close button functionality
+  //   const closeBtn = notification.querySelector('.notification-close');
+  //   if (closeBtn) {
+  //     closeBtn.addEventListener('click', () => {
+  //       notification.classList.remove('opacity-100');
+  //       notification.classList.add('opacity-0');
+  //       setTimeout(() => {
+  //         notification.remove();
+  //       }, 500);
+  //     });
+  //   }
     
-    // Auto dismiss after 5 seconds
-    setTimeout(() => {
-      if (document.body.contains(notification)) {
-        notification.classList.remove('opacity-100');
-        notification.classList.add('opacity-0');
-        setTimeout(() => {
-          notification.remove();
-        }, 500);
-      }
-    }, 5000);
-  }
+  //   // Auto dismiss after 5 seconds
+  //   setTimeout(() => {
+  //     if (document.body.contains(notification)) {
+  //       notification.classList.remove('opacity-100');
+  //       notification.classList.add('opacity-0');
+  //       setTimeout(() => {
+  //         notification.remove();
+  //       }, 500);
+  //     }
+  //   }, 5000);
+  // }
 
   private removeDataEventListeners(): void {
     const events = [
