@@ -157,7 +157,7 @@ function setupKeyboardInput(socket, gameId) {
     let keyHoldTimeouts = {};    // Store timeouts to detect if key is held
 
     const movementInterval = 20; // ms
-    const holdThreshold = 100;   // Time in ms to consider a key as "held" vs "tapped"
+    const holdThreshold = 20;   // Time in ms to consider a key as "held" vs "tapped"
 
     process.stdin.on('data', (key) => {
         if (EXIT_KEYS.has(key)) { // Ctrl+C, Ctrl+D, or Escape
@@ -194,11 +194,15 @@ function setupKeyboardInput(socket, gameId) {
         } else {
             handleRemoteInput(key);
         }
+
+        startMovementInterval(key);
         
         // Set a timeout to detect if the key is being held
         keyHoldTimeouts[key] = setTimeout(() => {
             // The key has been held long enough, start continuous movement
-            startMovementInterval(key);
+            if (!movementIntervals[key]) {
+              startMovementInterval(key);
+            }
             // Clear the timeout reference
             keyHoldTimeouts[key] = null;
         }, holdThreshold);
@@ -213,7 +217,7 @@ function setupKeyboardInput(socket, gameId) {
                 if (!pressedKeys[key]) {
                 clearInterval(checkKeyReleased);
                 }
-            }, 100);
+            }, 50);
             }
         }, 50);
         }

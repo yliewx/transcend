@@ -80,6 +80,7 @@ export class PongGamePage implements Page {
   /*----------------------------RESET GAME STATE----------------------------*/
 
   async update() {
+    console.log('Inside update() function');
     // When revisiting the page: Reconnect if there is an existing game
     const reconnected = await this.restoreGameSession();
     if (!reconnected) {
@@ -228,24 +229,12 @@ export class PongGamePage implements Page {
       return;
     }
   
-    console.log(`Reset button pressed. Ending previous game`);
-    console.log(`Here - before resetGame`);
-    
-    try {
-      this.resetGame();
-      console.log(`After resetGame - should appear if resetGame completes`);
-    } catch (error) {
-      console.error(`Error in resetGame:`, error);
-    }
-    
-    console.log(`About to send message`);
-    
+    this.resetGame();
     this.wss.sendMessage('reset', {
       gameId: this.gameId,
       playerId: this.userId
     });
-    
-    console.log(`After sendMessage`);
+    this.wss.disconnectGame();
   }
   
 
