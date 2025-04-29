@@ -1,20 +1,78 @@
 import { Page } from '../types';
 import { Router } from '../router';
 import { TournamentService, Tournament, TournamentMatch, TournamentParticipant } from '../services/tournament.service';
+import { 
+  handleParticipantJoined, 
+  handleTournamentStarted, 
+  handleMatchUpdated, 
+  handleTournamentCompleted 
+} from '../tournament/tournament.socket';
+import { 
+  onParticipantJoined, 
+  onTournamentStarted, 
+  onTournamentUpdated, 
+  onNotification 
+} from '../tournament/tournament.event';
 
 export class TournamentDetailPage implements Page {
   private router: Router;
   private tournamentService: TournamentService;
-  private element: HTMLElement | null = null;
-  private tournament: Tournament | null = null;
-  private matches: TournamentMatch[] = [];
-  private participants: TournamentParticipant[] = [];
-  private tournamentId: string | null = null;
+  public element: HTMLElement | null = null;
+  public tournament: Tournament | null = null;
+  public matches: TournamentMatch[] = [];
+  public participants: TournamentParticipant[] = [];
+  public tournamentId: string | null = null;
   private isRegistered: boolean = false;
+  private boundEventHandlers: {[key: string]: EventListener} = {};
   
   constructor(router: Router) {
     this.router = router;
     this.tournamentService = new TournamentService();
+    this.setupMessageHandlers();
+  }
+
+  // WebSocket notification handlers
+  private setupMessageHandlers(): void {
+    const wss = this.router.getWsManager();
+    wss.onTournamentEvent('participant-joined', handleParticipantJoined.bind(this));
+    wss.onTournamentEvent('tournament-started', handleTournamentStarted.bind(this));
+    wss.onTournamentEvent('match-updated', handleMatchUpdated.bind(this));
+    wss.onTournamentEvent('tournament-completed', handleTournamentCompleted.bind(this));
+  }
+
+  // Set up local event listeners
+  private setupDataEventListeners(): void {
+    this.removeDataEventListeners();
+    
+    // Define event handlers
+    this.boundEventHandlers = {
+      participantJoined: onParticipantJoined.bind(this) as (e: Event) => void,
+      tournamentStarted: onTournamentStarted.bind(this) as (e: Event) => void,
+      tournamentUpdated: onTournamentUpdated.bind(this) as (e: Event) => void,
+      notification: onNotification.bind(this) as (e: Event) => void
+    };
+    
+    // Register all event handlers
+    Object.entries(this.boundEventHandlers).forEach(([eventName, handler]) => {
+      document.addEventListener(eventName, handler);
+    });
+  }
+
+  private removeDataEventListeners(): void {
+    const events = [
+      'participantJoined',
+      'tournamentStarted',
+      'tournamentUpdated',
+      'notification'
+    ] as const;
+    
+    events.forEach(event => {
+      if (event in this.boundEventHandlers) {
+        document.removeEventListener(event, this.boundEventHandlers[event]);
+      }
+    });
+    
+    this.boundEventHandlers = {};
   }
 
   // Load tournament data
@@ -69,6 +127,9 @@ export class TournamentDetailPage implements Page {
     } else {
       this.renderError(container, result.error || 'Failed to load tournament details');
     }
+    
+    // Set up event listeners for local events
+    this.setupDataEventListeners();
     
     this.element = container;
     return container;
@@ -233,8 +294,36 @@ export class TournamentDetailPage implements Page {
         // If tournament started immediately, show a special notification
         if (response.tournament_started) {
           this.showNotification('Tournament has started! The bracket is now available.', 'success');
+          
+          // Dispatch local event for tournament started
+          const event = new CustomEvent('tournamentStarted', {
+            detail: { tournament: { ...this.tournament, status: 'active' } }
+          });
+          document.dispatchEvent(event);
         } else {
           this.showNotification(response.message || 'Successfully registered for tournament', 'success');
+          
+          // Get user info to add to participants
+          const userId = parseInt(sessionStorage.getItem('userId') || '0');
+          const userName = sessionStorage.getItem('username') || 'User';
+          
+          // Create a new participant object
+          const newParticipant = {
+            id: userId,
+            username: userName,
+            alias: alias,
+            elo: 1000, // Default ELO
+            status: 'active'
+          };
+          
+          // Add to participants array
+          this.participants.push(newParticipant);
+          
+          // Dispatch local event for participant joined (self)
+          const event = new CustomEvent('participantJoined', {
+            detail: { participant: newParticipant }
+          });
+          document.dispatchEvent(event);
         }
         
         // Call update immediately to refresh the UI
@@ -287,16 +376,18 @@ export class TournamentDetailPage implements Page {
     `;
   }
 
-  private showNotification(message: string, type: 'success' | 'error' = 'success'): void {
+  public showNotification(message: string, type: 'success' | 'error' | 'info' = 'success'): void {
     const notificationContainer = document.getElementById('notification-container') || this.createNotificationContainer();
     
     const notification = document.createElement('div');
-    notification.className = `notification ${type === 'error' ? 'bg-red-500' : 'bg-green-500'} text-white px-5 py-4 rounded-xl shadow-lg flex items-center justify-between transform transition-all duration-300 opacity-0 translate-y-2`;
+    notification.className = `notification ${type === 'error' ? 'bg-red-500' : type === 'success' ? 'bg-green-500' : 'bg-blue-500'} text-white px-5 py-4 rounded-xl shadow-lg flex items-center justify-between transform transition-all duration-300 opacity-0 translate-y-2`;
     
     // Icon based on type
     const icon = type === 'error' 
       ? '<svg class="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>'
-      : '<svg class="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>';
+      : type === 'success'
+      ? '<svg class="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>'
+      : '<svg class="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>';
     
     notification.innerHTML = `
       <div class="flex items-center">
@@ -334,7 +425,8 @@ export class TournamentDetailPage implements Page {
     return container;
   }
   
-  private renderContent(container: HTMLElement): void {
+  /*
+  public renderContent(container: HTMLElement): void {
     if (!this.tournament) return;
     
     container.innerHTML = `
@@ -467,6 +559,133 @@ export class TournamentDetailPage implements Page {
         return 'Cancelled';
     }
   }
+  */
+
+
+public renderContent(container: HTMLElement): void {
+  if (!this.tournament) return;
+  
+  container.innerHTML = `
+    <div class="bg-white dark:bg-gray-800 shadow-xl rounded-2xl overflow-hidden">
+      <!-- Tournament header with background pattern -->
+      <div class="bg-gradient-to-r from-pink-600 to-pink-400 text-white p-8 relative overflow-hidden">
+        <div class="absolute inset-0 overflow-hidden opacity-10">
+          <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <pattern id="smallGrid" width="20" height="20" patternUnits="userSpaceOnUse">
+                <path d="M 20 0 L 0 0 0 20" fill="none" stroke="white" stroke-width="1"/>
+              </pattern>
+              <pattern id="grid" width="80" height="80" patternUnits="userSpaceOnUse">
+                <rect width="80" height="80" fill="url(#smallGrid)"/>
+                <path d="M 80 0 L 0 0 0 80" fill="none" stroke="white" stroke-width="2"/>
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#grid)" />
+          </svg>
+        </div>
+        
+        <div class="relative flex flex-col items-center">
+          <h1 id="tournament-title" class="text-4xl font-bold text-center text-shadow-sm">${this.tournament.name}</h1>
+          <p id="tournament-description" class="mt-4 text-pink-100 text-center max-w-2xl text-lg">${this.tournament.description || 'No description available.'}</p>
+          
+          <div id="registration-button-container">
+            ${this.renderRegistrationButton()}
+          </div>
+        </div>
+      </div>
+      
+      <!-- Tournament content -->
+      <div class="p-8">
+        <div class="flex flex-col lg:flex-row gap-8">
+          <!-- Tournament bracket -->
+          <div id="tournament-bracket-container" class="lg:w-2/3">
+            <div class="flex items-center mb-6">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-pink-600 dark:text-pink-400 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+              <h2 class="text-2xl font-bold text-gray-800 dark:text-white">Tournament Bracket</h2>
+            </div>
+            ${this.renderBracket()}
+          </div>
+          
+          <!-- Participants list -->
+          <div id="tournament-players-section" class="lg:w-1/3">
+            <div class="flex items-center justify-between mb-6">
+              <div class="flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-pink-600 dark:text-pink-400 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                <h2 class="text-2xl font-bold text-gray-800 dark:text-white">Players</h2>
+              </div>
+              <span id="tournament-player-count" class="bg-pink-100 text-pink-800 text-sm font-medium px-3 py-1 rounded-full dark:bg-pink-900 dark:text-pink-200">
+                ${this.tournament.current_participants || 0} / 4
+              </span>
+            </div>
+            <div id="tournament-participants-container">
+              ${this.renderParticipants()}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Tournament rules section -->
+    <div id="tournament-rules" class="mt-8 bg-white dark:bg-gray-800 shadow-lg rounded-2xl overflow-hidden">
+      <div class="p-6">
+        <div class="flex items-center mb-6">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-pink-600 dark:text-pink-400 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <h2 class="text-2xl font-bold text-gray-800 dark:text-white">Tournament Rules</h2>
+        </div>
+        
+        <div class="grid md:grid-cols-2 gap-6">
+          <div class="bg-gray-50 dark:bg-gray-700 rounded-xl p-5 border border-gray-100 dark:border-gray-600">
+            <h3 class="font-bold text-lg mb-3 text-gray-800 dark:text-white flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-pink-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              Format
+            </h3>
+            <p class="text-gray-600 dark:text-gray-300">Single elimination bracket. Winners advance to the next round.</p>
+          </div>
+          
+          <div class="bg-gray-50 dark:bg-gray-700 rounded-xl p-5 border border-gray-100 dark:border-gray-600">
+            <h3 class="font-bold text-lg mb-3 text-gray-800 dark:text-white flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-pink-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Match Start
+            </h3>
+            <p class="text-gray-600 dark:text-gray-300">Each match begins as soon as both players join.</p>
+          </div>
+          
+          <div class="bg-gray-50 dark:bg-gray-700 rounded-xl p-5 border border-gray-100 dark:border-gray-600">
+            <h3 class="font-bold text-lg mb-3 text-gray-800 dark:text-white flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-pink-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+              Fair Play
+            </h3>
+            <p class="text-gray-600 dark:text-gray-300">Unsportsmanlike conduct will result in disqualification.</p>
+          </div>
+          
+          <div class="bg-gray-50 dark:bg-gray-700 rounded-xl p-5 border border-gray-100 dark:border-gray-600">
+            <h3 class="font-bold text-lg mb-3 text-gray-800 dark:text-white flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-pink-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+              Scoring
+            </h3>
+            <p class="text-gray-600 dark:text-gray-300">First player to 5 points wins the match.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+
   
   private renderRegistrationButton(): string {
     if (this.tournament?.status !== 'pending') {
@@ -519,10 +738,57 @@ export class TournamentDetailPage implements Page {
     }
   }
   
-  private renderBracket(): string {
+  // public renderBracket(): string {
+  //   if (this.matches.length === 0) {
+  //     return `
+  //       <div class="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl p-10 text-center">
+  //         <svg xmlns="http://www.w3.org/2000/svg" class="h-20 w-20 text-gray-400 dark:text-gray-300 mx-auto mb-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+  //           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+  //         </svg>
+  //         <h3 class="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-2">Bracket Not Available Yet</h3>
+  //         <p class="text-gray-600 dark:text-gray-300">The tournament bracket will be available once the tournament starts.</p>
+  //       </div>
+  //     `;
+  //   }
+    
+  //   // Group matches by round
+  //   const roundsMap = new Map<number, TournamentMatch[]>();
+  //   this.matches.forEach(match => {
+  //     if (!roundsMap.has(match.round)) {
+  //       roundsMap.set(match.round, []);
+  //     }
+  //     roundsMap.get(match.round)!.push(match);
+  //   });
+    
+  //   const rounds = Array.from(roundsMap.keys()).sort((a, b) => a - b);
+    
+  //   return `
+  //     <div class="tournament-bracket overflow-x-auto pb-6">
+  //       <div class="flex space-x-10">
+  //         ${rounds.map(round => `
+  //           <div class="flex-shrink-0 w-80">
+  //             <div class="bg-gradient-to-r from-pink-100 to-pink-50 dark:from-pink-900/30 dark:to-pink-900/10 rounded-lg p-4 mb-6">
+  //               <h3 class="text-lg font-semibold text-pink-700 dark:text-pink-300 flex items-center">
+  //                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+  //                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+  //                 </svg>
+  //                 ${round === 1 ? 'Semifinals' : 'Finals'}
+  //               </h3>
+  //             </div>
+  //             <div class="space-y-8">
+  //               ${roundsMap.get(round)!.map(match => this.renderMatch(match)).join('')}
+  //             </div>
+  //           </div>
+  //         `).join('')}
+  //       </div>
+  //     </div>
+  //   `;
+  // }
+
+  public renderBracket(): string {
     if (this.matches.length === 0) {
       return `
-        <div class="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl p-10 text-center">
+        <div id="tournament-bracket" class="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl p-10 text-center">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-20 w-20 text-gray-400 dark:text-gray-300 mx-auto mb-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
@@ -544,10 +810,10 @@ export class TournamentDetailPage implements Page {
     const rounds = Array.from(roundsMap.keys()).sort((a, b) => a - b);
     
     return `
-      <div class="tournament-bracket overflow-x-auto pb-6">
+      <div id="tournament-bracket" class="tournament-bracket overflow-x-auto pb-6">
         <div class="flex space-x-10">
-          ${rounds.map(round => `
-            <div class="flex-shrink-0 w-80">
+          ${rounds.map((round, roundIndex) => `
+            <div id="tournament-round-${round}" class="flex-shrink-0 w-80">
               <div class="bg-gradient-to-r from-pink-100 to-pink-50 dark:from-pink-900/30 dark:to-pink-900/10 rounded-lg p-4 mb-6">
                 <h3 class="text-lg font-semibold text-pink-700 dark:text-pink-300 flex items-center">
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -557,7 +823,11 @@ export class TournamentDetailPage implements Page {
                 </h3>
               </div>
               <div class="space-y-8">
-                ${roundsMap.get(round)!.map(match => this.renderMatch(match)).join('')}
+                ${roundsMap.get(round)!.map((match, matchIndex) => `
+                  <div id="tournament-match-${match.id}" class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-md overflow-hidden transform transition hover:shadow-lg">
+                    ${this.renderMatchContent(match)}
+                  </div>
+                `).join('')}
               </div>
             </div>
           `).join('')}
@@ -566,88 +836,170 @@ export class TournamentDetailPage implements Page {
     `;
   }
   
-  private renderMatch(match: TournamentMatch): string {
-    // Prefer aliases over usernames if available
-    const player1Name = match.player1_alias || match.player1_username || 'TBD';
-    const player2Name = match.player2_alias || match.player2_username || 'TBD';
-    
-    const player1Class = match.winner_id === match.player1_id ? 'bg-green-50 dark:bg-green-900/20 border-green-500 text-green-700 dark:text-green-300' : '';
-    const player2Class = match.winner_id === match.player2_id ? 'bg-green-50 dark:bg-green-900/20 border-green-500 text-green-700 dark:text-green-300' : '';
-    
-    const userId = parseInt(sessionStorage.getItem('userId') || '0');
-    const userInMatch = match.player1_id === userId || match.player2_id === userId;
-    const matchIsPlayable = userInMatch && (match.status === 'scheduled' || match.status === 'in_progress');
+  // Helper method to render just the match content (not the container)
+private renderMatchContent(match: TournamentMatch): string {
+  // Prefer aliases over usernames if available
+  const player1Name = match.player1_alias || match.player1_username || 'TBD';
+  const player2Name = match.player2_alias || match.player2_username || 'TBD';
+  
+  const player1Class = match.winner_id === match.player1_id ? 'bg-green-50 dark:bg-green-900/20 border-green-500 text-green-700 dark:text-green-300' : '';
+  const player2Class = match.winner_id === match.player2_id ? 'bg-green-50 dark:bg-green-900/20 border-green-500 text-green-700 dark:text-green-300' : '';
+  
+  const userId = parseInt(sessionStorage.getItem('userId') || '0');
+  const userInMatch = match.player1_id === userId || match.player2_id === userId;
+  const matchIsPlayable = userInMatch && (match.status === 'scheduled' || match.status === 'in_progress');
 
-    const statusColors = {
-      scheduled: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
-      in_progress: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
-      completed: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
-      cancelled: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
-    };
+  const statusColors = {
+    scheduled: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
+    in_progress: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+    completed: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
+    cancelled: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+  };
+  
+  const statusClass = statusColors[match.status as keyof typeof statusColors] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+  
+  return `
+    <div class="border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-700 px-4 py-3 flex justify-between items-center">
+      <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Match #${match.match_number}</span>
+      <span class="text-xs px-2 py-1 rounded-full ${statusClass} font-medium">
+        ${this.formatMatchStatus(match.status)}
+      </span>
+    </div>
     
-    const statusClass = statusColors[match.status as keyof typeof statusColors] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
-    
-    return `
-      <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-md overflow-hidden transform transition hover:shadow-lg">
-        <div class="border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-700 px-4 py-3 flex justify-between items-center">
-          <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Match #${match.match_number}</span>
-          <span class="text-xs px-2 py-1 rounded-full ${statusClass} font-medium">
-            ${this.formatMatchStatus(match.status)}
-          </span>
-        </div>
-        
-        <div class="p-5">
-          <div class="mb-4">
-            <div class="border ${player1Class} rounded-lg p-3 flex justify-between items-center dark:border-gray-700 transition-all duration-200 hover:shadow-sm">
-              <div class="flex items-center">
-                <div class="h-10 w-10 bg-gradient-to-br from-pink-500 to-pink-600 text-white rounded-full flex items-center justify-center font-medium mr-3 shadow-sm">
-                  ${player1Name.charAt(0).toUpperCase()}
-                </div>
-                <div>
-                  <span class="font-medium dark:text-white">${player1Name}</span>
-                  ${userId === match.player1_id ? '<span class="ml-2 text-xs text-pink-600 dark:text-pink-400 font-medium">You</span>' : ''}
-                </div>
-              </div>
-              ${match.winner_id === match.player1_id ? '<span class="text-green-600 dark:text-green-400 text-sm font-bold flex items-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>Winner</span>' : ''}
+    <div class="p-5">
+      <div class="mb-4">
+        <div class="border ${player1Class} rounded-lg p-3 flex justify-between items-center dark:border-gray-700 transition-all duration-200 hover:shadow-sm">
+          <div class="flex items-center">
+            <div class="h-10 w-10 bg-gradient-to-br from-pink-500 to-pink-600 text-white rounded-full flex items-center justify-center font-medium mr-3 shadow-sm">
+              ${player1Name.charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <span class="font-medium dark:text-white">${player1Name}</span>
+              ${userId === match.player1_id ? '<span class="ml-2 text-xs text-pink-600 dark:text-pink-400 font-medium">You</span>' : ''}
             </div>
           </div>
-          
-          <div class="flex justify-center items-center my-3">
-            <div class="h-px w-16 bg-gray-200 dark:bg-gray-700"></div>
-            <div class="mx-3 text-gray-500 dark:text-gray-400 font-medium text-sm">VS</div>
-            <div class="h-px w-16 bg-gray-200 dark:bg-gray-700"></div>
-          </div>
-          
-          <div>
-            <div class="border ${player2Class} rounded-lg p-3 flex justify-between items-center dark:border-gray-700 transition-all duration-200 hover:shadow-sm">
-              <div class="flex items-center">
-                <div class="h-10 w-10 bg-gradient-to-br from-pink-500 to-pink-600 text-white rounded-full flex items-center justify-center font-medium mr-3 shadow-sm">
-                  ${player2Name.charAt(0).toUpperCase()}
-                </div>
-                <div>
-                  <span class="font-medium dark:text-white">${player2Name}</span>
-                  ${userId === match.player2_id ? '<span class="ml-2 text-xs text-pink-600 dark:text-pink-400 font-medium">You</span>' : ''}
-                </div>
-              </div>
-              ${match.winner_id === match.player2_id ? '<span class="text-green-600 dark:text-green-400 text-sm font-bold flex items-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>Winner</span>' : ''}
-            </div>
-          </div>
-          
-          ${matchIsPlayable ? `
-            <div class="mt-5">
-              <button class="w-full bg-gradient-to-r from-pink-600 to-pink-500 hover:from-pink-700 hover:to-pink-600 text-white py-3 px-4 rounded-lg text-sm font-bold shadow-md transition transform hover:translate-y-0.5 join-match flex items-center justify-center" data-id="${match.id}">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                Join Match
-              </button>
-            </div>
-          ` : ''}
+          ${match.winner_id === match.player1_id ? '<span class="text-green-600 dark:text-green-400 text-sm font-bold flex items-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>Winner</span>' : ''}
         </div>
       </div>
-    `;
-  }
+      
+      <div class="flex justify-center items-center my-3">
+        <div class="h-px w-16 bg-gray-200 dark:bg-gray-700"></div>
+        <div class="mx-3 text-gray-500 dark:text-gray-400 font-medium text-sm">VS</div>
+        <div class="h-px w-16 bg-gray-200 dark:bg-gray-700"></div>
+      </div>
+      
+      <div>
+        <div class="border ${player2Class} rounded-lg p-3 flex justify-between items-center dark:border-gray-700 transition-all duration-200 hover:shadow-sm">
+          <div class="flex items-center">
+            <div class="h-10 w-10 bg-gradient-to-br from-pink-500 to-pink-600 text-white rounded-full flex items-center justify-center font-medium mr-3 shadow-sm">
+              ${player2Name.charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <span class="font-medium dark:text-white">${player2Name}</span>
+              ${userId === match.player2_id ? '<span class="ml-2 text-xs text-pink-600 dark:text-pink-400 font-medium">You</span>' : ''}
+            </div>
+          </div>
+          ${match.winner_id === match.player2_id ? '<span class="text-green-600 dark:text-green-400 text-sm font-bold flex items-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>Winner</span>' : ''}
+        </div>
+      </div>
+      
+      ${matchIsPlayable ? `
+        <div class="mt-5">
+          <button class="w-full bg-gradient-to-r from-pink-600 to-pink-500 hover:from-pink-700 hover:to-pink-600 text-white py-3 px-4 rounded-lg text-sm font-bold shadow-md transition transform hover:translate-y-0.5 join-match flex items-center justify-center" data-id="${match.id}">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Join Match
+          </button>
+        </div>
+      ` : ''}
+    </div>
+  `;
+}
+  
+  // private renderMatch(match: TournamentMatch): string {
+  //   // Prefer aliases over usernames if available
+  //   const player1Name = match.player1_alias || match.player1_username || 'TBD';
+  //   const player2Name = match.player2_alias || match.player2_username || 'TBD';
+    
+  //   const player1Class = match.winner_id === match.player1_id ? 'bg-green-50 dark:bg-green-900/20 border-green-500 text-green-700 dark:text-green-300' : '';
+  //   const player2Class = match.winner_id === match.player2_id ? 'bg-green-50 dark:bg-green-900/20 border-green-500 text-green-700 dark:text-green-300' : '';
+    
+  //   const userId = parseInt(sessionStorage.getItem('userId') || '0');
+  //   const userInMatch = match.player1_id === userId || match.player2_id === userId;
+  //   const matchIsPlayable = userInMatch && (match.status === 'scheduled' || match.status === 'in_progress');
+
+  //   const statusColors = {
+  //     scheduled: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
+  //     in_progress: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+  //     completed: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
+  //     cancelled: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+  //   };
+    
+  //   const statusClass = statusColors[match.status as keyof typeof statusColors] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+    
+  //   return `
+  //     <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-md overflow-hidden transform transition hover:shadow-lg">
+  //       <div class="border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-700 px-4 py-3 flex justify-between items-center">
+  //         <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Match #${match.match_number}</span>
+  //         <span class="text-xs px-2 py-1 rounded-full ${statusClass} font-medium">
+  //           ${this.formatMatchStatus(match.status)}
+  //         </span>
+  //       </div>
+        
+  //       <div class="p-5">
+  //         <div class="mb-4">
+  //           <div class="border ${player1Class} rounded-lg p-3 flex justify-between items-center dark:border-gray-700 transition-all duration-200 hover:shadow-sm">
+  //             <div class="flex items-center">
+  //               <div class="h-10 w-10 bg-gradient-to-br from-pink-500 to-pink-600 text-white rounded-full flex items-center justify-center font-medium mr-3 shadow-sm">
+  //                 ${player1Name.charAt(0).toUpperCase()}
+  //               </div>
+  //               <div>
+  //                 <span class="font-medium dark:text-white">${player1Name}</span>
+  //                 ${userId === match.player1_id ? '<span class="ml-2 text-xs text-pink-600 dark:text-pink-400 font-medium">You</span>' : ''}
+  //               </div>
+  //             </div>
+  //             ${match.winner_id === match.player1_id ? '<span class="text-green-600 dark:text-green-400 text-sm font-bold flex items-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>Winner</span>' : ''}
+  //           </div>
+  //         </div>
+          
+  //         <div class="flex justify-center items-center my-3">
+  //           <div class="h-px w-16 bg-gray-200 dark:bg-gray-700"></div>
+  //           <div class="mx-3 text-gray-500 dark:text-gray-400 font-medium text-sm">VS</div>
+  //           <div class="h-px w-16 bg-gray-200 dark:bg-gray-700"></div>
+  //         </div>
+          
+  //         <div>
+  //           <div class="border ${player2Class} rounded-lg p-3 flex justify-between items-center dark:border-gray-700 transition-all duration-200 hover:shadow-sm">
+  //             <div class="flex items-center">
+  //               <div class="h-10 w-10 bg-gradient-to-br from-pink-500 to-pink-600 text-white rounded-full flex items-center justify-center font-medium mr-3 shadow-sm">
+  //                 ${player2Name.charAt(0).toUpperCase()}
+  //               </div>
+  //               <div>
+  //                 <span class="font-medium dark:text-white">${player2Name}</span>
+  //                 ${userId === match.player2_id ? '<span class="ml-2 text-xs text-pink-600 dark:text-pink-400 font-medium">You</span>' : ''}
+  //               </div>
+  //             </div>
+  //             ${match.winner_id === match.player2_id ? '<span class="text-green-600 dark:text-green-400 text-sm font-bold flex items-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>Winner</span>' : ''}
+  //           </div>
+  //         </div>
+          
+  //         ${matchIsPlayable ? `
+  //           <div class="mt-5">
+  //             <button class="w-full bg-gradient-to-r from-pink-600 to-pink-500 hover:from-pink-700 hover:to-pink-600 text-white py-3 px-4 rounded-lg text-sm font-bold shadow-md transition transform hover:translate-y-0.5 join-match flex items-center justify-center" data-id="${match.id}">
+  //               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+  //                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+  //                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+  //               </svg>
+  //               Join Match
+  //             </button>
+  //           </div>
+  //         ` : ''}
+  //       </div>
+  //     </div>
+  //   `;
+  // }
   
   private formatMatchStatus(status: string): string {
     switch (status) {
@@ -664,64 +1016,127 @@ export class TournamentDetailPage implements Page {
     }
   }
   
-  private renderParticipants(): string {
-    if (this.participants.length === 0) {
-      return `
-        <div class="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl p-10 text-center">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-20 w-20 text-gray-400 dark:text-gray-300 mx-auto mb-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-          </svg>
-          <h3 class="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-2">No Players Yet</h3>
-          <p class="text-gray-600 dark:text-gray-300">Be the first to register for this tournament!</p>
-        </div>
-      `;
-    }
+  // public renderParticipants(): string {
+  //   if (this.participants.length === 0) {
+  //     return `
+  //       <div class="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl p-10 text-center">
+  //         <svg xmlns="http://www.w3.org/2000/svg" class="h-20 w-20 text-gray-400 dark:text-gray-300 mx-auto mb-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+  //           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+  //         </svg>
+  //         <h3 class="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-2">No Players Yet</h3>
+  //         <p class="text-gray-600 dark:text-gray-300">Be the first to register for this tournament!</p>
+  //       </div>
+  //     `;
+  //   }
     
-    return `
-      <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-md">
-        <ul class="divide-y divide-gray-100 dark:divide-gray-700">
-          ${this.participants.map((participant, index) => {
-            const isCurrentUser = participant.id === parseInt(sessionStorage.getItem('userId') || '0');
+  //   return `
+  //     <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-md">
+  //       <ul class="divide-y divide-gray-100 dark:divide-gray-700">
+  //         ${this.participants.map((participant, index) => {
+  //           const isCurrentUser = participant.id === parseInt(sessionStorage.getItem('userId') || '0');
             
-            return `
-              <li class="p-4 hover:bg-gray-50 dark:hover:bg-gray-700 ${isCurrentUser ? 'bg-pink-50 dark:bg-pink-900/10' : ''}">
-                <div class="flex justify-between items-center">
-                  <div class="flex items-center">
-                    <div>
-                      <div class="flex items-center">
-                        <p class="font-medium text-gray-900 dark:text-white">${participant.alias}</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="flex flex-col items-end">
-                    ${participant.status === 'winner' ? 
-                      `<span class="bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded-full mb-1 flex items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-                        </svg>
-                        Champion
-                      </span>` : ''}
-                    <div class="flex items-center space-x-2">
-                      <span class="text-sm text-gray-500 dark:text-gray-400">Rank #${index + 1}</span>
-                      <div class="bg-pink-100 text-pink-800 text-sm font-medium px-3 py-1 rounded-full">
-                        ELO: ${participant.elo || 'N/A'}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </li>
-            `;
-          }).join('')}
-        </ul>
+  //           return `
+  //             <li class="p-4 hover:bg-gray-50 dark:hover:bg-gray-700 ${isCurrentUser ? 'bg-pink-50 dark:bg-pink-900/10' : ''}">
+  //               <div class="flex justify-between items-center">
+  //                 <div class="flex items-center">
+  //                   <div>
+  //                     <div class="flex items-center">
+  //                       <p class="font-medium text-gray-900 dark:text-white">${participant.alias}</p>
+  //                     </div>
+  //                   </div>
+  //                 </div>
+  //                 <div class="flex flex-col items-end">
+  //                   ${participant.status === 'winner' ? 
+  //                     `<span class="bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded-full mb-1 flex items-center">
+  //                       <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+  //                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+  //                       </svg>
+  //                       Champion
+  //                     </span>` : ''}
+  //                   <div class="flex items-center space-x-2">
+  //                     <span class="text-sm text-gray-500 dark:text-gray-400">Rank #${index + 1}</span>
+  //                     <div class="bg-pink-100 text-pink-800 text-sm font-medium px-3 py-1 rounded-full">
+  //                       ELO: ${participant.elo || 'N/A'}
+  //                     </div>
+  //                   </div>
+  //                 </div>
+  //               </div>
+  //             </li>
+  //           `;
+  //         }).join('')}
+  //       </ul>
+  //     </div>
+  //   `;
+  // }
+
+//   setTournamentId(id: string): void {
+//     console.log('Setting tournament ID:', id);
+//     this.tournamentId = id;
+//     // Always force a full re-render when the tournament ID changes
+//     this.element = null;
+//   }
+
+public renderParticipants(): string {
+  if (this.participants.length === 0) {
+    return `
+      <div class="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl p-10 text-center">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-20 w-20 text-gray-400 dark:text-gray-300 mx-auto mb-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+        </svg>
+        <h3 class="text-xl font-semibold text-gray-700 dark:text-gray-200 mb-2">No Players Yet</h3>
+        <p class="text-gray-600 dark:text-gray-300">Be the first to register for this tournament!</p>
       </div>
     `;
   }
+  
+  return `
+    <div id="tournament-participants-list" class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-md">
+      <ul class="divide-y divide-gray-100 dark:divide-gray-700">
+        ${this.participants.map((participant, index) => {
+          const isCurrentUser = participant.id === parseInt(sessionStorage.getItem('userId') || '0');
+          
+          return `
+            <li id="participant-${participant.id}" class="p-4 hover:bg-gray-50 dark:hover:bg-gray-700 ${isCurrentUser ? 'bg-pink-50 dark:bg-pink-900/10' : ''}">
+              <div class="flex justify-between items-center">
+                <div class="flex items-center">
+                  <div>
+                    <div class="flex items-center">
+                      <p class="font-medium text-gray-900 dark:text-white">${participant.alias}</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="flex flex-col items-end">
+                  ${participant.status === 'winner' ? 
+                    `<span class="bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded-full mb-1 flex items-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                      </svg>
+                      Champion
+                    </span>` : ''}
+                  <div class="flex items-center space-x-2">
+                    <span class="text-sm text-gray-500 dark:text-gray-400">Rank #${index + 1}</span>
+                    <div class="bg-pink-100 text-pink-800 text-sm font-medium px-3 py-1 rounded-full">
+                      ELO: ${participant.elo || 'N/A'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </li>
+          `;
+        }).join('')}
+      </ul>
+    </div>
+  `;
+}
 
-  setTournamentId(id: string): void {
+ setTournamentId(id: string): void {
     console.log('Setting tournament ID:', id);
     this.tournamentId = id;
     // Always force a full re-render when the tournament ID changes
     this.element = null;
+    
+    // Set up message handlers again with new tournament ID
+    this.setupMessageHandlers();
   }
 
   async update(): Promise<void> {

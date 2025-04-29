@@ -1,6 +1,9 @@
 import { Page, GameStats, MatchHistoryItem, LeaderboardPlayer } from '../types';
 import { Router } from '../router';
 import { GameStatsService } from '../services/game.stats.service';
+import { EloHistoryItem } from '../types';
+import { Chart } from 'chart.js/auto';
+
 
 export class StatsPage implements Page {
   private router: Router;
@@ -13,7 +16,8 @@ export class StatsPage implements Page {
   private itemsPerPage: number = 10;
   private totalPages: number = 1;
   private activeTab: 'stats' | 'leaderboard' = 'stats';
-  
+  private eloHistory: EloHistoryItem[] = [];
+  private eloChart: any = null; // Will hold the Chart.js instance
   // Element caching
   private element: HTMLElement | null = null;
   
@@ -123,6 +127,36 @@ export class StatsPage implements Page {
                             <span class="mr-1 text-2xl font-bold">🔥</span>
                         </div>
                     </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Add this after the stats summary section in your render() method -->
+            <div id="elo-chart-container" class="mb-8">
+              <h2 class="text-xl font-bold mb-4 text-gray-800 dark:text-gray-200">ELO Rating History</h2>
+              <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-md">
+                <div id="elo-chart-loading" class="text-center py-10">
+                  <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-pink-500"></div>
+                  <p class="mt-2 text-gray-600 dark:text-gray-400">Loading ELO history...</p>
+                </div>
+                <div id="elo-chart-content" class="hidden">
+                  <div class="h-64">
+                    <canvas id="elo-history-chart"></canvas>
+                  </div>
+                </div>
+                <div id="elo-chart-empty" class="hidden text-center py-10">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                  <p class="text-gray-500 dark:text-gray-400 text-lg font-medium mb-2">No ELO history yet</p>
+                  <p class="text-gray-400 dark:text-gray-500 text-sm max-w-xs mx-auto">Play more games to see how your rating changes over time!</p>
+                </div>
+                <div id="elo-chart-error" class="hidden text-center py-10">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-red-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p class="text-red-500 dark:text-red-400 text-lg font-medium mb-2">Unable to load ELO history</p>
+                  <p class="text-gray-400 dark:text-gray-500 text-sm max-w-xs mx-auto">There was an error loading your ELO history data.</p>
                 </div>
               </div>
             </div>
@@ -307,6 +341,77 @@ export class StatsPage implements Page {
     }
   }
   
+  // private async loadData(): Promise<void> {
+  //   if (!this.element) return;
+    
+  //   // Get DOM elements
+  //   const loadingElement = this.element.querySelector('#stats-loading');
+  //   const statsContent = this.element.querySelector('#stats-content');
+  //   const leaderboardContent = this.element.querySelector('#leaderboard-content');
+  //   const errorElement = this.element.querySelector('#stats-error');
+    
+  //   // Show loading state
+  //   if (loadingElement) loadingElement.classList.remove('hidden');
+  //   if (statsContent) statsContent.classList.add('hidden');
+  //   if (leaderboardContent) leaderboardContent.classList.add('hidden');
+  //   if (errorElement) errorElement.classList.add('hidden');
+
+  //   const userIdStr = sessionStorage.getItem('userId');
+  //   this.userId = userIdStr ? parseInt(userIdStr, 10) : null;
+    
+  //   try {
+  //     if (!this.userId) {
+  //       throw new Error('User ID not found');
+  //     }
+      
+  //     // Load all data in parallel for better performance
+  //     const [statsResponse, historyResponse, leaderboardResponse] = await Promise.all([
+  //       this.gameStatsService.getGameStats(),
+  //       this.gameStatsService.getMatchHistory(),
+  //       this.gameStatsService.getLeaderboard()
+  //     ]);
+      
+  //     if (!statsResponse.success) {
+  //       throw new Error('Failed to fetch game stats');
+  //     }
+      
+  //     if (!historyResponse.success) {
+  //       throw new Error('Failed to fetch match history');
+  //     }
+      
+  //     this.stats = statsResponse.stats || null;
+  //     this.matchHistory = historyResponse.matchHistory || [];
+  //     this.leaderboard = leaderboardResponse.success ? leaderboardResponse.leaderboard || [] : [];
+      
+  //     // Calculate total pages
+  //     this.totalPages = Math.max(1, Math.ceil(this.matchHistory.length / this.itemsPerPage));
+      
+  //     // Render data
+  //     this.renderStats();
+  //     this.renderMatchHistory();
+  //     this.renderLeaderboard();
+      
+  //     // Hide loading, show content based on active tab
+  //     if (loadingElement) loadingElement.classList.add('hidden');
+      
+  //     if (this.activeTab === 'stats' && statsContent) {
+  //       statsContent.classList.remove('hidden');
+  //     } else if (this.activeTab === 'leaderboard' && leaderboardContent) {
+  //       leaderboardContent.classList.remove('hidden');
+  //     }
+      
+  //     // Animate stats to make them appear one by one
+  //     this.animateStatsElements();
+      
+  //   } catch (error) {
+  //     console.error('Error loading stats:', error);
+      
+  //     // Show error state
+  //     if (loadingElement) loadingElement.classList.add('hidden');
+  //     if (errorElement) errorElement.classList.remove('hidden');
+  //   }
+  // }
+
   private async loadData(): Promise<void> {
     if (!this.element) return;
     
@@ -321,7 +426,7 @@ export class StatsPage implements Page {
     if (statsContent) statsContent.classList.add('hidden');
     if (leaderboardContent) leaderboardContent.classList.add('hidden');
     if (errorElement) errorElement.classList.add('hidden');
-
+  
     const userIdStr = sessionStorage.getItem('userId');
     this.userId = userIdStr ? parseInt(userIdStr, 10) : null;
     
@@ -331,10 +436,11 @@ export class StatsPage implements Page {
       }
       
       // Load all data in parallel for better performance
-      const [statsResponse, historyResponse, leaderboardResponse] = await Promise.all([
+      const [statsResponse, historyResponse, leaderboardResponse, eloHistoryResponse] = await Promise.all([
         this.gameStatsService.getGameStats(),
         this.gameStatsService.getMatchHistory(),
-        this.gameStatsService.getLeaderboard()
+        this.gameStatsService.getLeaderboard(),
+        this.gameStatsService.getEloHistory() // Add this line
       ]);
       
       if (!statsResponse.success) {
@@ -348,6 +454,7 @@ export class StatsPage implements Page {
       this.stats = statsResponse.stats || null;
       this.matchHistory = historyResponse.matchHistory || [];
       this.leaderboard = leaderboardResponse.success ? leaderboardResponse.leaderboard || [] : [];
+      this.eloHistory = eloHistoryResponse.success ? eloHistoryResponse.eloHistory || [] : []; // Add this line
       
       // Calculate total pages
       this.totalPages = Math.max(1, Math.ceil(this.matchHistory.length / this.itemsPerPage));
@@ -356,6 +463,7 @@ export class StatsPage implements Page {
       this.renderStats();
       this.renderMatchHistory();
       this.renderLeaderboard();
+      this.renderEloChart(); // Add this line
       
       // Hide loading, show content based on active tab
       if (loadingElement) loadingElement.classList.add('hidden');
@@ -377,6 +485,7 @@ export class StatsPage implements Page {
       if (errorElement) errorElement.classList.remove('hidden');
     }
   }
+  
   
   private animateStatsElements(): void {
     if (!this.element) return;
@@ -726,6 +835,142 @@ private renderLeaderboard(): void {
         
         tableBody.appendChild(row);
       });
+    }
+  }
+
+
+  private renderEloChart(): void {
+    if (!this.element) return;
+    
+    const chartLoading = this.element.querySelector('#elo-chart-loading');
+    const chartContent = this.element.querySelector('#elo-chart-content');
+    const chartEmpty = this.element.querySelector('#elo-chart-empty');
+    const chartError = this.element.querySelector('#elo-chart-error');
+    
+    // Hide all states initially
+    if (chartLoading) chartLoading.classList.add('hidden');
+    if (chartContent) chartContent.classList.add('hidden');
+    if (chartEmpty) chartEmpty.classList.add('hidden');
+    if (chartError) chartError.classList.add('hidden');
+    
+    try {
+      // Show appropriate state based on data
+      if (this.eloHistory.length === 0) {
+        if (chartEmpty) chartEmpty.classList.remove('hidden');
+        return;
+      }
+      
+      if (chartContent) chartContent.classList.remove('hidden');
+      
+      // Destroy existing chart if it exists
+      if (this.eloChart) {
+        this.eloChart.destroy();
+      }
+      
+      // Get canvas context
+      const canvas = this.element.querySelector('#elo-history-chart') as HTMLCanvasElement;
+      if (!canvas) return;
+      
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      
+      // Prepare data for the chart
+      const dates = this.eloHistory.map(item => item.formatted_date);
+      const ratings = this.eloHistory.map(item => item.elo_rating);
+      const results = this.eloHistory.map(item => item.result);
+      
+      // Set point colors based on match result (win=green, loss=red)
+      const pointBackgroundColors = results.map(result => 
+        result === 'Win' ? 'rgba(34, 197, 94, 1)' : 'rgba(239, 68, 68, 1)'
+      );
+      
+      // Set point border colors based on match result
+      const pointBorderColors = results.map(result => 
+        result === 'Win' ? 'rgba(21, 128, 61, 1)' : 'rgba(185, 28, 28, 1)'
+      );
+      
+      // Create the chart using Chart.js
+      this.eloChart = new Chart(canvas, {
+        type: 'line',
+        data: {
+          labels: dates,
+          datasets: [{
+            label: 'ELO Rating',
+            data: ratings,
+            borderColor: 'rgb(236, 72, 153)',
+            backgroundColor: 'rgba(236, 72, 153, 0.1)',
+            borderWidth: 2,
+            tension: 0.4,
+            fill: true,
+            pointBackgroundColor: pointBackgroundColors,
+            pointBorderColor: pointBorderColors,
+            pointRadius: 5,
+            pointHoverRadius: 7
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            tooltip: {
+              callbacks: {
+                afterLabel: (context: any) => {
+                  const index = context.dataIndex;
+                  const opponent = this.eloHistory[index].opponent_name;
+                  const result = this.eloHistory[index].result;
+                  const change = this.eloHistory[index].rating_change;
+                  
+                  return [
+                    `Opponent: ${opponent}`,
+                    `Result: ${result}`,
+                    `Change: ${change > 0 ? '+' : ''}${change}`
+                  ];
+                }
+              }
+            },
+            legend: {
+              align: 'center',
+              labels: {
+                boxWidth: 0,
+                font: {
+                  family: "'Inter', sans-serif",
+                  size: 12,
+                },
+              }
+            }
+          },
+          scales: {
+            y: { 
+              beginAtZero: false,
+              grid: {
+                color: 'rgba(107, 114, 128, 0.1)'
+              },
+              ticks: {
+                font: {
+                  family: "'Inter', sans-serif",
+                  size: 11
+                }
+              }
+            },
+            x: { // This is valid in v4
+              grid: {
+                display: false
+              },
+              ticks: {
+                font: {
+                  family: "'Inter', sans-serif",
+                  size: 11
+                }
+              }
+            }
+          }
+        }
+      });
+     
+      
+    } catch (error) {
+      console.error('Error rendering ELO chart:', error);
+      if (chartError) chartError.classList.remove('hidden');
     }
   }
 }

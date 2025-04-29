@@ -117,6 +117,7 @@ export default fp(async function setupRoutes(server: FastifyInstance) {
   defineAuthRoute(server, 'get', '/api/user/match-history', GameController.getMatchHistory);
   defineAuthRoute(server, 'get', '/api/user/game-stats', GameController.getGameStats);
   defineAuthRoute(server, 'get', '/api/user/leaderboard', GameController.getLeaderboard);
+  defineAuthRoute(server, 'get', '/api/user/elo-history', GameController.getUserEloHistory);
 
   // Tournament routes
   defineAuthRoute(server, 'get', '/api/tournaments', TournamentController.getTournaments);

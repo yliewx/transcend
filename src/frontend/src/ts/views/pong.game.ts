@@ -43,6 +43,8 @@ export class PongGamePage implements Page {
     this.handleKeyUp(e);
   };
 
+  private leftUserName: string | null = null;
+  private rightUserName: string | null = null;
   /*------------------------------CONSTRUCTOR-------------------------------*/
 
   constructor(router: Router, pongService: PongGameService) {
@@ -184,7 +186,12 @@ export class PongGamePage implements Page {
 
   // Called by websocket manager on 'player-joined' message
   private handleJoinedGame(data: any): void {
+    console.log('handleJoinedGame:', data)
     if (data.state) this.state = data.state;
+    if (data.leftUserName !== null) this.leftUserName = data.leftUserName;
+    console.log('Left user name:', this.leftUserName);
+    if (data.rightUserName !== null) this.rightUserName = data.rightUserName;
+    console.log('Right user name:', this.rightUserName);
 
     this.setupGameUI();
     if (this.state?.status === 'playing') {
@@ -529,10 +536,10 @@ export class PongGamePage implements Page {
     } else if (this.state.status === 'paused') {
       statusElement.textContent= 'Game paused';
     } else if (this.state.status === 'finished') {
-      const winner = this.state.winner === 'left' ? 'Left' : 'Right';
+      const winner = this.state.winner === 'left' ? this.leftUserName : this.rightUserName;
       const winningScore = this.state.winner === 'left' ? this.state.scoreLeft : this.state.scoreRight;
       const losingScore = this.state.winner === 'left' ? this.state.scoreRight : this.state.scoreLeft;
-      statusElement.textContent= `Game over! ${winner} player wins ${winningScore}-${losingScore}!`;
+      statusElement.textContent= `Game over! ${winner} wins ${winningScore}-${losingScore}!`;
     }
   }
 
@@ -607,6 +614,13 @@ export class PongGamePage implements Page {
     this.ctx.fillStyle = '#FFFFFF';
     this.ctx.fillText(this.state.scoreLeft.toString(), this.gameWidth / 4, 50);
     this.ctx.fillText(this.state.scoreRight.toString(), (this.gameWidth / 4) * 3, 50);
+    // Draw player names
+    console.log('Drawing player names:', this.leftUserName, this.rightUserName);
+    const leftPlayerName = this.leftUserName || 'Guest';
+    const rightPlayerName = this.rightUserName || 'Guest';
+    this.ctx.font = '16px Arial';
+    this.ctx.fillText(leftPlayerName, this.gameWidth / 4, 80);
+    this.ctx.fillText(rightPlayerName, (this.gameWidth / 4) * 3, 80);
   }
 
   /*------------------------------DESTROY GAME------------------------------*/
