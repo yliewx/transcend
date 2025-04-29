@@ -1,5 +1,3 @@
-import { GameState } from "../types";
-
 export class WebSocketManager {
   private baseUrl: string;
   private onlineSocket: WebSocket | null = null;
@@ -8,6 +6,7 @@ export class WebSocketManager {
   private playerId: number | null = null;
   private gameEventCallbacks: Map<string, (data: any) => void> = new Map();
   private onUserEventCallbacks: Map<string, (data: any) => void> = new Map();
+  private onTournamentEventCallbacks: Map<string, (data: any) => void> = new Map();
   // Handle reconnection
   private retryCount: number = 0;
   private maxRetryCount: number = 5;
@@ -25,6 +24,11 @@ export class WebSocketManager {
   // Register handler functions from FriendsPage
   public onUserEvent(type: string, callback: (data: any) => void): void {
     this.onUserEventCallbacks.set(type, callback);
+  }
+
+  // Register handler functions from TournamentDetailPage
+  public onTournamentEvent(type: string, callback: (data: any) => void): void {
+    this.onTournamentEventCallbacks.set(type, callback);
   }
 
   /*------------------------------GAME SOCKET-------------------------------*/
@@ -359,12 +363,21 @@ export class WebSocketManager {
       console.log('[Online Socket] Received from server:', type, JSON.stringify(data, null, 2));
     }
 
-    const callback = this.onUserEventCallbacks.get(type);
-    if (!callback) {
-      console.warn(`Unhandled online message type: ${type}`);
+    // Handle user events (friends, etc.)
+    const userCallback = this.onUserEventCallbacks.get(type);
+    if (userCallback) {
+      userCallback(data);
       return;
     }
-    callback(data);
+  
+    // Handle tournament events
+    const tournamentCallback = this.onTournamentEventCallbacks.get(type);
+    if (tournamentCallback) {
+      tournamentCallback(data);
+      return;
+    }
+
+    console.warn(`Unhandled online message type: ${type}`);
   }
 
   /*----------------------------CLOSE CONNECTION----------------------------*/
