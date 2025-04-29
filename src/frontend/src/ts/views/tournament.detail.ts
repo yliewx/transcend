@@ -219,7 +219,7 @@ export class TournamentDetailPage implements Page {
             <button type="button" id="cancel-registration" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors">
               Cancel
             </button>
-            <button type="button" id="submit-registration" class="px-4 py-2 bg-gradient-to-r from-pink-600 to-pink-500 text-white rounded-lg hover:from-pink-700 hover:to-pink-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 shadow-lg transition-all transform hover:translate-y-0.5">
+            <button type="submit" id="submit-registration" class="px-4 py-2 bg-gradient-to-r from-pink-600 to-pink-500 text-white rounded-lg hover:from-pink-700 hover:to-pink-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 shadow-lg transition-all transform hover:translate-y-0.5">
               Register
             </button>
           </div>
@@ -248,14 +248,17 @@ export class TournamentDetailPage implements Page {
       if (target.id === 'submit-registration' || target.closest('#submit-registration')) {
         const form = document.getElementById('registration-form') as HTMLFormElement;
         if (form) {
-          const aliasInput = form.querySelector('#alias') as HTMLInputElement;
-          const alias = aliasInput?.value.trim();
-          
-          if (alias) {
-            this.registerForTournament(alias);
-            modalOverlay.classList.add('animate-fadeOut');
-            setTimeout(() => modalOverlay.remove(), 200);
-          }
+          form.addEventListener('submit', (e) => {
+            e.preventDefault(); // Prevent default form submit
+            const aliasInput = form.querySelector('#alias') as HTMLInputElement;
+            const alias = aliasInput?.value.trim();
+
+            if (alias) {
+              this.registerForTournament(alias);
+              modalOverlay.classList.add('animate-fadeOut');
+              setTimeout(() => modalOverlay.remove(), 200);
+            }
+          });
         }
         return;
       }
