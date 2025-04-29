@@ -143,9 +143,9 @@ export class ControlAccess {
       }
 
       // Set user ID in session storage if it doesn't exist
-      if (result.status.userId !== null && sessionStorage.getItem('userId') === null) {
+      // if (result.status.userId !== null && sessionStorage.getItem('userId') === null) {
         sessionStorage.setItem('userId', String(result.status.userId));
-      }      
+      // }
 
       // Set token expiry
       this.accessTokenExpiry = result.status.accessTokenExpiry ? new Date(result.status.accessTokenExpiry) : null;

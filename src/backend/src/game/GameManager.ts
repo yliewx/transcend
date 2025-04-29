@@ -2,6 +2,7 @@ import { PongGame, GameState } from './PongGame';
 import { GameRoom } from './GameRoom';
 import { WebSocket } from 'ws';
 import { v4 as uuidv4 } from 'uuid';
+import { sendError } from './ws.types';
 
 export class GameManager {
   private sessions: Map<string, GameRoom> = new Map(); // track active games
@@ -58,6 +59,13 @@ export class GameManager {
   /*-------------------------------JOIN GAME--------------------------------*/
 
   public joinRoom(data: { gameId: string, playerId: number }, connection: WebSocket): boolean {
+    // Check if player is already in another game
+    const existingGame = this.activePlayers.get(data.playerId);
+    if (existingGame && existingGame.getGameId() !== data.gameId) {
+      sendError(connection, 'Player cannot join more than one match at once');
+      return false;
+    }
+    // Join game
     const room = this.getRoom(data.gameId);
     if (room && room.handleJoin(data, connection)) {
       this.activePlayers.set(data.playerId, room);
