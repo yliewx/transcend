@@ -73,6 +73,17 @@ export interface LeaderboardPlayer {
   current_win_streak: number;
 }
 
+export interface EloHistoryItem {
+  id: number;
+  elo_rating: number;
+  previous_rating: number;
+  rating_change: number;
+  match_date: string;
+  formatted_date: string;
+  opponent_name: string;
+  result: 'Win' | 'Loss';
+}
+
 /*---------------------------------FRIENDS----------------------------------*/
 
 export interface FriendResponse {

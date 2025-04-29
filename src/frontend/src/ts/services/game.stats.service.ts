@@ -1,5 +1,5 @@
 import { BaseApiService } from "./base.api";
-import { GameStats, MatchHistoryItem } from "../types";
+import { GameStats, MatchHistoryItem, LeaderboardPlayer, EloHistoryItem } from "../types";
 
 // export class GameStatsService extends BaseApiService {
 //   /**
@@ -71,8 +71,8 @@ export class GameStatsService extends BaseApiService {
     return response;
   }
   
-  public async getLeaderboard(): Promise<{success: boolean, leaderboard?: any[], error?: string}> {
-    const response = await this.request<{success: boolean, leaderboard?: any[], error?: string}>(
+  public async getLeaderboard(): Promise<{success: boolean, leaderboard?: LeaderboardPlayer[], error?: string}> {
+    const response = await this.request<{success: boolean, leaderboard?: LeaderboardPlayer[], error?: string}>(
       `/user/leaderboard`, 
       'GET', 
       undefined, 
@@ -81,4 +81,17 @@ export class GameStatsService extends BaseApiService {
     
     return response;
   }
+
+  public async getEloHistory(): Promise<{ success: boolean; eloHistory?: EloHistoryItem[]; error?: string}> {
+    const response = await this.request<{ success: boolean; eloHistory?: EloHistoryItem[]; error?: string }>(
+      `/user/elo-history`, 
+      'GET', 
+      undefined, 
+      true
+    );
+    
+    return response;
+  }
+
+
 }

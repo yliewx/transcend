@@ -24,17 +24,20 @@ export class GameRoom {
     left: Player | null;
     right: Player | null;
   } = { left: null, right: null };
-
+  private leftUserName: string | null = null;
+  private rightUserName: string | null = null;
+  private isTour: boolean = false; // Flag to indicate if the game is part of a tournament
   /*------------------------------CONSTRUCTOR-------------------------------*/
 
   constructor(
     id: string,
     mode: 'local' | 'remote',
-    private onCleanup: (gameId: string) => void // GameManager callback: deleteGame
+    private onCleanup: (gameId: string) => void, // GameManager callback: deleteGame
+    isTour: boolean
   ) {
     this.id = id;
     this.mode = mode;
-
+    this.isTour = isTour;
     // Create game
     this.game = new PongGame(
       id,
@@ -77,9 +80,61 @@ export class GameRoom {
   }
 
   // Broadcast message when a player joins the room
+  // private async announceJoin(playerId: number, side: 'left' | 'right') {
+  //   const db = await getDb();
+  //   const user = await User.findById(db, Number(playerId));
+  //   if (side === 'left') this.leftUserName = user.username;
+  //   if (side === 'right') this.rightUserName = user.username;
+  //   this.broadcast(JSON.stringify({
+  //     type: 'player-joined',
+  //     data: {
+  //       message: `Player joined side: ${side}!`,
+  //       side: side,
+  //       ready: this.roomIsFull(),
+  //       state: this.game.getState(),
+  //       leftUserName: this.leftUserName,
+  //       rightUserName: this.rightUserName
+  //     }
+  //   }));
+  // }
+
+  // Broadcast message when a player joins the room
   private async announceJoin(playerId: number, side: 'left' | 'right') {
     const db = await getDb();
     const user = await User.findById(db, Number(playerId));
+    
+    let playerName = user.username;
+    
+    // If this is a tournament game, get the player's tournament alias instead
+    if (this.isTour) {
+      try {
+        // We need to find which tournament this game belongs to
+        // This would require knowing the tournament_id for this game
+        // Assuming we can get it from the tournament_matches table using game_id
+        const match = await db.get(
+          `SELECT tournament_id FROM tournament_matches WHERE game_id = ?`,
+          [this.id]
+        );
+        
+        if (match) {
+          const participant = await db.get(
+            `SELECT alias FROM tournament_participants 
+            WHERE tournament_id = ? AND user_id = ?`,
+            [match.tournament_id, playerId]
+          );
+          
+          if (participant && participant.alias) {
+            playerName = participant.alias;
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching tournament alias:", error);
+        // Fall back to username if there's an error
+      }
+    }
+    
+    if (side === 'left') this.leftUserName = playerName;
+    if (side === 'right') this.rightUserName = playerName;
     
     this.broadcast(JSON.stringify({
       type: 'player-joined',
@@ -87,7 +142,9 @@ export class GameRoom {
         message: `Player joined side: ${side}!`,
         side: side,
         ready: this.roomIsFull(),
-        state: this.game.getState()
+        state: this.game.getState(),
+        leftUserName: this.leftUserName,
+        rightUserName: this.rightUserName
       }
     }));
   }
