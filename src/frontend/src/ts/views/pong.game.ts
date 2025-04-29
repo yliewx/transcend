@@ -4,6 +4,7 @@ import { GameState } from '../types';
 import { PongGameService } from '../services/pong.game.service';
 import { WebSocketManager } from '../services/websocket.manager';
 import { PongViewComponents } from '../components/pong.components';
+import { Notifications } from '../components/notifications';
 
 export class PongGamePage implements Page {
   private router: Router;
@@ -365,6 +366,7 @@ export class PongGamePage implements Page {
       await this.wss.connectGame(this.gameId, this.userId!);
     } catch (error) {
       console.warn('Failed to connect to game room.');
+      Notifications.show('error', 'Failed to join game');
     }
   }
   
@@ -418,6 +420,7 @@ export class PongGamePage implements Page {
       await this.wss.connectGame(this.gameId, this.userId!);
     } catch (error) {
       console.warn('Failed to connect to game room.');
+      Notifications.show('error', 'Failed to join game');
     }
     // handleJoinedGame() when the server responds
   }
@@ -644,6 +647,7 @@ export class PongGamePage implements Page {
     
     this.buttonHandlers = {};
     this.stopGameLoop();
+    this.wss.disconnectGame();
     
     // NOT clearing element reference
     this.element = null;

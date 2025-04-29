@@ -218,10 +218,8 @@ export class TournamentPage implements Page {
         // Remove the message after 5 seconds
         setTimeout(() => {
           successMessage.remove();
+          this.loadData();
         }, 5000);
-        
-        // Reload data
-        this.loadData();
       } else {
         alert(data.error || 'Failed to create tournament');
       }

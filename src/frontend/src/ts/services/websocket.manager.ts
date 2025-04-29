@@ -154,7 +154,6 @@ export class WebSocketManager {
     
     // Clear game state
     this.gameId = null;
-    this.playerId = null;
     this.retryCount = 0;
     this.isReconnecting = false;
   }
@@ -369,7 +368,8 @@ export class WebSocketManager {
   /* notified by server when:
   - friend goes online/offline
   - friend request status changes: received/cancelled, accepted/rejected
-  - friend removed */
+  - friend removed
+  - tournament started */
   private handleMessages(type: string, data: any): void {
     if (type === 'error') {
       console.error('[Online Socket] Error from server:', JSON.stringify(data, null, 2));
