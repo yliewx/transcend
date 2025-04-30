@@ -5,9 +5,9 @@ import { TournamentService, Tournament } from '../services/tournament.service';
 export class TournamentPage implements Page {
   private router: Router;
   private tournamentService: TournamentService;
-  private element: HTMLElement | null = null;
-  private allTournaments: Tournament[] = [];
-  private userTournaments: Tournament[] = [];
+  public element: HTMLElement | null = null;
+  public allTournaments: Tournament[] = [];
+  public userTournaments: Tournament[] = [];
   private activeTab: 'all' | 'my' | 'admin' = 'all';
 
   constructor(router: Router) {
@@ -273,7 +273,7 @@ export class TournamentPage implements Page {
     `;
   }
 
-  private renderAllTournamentsContent(): string {
+  public renderAllTournamentsContent(): string {
     return `
       <div class="dark:bg-gray-900 shadow-md rounded-lg p-8">
         <div class="flex items-center justify-between mb-6">
@@ -285,7 +285,7 @@ export class TournamentPage implements Page {
     `;
   }
 
-  private renderMyTournamentsContent(): string {
+  public renderMyTournamentsContent(): string {
     return `
       <div class="dark:bg-gray-900 shadow-md rounded-lg p-8">
         <div class="flex items-center justify-between mb-6">
