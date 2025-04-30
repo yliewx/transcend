@@ -35,15 +35,15 @@ export class LoginPage implements Page {
             <div class="text-center">
               <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Log in to your account</h1>
               <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                Or <a href="/register" class="nav-link font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300">create a new account</a>
+                Or <a href="/register" class="nav-link font-medium text-pink-600 hover:text-pink-500 dark:text-pink-400 dark:hover:text-pink-300">create a new account</a>
               </p>
             </div>
             
             <form id="login-form" class="mt-8 space-y-6">
-              <div id="login-message" class="rounded-md bg-blue-50 dark:bg-blue-800 p-4 hidden">
+              <div id="login-message" class="rounded-md bg-pink-50 dark:bg-pink-800 p-4 hidden">
                 <div class="flex">
                   <div class="ml-3">
-                    <h1 class="text-2xl font-bold text-blue-800 dark:text-blue-200 text-center">Welcome to transcendence!</h1>
+                    <h1 class="text-2xl font-bold text-pink-800 dark:text-pink-200 text-center">Welcome to transcendence!</h1>
                   </div>
                 </div>
               </div>
@@ -52,13 +52,13 @@ export class LoginPage implements Page {
                 <div>
                   <label for="username" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Username</label>
                   <input id="username" name="username" type="text" 
-                        class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800 dark:text-white">
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500 dark:bg-gray-800 dark:text-white">
                 </div>
                 
                 <div>
                   <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Password</label>
                   <input id="password" name="password" type="password" 
-                        class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800 dark:text-white">
+                        class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500 dark:bg-gray-800 dark:text-white">
                 </div>
               </div>
               
@@ -66,7 +66,7 @@ export class LoginPage implements Page {
               
               <div>
                 <button type="button" id="login-button"
-                      class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:bg-indigo-700 dark:hover:bg-indigo-600">
+                      class="w-full card-button">
                   Log in
                 </button>
               </div>
@@ -81,7 +81,7 @@ export class LoginPage implements Page {
                   </div>
                 </div>
                 
-                <div id="g_id_div" class="mt-6 flex justify-center"></div
+                <div id="g_id_div" class="mt-6 flex justify-center"></div>
               </div>
             </form>
           </div>
