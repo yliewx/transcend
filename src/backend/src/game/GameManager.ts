@@ -3,6 +3,7 @@ import { GameRoom } from './GameRoom';
 import { WebSocket } from 'ws';
 import { v4 as uuidv4 } from 'uuid';
 import { sendError } from './ws.types';
+import chalk from 'chalk';
 
 export class GameManager {
   private sessions: Map<string, GameRoom> = new Map(); // track active games
@@ -21,18 +22,18 @@ export class GameManager {
 
   // Search for game room by game ID
   public getRoom(gameId: string): GameRoom | undefined {
-    console.log(`[GameManager] Fetching game with ID: ${gameId}`);
-    // console.log(`[GameManager] Current sessions: ${Array.from(this.sessions.keys())}`);
+    console.log(chalk.cyan.bold('\n[GameManager] Fetching game...'));
+    console.log(chalk.cyan(`→ Game ID: ${chalk.whiteBright(gameId)}`));
+    this.printSessions();
+
     return this.sessions.get(gameId);
   }
 
   // Search for game by player ID
-  public getPlayerSession(playerId: number): { gameId: string, gameMode: string, state: GameState, isCreator: boolean } | undefined {
-    console.log(`[GameManager] Fetching sessions with player ID: ${playerId}`);
-    // console.log(`[GameManager] Current player sessions:`);
-    for (const [key, value] of this.activePlayers.entries()) {
-      console.log(key, value);
-    }
+  public getPlayerSession(playerId: number): { gameId: string, gameMode: string, state: GameState, isCreator: boolean, isTourMatch: boolean } | undefined {
+    console.log(chalk.magenta.bold('\n[GameManager] Fetching sessions for player...'));
+    console.log(chalk.magenta(`→ Player ID: ${chalk.whiteBright(playerId)}`));
+    this.printActivePlayers();
     
     const room = this.activePlayers.get(playerId);
     if (room) {
@@ -40,7 +41,8 @@ export class GameManager {
         gameId: room.getGameId(),
         gameMode: room.getGameMode(),
         state: room.game.getState(),
-        isCreator: room.playerIsCreator(playerId)
+        isCreator: room.playerIsCreator(playerId),
+        isTourMatch: room.isTourMatch()
       };
     }
     return undefined;
@@ -50,7 +52,7 @@ export class GameManager {
 
   public createGame(mode: 'local' | 'remote', isTour: boolean): string {
     const gameId = uuidv4();
-    console.log(`[GameManager] Creating game with ID: ${gameId}`);
+    console.log(chalk.cyan.bold('\n[GameManager] Creating game with ID: ') + chalk.cyan(gameId));
     const room = new GameRoom(gameId, mode, this.deleteGame.bind(this), isTour);
     this.sessions.set(gameId, room);
     return gameId;
@@ -62,6 +64,7 @@ export class GameManager {
     // Check if player is already in another game
     const existingGame = this.activePlayers.get(data.playerId);
     if (existingGame && existingGame.getGameId() !== data.gameId) {
+      console.error('Player is already in a game');
       sendError(connection, 'Player cannot join more than one match at once');
       return false;
     }
@@ -141,6 +144,33 @@ export class GameManager {
         this.sessions.delete(gameId);
       }
     });
+  }
+
+  /*-------------------------------PRINT LOGS-------------------------------*/
+
+  private printSessions(): void {
+    console.log(chalk.cyan(`→ No. of active sessions: ${chalk.whiteBright(this.sessions.size)}\n`));
+
+    for (const [key, value] of this.sessions.entries()) {
+      console.log(chalk.blue.bold(`• Game Session:`));
+      console.log(chalk.blue(`  - Game ID           : `) + chalk.whiteBright(`[${key}]`));
+      console.log(chalk.blue(`  - Mode              : `) + chalk.whiteBright(value.getGameMode()));
+      console.log(chalk.blue(`  - Tournament Match? : `) + chalk.whiteBright(value.isTourMatch().toString()));
+      console.log();
+    }
+  }
+
+  private printActivePlayers(): void {
+    console.log(chalk.magenta(`→ No. of active players: ${chalk.whiteBright(this.activePlayers.size)}\n`));
+
+    for (const [key, value] of this.activePlayers.entries()) {
+      console.log(chalk.yellow.bold(`• Active Player:`));
+      console.log(chalk.yellow(`  - Player ID         : `) + chalk.whiteBright(`[${key}]`));
+      console.log(chalk.yellow(`  - Game ID           : `) + chalk.whiteBright(value.getGameId()));
+      console.log(chalk.yellow(`  - Mode              : `) + chalk.whiteBright(value.getGameMode()));
+      console.log(chalk.yellow(`  - Tournament Match? : `) + chalk.whiteBright(value.isTourMatch().toString()));
+      console.log();
+    }
   }
 }
 

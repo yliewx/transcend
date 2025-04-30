@@ -1,5 +1,6 @@
 import type { TournamentDetailPage } from '../views/tournament.detail';
 import { TournamentParticipant, Tournament, TournamentMatch } from '../services/tournament.service';
+import { TournamentPage } from '../views/tournaments';
 
 /* Event handlers for external notifications:
 - Sent by server via websocket messages when tournament events occur */
@@ -12,6 +13,17 @@ export function handleParticipantJoined(this: TournamentDetailPage, data: {
   console.log("handleParticipantJoined called", data);
   this.update();
   this.showNotification(`${data.participant.alias} has joined the tournament!`, 'info');
+}
+
+export function handleTournamentCreated(this: TournamentPage, data: {
+  tournamentId: number,
+  tournament: Tournament,
+  message: string
+}) {
+  console.log('handleTournamentCreated called');
+  if (this.activeTab === 'all') {
+    this.update();
+  }
 }
 
 // type: 'tournament-started'

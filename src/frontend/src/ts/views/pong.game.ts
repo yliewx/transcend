@@ -25,6 +25,7 @@ export class PongGamePage implements Page {
   private gameId: string | null = null;
   private userId: number | null = null;
   private isCreator: boolean = false;
+  private isTourMatch: boolean = false;
   private state: GameState | null = null;
   private gameLoopId: number | null = null;
   private buttonHandlers: Record<string, EventListener> = {};
@@ -104,11 +105,13 @@ export class PongGamePage implements Page {
       const gameControlsElement = this.element.querySelector('#game-controls');
       const gameStatusElement = this.element.querySelector('#game-status');
       const joinButton = this.element?.querySelector('#join-game-btn');
+      const resetButton = this.element?.querySelector('#reset-game-btn');
       
       if (gameIdElement) gameIdElement.textContent = '-';
       if (gameControlsElement) gameControlsElement.classList.add('hidden');
       if (gameStatusElement) gameStatusElement.textContent = '';
       if (joinButton) joinButton.classList.remove('hidden');
+      if (resetButton) resetButton.classList.remove('hidden');
       this.hideJoinGameForm();
       this.element?.querySelector('#pong-canvas-container')?.classList.add('hidden');
       this.element?.querySelector('#mode-selection')?.classList.remove('hidden');
@@ -138,6 +141,7 @@ export class PongGamePage implements Page {
       this.gameMode = response.gameMode ?? 'local';
       this.state = response.state ?? null;
       this.isCreator = response.isCreator ?? false;
+      this.isTourMatch = response.isTourMatch ?? false;
 
       if (this.gameId && this.state?.status !== 'finished') {
         this.updateGameStatusUI('Reconnecting to previous game...');
@@ -147,7 +151,7 @@ export class PongGamePage implements Page {
           if (success) {
             const gameIdElement = this.element?.querySelector('#game-id');
             if (gameIdElement) gameIdElement.textContent = this.gameId;
-            this.updateGameStatusUI('Reconnected to game!`;');
+            this.updateGameStatusUI('Reconnected to game!');
             this.startGameLoop();
             return true;
           }
@@ -184,7 +188,10 @@ export class PongGamePage implements Page {
     this.element?.querySelector('#game-controls')?.classList.remove('hidden');
     this.element?.querySelector('#pong-canvas-container')?.classList.remove('hidden');
     this.element?.querySelector('#mode-selection')?.classList.add('hidden');
-    this.element?.querySelector('#reset-game-btn')?.classList.remove('hidden');
+    // Only show reset button if it isn't a tournament match
+    if (this.isTourMatch) {
+      this.element?.querySelector('#reset-game-btn')?.classList.add('hidden');
+    }
   }
 
   // Called by websocket manager on 'player-joined' message
@@ -448,11 +455,6 @@ export class PongGamePage implements Page {
       return;
     }
 
-    if (!this.isCreator) {
-      console.log('Cannot start game: Player who created the game must start!');
-      return ;
-    }
-
     // Notify server to start game
     console.log(`Messaging server to start game ID: ${this.gameId}`);
     this.wss.sendMessage('start', {
@@ -542,7 +544,11 @@ export class PongGamePage implements Page {
       const winner = this.state.winner === 'left' ? this.leftUserName : this.rightUserName;
       const winningScore = this.state.winner === 'left' ? this.state.scoreLeft : this.state.scoreRight;
       const losingScore = this.state.winner === 'left' ? this.state.scoreRight : this.state.scoreLeft;
-      statusElement.textContent= `Game over! ${winner} wins ${winningScore}-${losingScore}!`;
+      if (winningScore === 5) {
+        statusElement.textContent= `Game over! ${winner} wins ${winningScore}-${losingScore}!`;
+      } else {
+        statusElement.textContent= `Game over! Match was reset. Final score: ${this.state.scoreLeft}-${this.state.scoreRight}`;
+      }
     }
   }
 
@@ -627,22 +633,6 @@ export class PongGamePage implements Page {
   }
 
   /*------------------------------DESTROY GAME------------------------------*/
-
-  /*
-  public destroy(): void {
-    console.log("Pong game destroy method called");
-
-    window.removeEventListener('keydown', this.keyDownHandler);
-    window.removeEventListener('keyup', this.keyUpHandler);
-    // Remove warning when leaving game screen
-    window.removeEventListener('beforeunload', this.handleBeforeUnload);
-
-    //this.resetGame();
-    
-    // if (this.gameId) 
-    //   this.pongService.cleanupGame(this.gameId);
-  }
-  */
 
   public destroy(): void {
     console.log("Pong game destroy method called");

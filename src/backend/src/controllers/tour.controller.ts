@@ -55,6 +55,25 @@ export async function getTournamentDetails(request: AuthenticatedRequest, reply:
   }
 }
 
+// notify users when tournament updates
+/*   tournamentId: number,
+  eventType: string,
+  eventData: any, */
+async function notifyOnlineUsers(eventType: string, eventData: {
+  tournamentId: number,
+  tournament: any,
+  message: string
+}) {
+  for (const [id, socket] of onlineUsers.entries()) {
+    if (socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({
+        type: eventType,
+        data: eventData
+      }));
+    }
+  }
+}
+
 //update available tournament and registered tournament
 export async function registerForTournament(request: AuthenticatedRequest, reply: FastifyReply): Promise<FastifyReply> {
   if (!request.params.id) {
@@ -253,6 +272,13 @@ export async function createTournament(request: AuthenticatedRequest, reply: Fas
   
   try {
     const result = await Tournament.create(db, { name, description });
+    if (result) {
+      notifyOnlineUsers('tournament-created', {
+        tournamentId: result.lastID!,
+        tournament: result,
+        message: 'A new tournament was created'
+      });
+    }
     
     return reply.send({ 
       success: true, 
