@@ -28,7 +28,7 @@ export function onTournamentStarted(this: TournamentDetailPage, event: CustomEve
   this.update();
   
   // Show notification
-  this.showNotification('Tournament has started! The bracket is now available.', 'success');
+  //this.showNotification('Tournament has started! The bracket is now available.', 'success');
 }
 
 

@@ -67,14 +67,18 @@ export function handleMatchUpdated(this: TournamentDetailPage, data: {
   }
 
   // Re-render the bracket
+  // if (this.element) {
+  //   // Find the tournament bracket container
+  //   const bracketContainer = this.element.querySelector('.tournament-bracket');
+  //   if (bracketContainer) {
+  //     // We could implement a more targeted update here if needed
+  //     this.renderBracket();
+  //   }
+  // }
   if (this.element) {
-    // Find the tournament bracket container
-    const bracketContainer = this.element.querySelector('.tournament-bracket');
-    if (bracketContainer) {
-      // We could implement a more targeted update here if needed
-      this.renderBracket();
-    }
+    this.renderContent(this.element);
   }
+
 
   // Show notification
   this.showNotification(data.message || 'Match status has been updated', 'info');

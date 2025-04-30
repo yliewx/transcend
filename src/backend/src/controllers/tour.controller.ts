@@ -225,7 +225,7 @@ export async function joinTournamentMatch(request: AuthenticatedRequest, reply: 
     // If match doesn't have a game yet, create one
     if (!gameId) {
       gameId = gameManager.createGame('remote', true);
-      
+      console.log('Created new game:', gameId);
       // Update match with game ID and status
       await Tournament.setMatchGameId(db, matchId, gameId);
       
@@ -297,15 +297,15 @@ async function notifyTournamentParticipants(
   }
 }
 
-// Notification helper for match updates
 async function notifyMatchUpdate(db: Database, tournamentId: number, matchId: number): Promise<void> {
   try {
+    console.log('Notifying match update:', tournamentId, matchId);
     // Get updated match data
     const match = await db.get(`
       SELECT 
         tm.*,
-        p1.alias as player1_alias,
-        p2.alias as player2_alias,
+        tp1.alias as player1_alias,
+        tp2.alias as player2_alias,
         u1.username as player1_username,
         u2.username as player2_username
       FROM tournament_matches tm
