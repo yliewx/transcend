@@ -35,11 +35,12 @@ export class WebSocketManager {
 
   public async connectGame(gameId: string, userId: number): Promise<boolean> {
     if (this.gameSocket) {
-      this.gameSocket.close();
+      this.disconnectGame();
     }
     this.gameId = gameId;
     this.playerId = userId;
     this.retryCount = 0;
+    console.log('[WSManager] userId:', userId);
   
     try {
       this.gameSocket = new WebSocket(`${this.baseUrl}/pong/${gameId}`);

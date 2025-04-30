@@ -346,6 +346,7 @@ export class TournamentDetailPage implements Page {
       const response = await this.tournamentService.joinTournamentMatch(matchId);
       if (response.success && response.gameId) {
         const userId = parseInt(sessionStorage.getItem('userId') || '0');
+        console.log('[tournament joinMatch] User ID:', userId);
         const success = await this.router.getWsManager().connectGame(response.gameId, userId);
         if (!success) {
           this.showNotification('Failed to connect to game room.', 'error');

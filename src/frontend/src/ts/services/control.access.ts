@@ -47,17 +47,14 @@ export class ControlAccess {
     let delayMs = 60_000; // Default: check again in 1 minute
 
     if (this.accessTokenExpiry) {
-      const timeUntilExpiryMs = this.accessTokenExpiry.getTime() - now.getTime();
-      console.log(`[ControlAccess] Time until access token expiry: ${timeUntilExpiryMs / 1000}s`);
+      const timeUntilExpiry = this.accessTokenExpiry.getTime() - now.getTime();
+      console.log(`[ControlAccess] Time until access token expiry: ${timeUntilExpiry / 1000}s`);
 
-      if (timeUntilExpiryMs > 5 * 60_000) {
-        delayMs = 2 * 60_000; // if expiry > 5min away, check in 2 min
-      } else if (timeUntilExpiryMs > 1 * 60_000) {
-        delayMs = 30_000; // if expiry > 1min away, check in 30s
-      } else if (timeUntilExpiryMs > 0) {
-        delayMs = 10_000; // if expiry < 1min away, check every 10s
+      if (timeUntilExpiry > 0) {
+        // Check again in half the remaining time, with a lower bound of 5 seconds
+        delayMs = Math.max(Math.floor(timeUntilExpiry / 2), 5_000);
       } else {
-        delayMs = 5_000; // already expired or very close — check quickly
+        delayMs = 5_000;
       }
     }
 
@@ -124,8 +121,14 @@ export class ControlAccess {
       console.log(`[ControlAccess] Setting authentication status to: ${status}`);
       this.isAuthenticated = status;
       this.notifyListeners();
+  
+      if (status) {
+        this.startAuthCheckLoop(); // start auth check on login
+      } else {
+        this.stopAuthCheckLoop();  // stop it on logout or token failure
+      }
     }
-  }
+  }  
 
   /**
    * Check and update expiry time of JWT token in HTTP-only cookie
