@@ -55,6 +55,7 @@ export async function getTournamentDetails(request: AuthenticatedRequest, reply:
   }
 }
 
+//update available tournament and registered tournament
 export async function registerForTournament(request: AuthenticatedRequest, reply: FastifyReply): Promise<FastifyReply> {
   if (!request.params.id) {
     return reply.status(400).send({
@@ -160,6 +161,7 @@ export async function registerForTournament(request: AuthenticatedRequest, reply
     // If we have exactly 4 participants, start the tournament automatically
     let tournamentStarted = false;
     if (newParticipantCount === 4) {
+      // Update available tournaments tab
       // Start tournament logic
       await startTournamentInternal(db, tournamentId);
       tournamentStarted = true;
@@ -243,6 +245,7 @@ export async function joinTournamentMatch(request: AuthenticatedRequest, reply: 
   }
 }
 
+//Update available matches tab
 // Admin function to create a tournament
 export async function createTournament(request: AuthenticatedRequest, reply: FastifyReply): Promise<FastifyReply> {
   const { name, description } = request.body as any;
@@ -512,6 +515,7 @@ async function advanceToNextRound(
     // Check if both players are set for the final match
     const finalMatch = await Tournament.getFinalMatch(db, match.tournament_id);
     
+    //Update registerd tournaments tab
     // If both players are set, update status to ready
     if (finalMatch.player1_id && finalMatch.player2_id) {
       await db.run(`
