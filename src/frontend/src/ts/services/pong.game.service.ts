@@ -7,6 +7,7 @@ interface ExistingGameResponse {
   gameMode?: 'local' | 'remote',
   state?: GameState,
   isCreator?: boolean,
+  isTourMatch?: boolean,
   message?: string
 }
 

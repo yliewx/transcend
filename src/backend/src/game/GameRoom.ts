@@ -439,4 +439,8 @@ export class GameRoom {
     }
     return false;
   }
+
+  public isTourMatch(): boolean {
+    return this.isTour;
+  }
 }

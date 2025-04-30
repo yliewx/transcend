@@ -1,18 +1,26 @@
 import { Page } from '../types';
 import { Router } from '../router';
 import { TournamentService, Tournament } from '../services/tournament.service';
+import { handleTournamentCreated } from '../tournament/tournament.socket';
 
 export class TournamentPage implements Page {
   private router: Router;
-  private tournamentService: TournamentService;
+  public tournamentService: TournamentService;
   public element: HTMLElement | null = null;
   public allTournaments: Tournament[] = [];
   public userTournaments: Tournament[] = [];
-  private activeTab: 'all' | 'my' | 'admin' = 'all';
+  public activeTab: 'all' | 'my' | 'admin' = 'all';
 
   constructor(router: Router) {
     this.router = router;
     this.tournamentService = new TournamentService();
+    this.setupMessageHandlers();
+  }
+
+  // WebSocket notification handlers
+  private setupMessageHandlers(): void {
+    const wss = this.router.getWsManager();
+    wss.onTournamentEvent('tournament-created', handleTournamentCreated.bind(this));
   }
 
   async render(): Promise<HTMLElement> {
@@ -273,7 +281,7 @@ export class TournamentPage implements Page {
     `;
   }
 
-  public renderAllTournamentsContent(): string {
+  private renderAllTournamentsContent(): string {
     return `
       <div class="dark:bg-gray-900 shadow-md rounded-lg p-8">
         <div class="flex items-center justify-between mb-6">
@@ -285,7 +293,7 @@ export class TournamentPage implements Page {
     `;
   }
 
-  public renderMyTournamentsContent(): string {
+  private renderMyTournamentsContent(): string {
     return `
       <div class="dark:bg-gray-900 shadow-md rounded-lg p-8">
         <div class="flex items-center justify-between mb-6">
