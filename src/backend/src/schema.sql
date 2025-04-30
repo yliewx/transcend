@@ -149,9 +149,7 @@ FROM
 JOIN 
   users u ON ps.user_id = u.id
 LEFT JOIN
-  profiles p ON u.id = p.user_id
-WHERE
-  ps.games_played > 0;
+  profiles p ON u.id = p.user_id;
 
 
 -- Tournaments table
