@@ -23,10 +23,7 @@ export class PongGamePage implements Page {
   private gameMode: 'local' | 'remote' = 'local';
   // Game data
   private gameId: string | null = null;
-  private userId: number | null = (() => {
-    const id = sessionStorage.getItem('userId');
-    return id ? parseInt(id, 10) : null;
-  })();
+  private userId: number | null = null;
   private isCreator: boolean = false;
   private state: GameState | null = null;
   private gameLoopId: number | null = null;
@@ -51,6 +48,11 @@ export class PongGamePage implements Page {
     this.router = router;
     this.pongService = pongService;
     this.pongViewComponents = new PongViewComponents();
+
+    const id = sessionStorage.getItem('userId');
+    const parsed = id !== null ? parseInt(id, 10) : NaN;
+    this.userId = Number.isNaN(parsed) ? null : parsed;
+    
     this.wss = this.router.getWsManager();
     this.setupMessageHandlers();
   }
@@ -90,7 +92,7 @@ export class PongGamePage implements Page {
   }
   
   private resetGame(): void {
-    console.log("resetGame() called");
+    // console.log("resetGame() called");
     // Clear any existing game state and intervals
     this.stopGameLoop();
     // Reset game state
@@ -122,7 +124,8 @@ export class PongGamePage implements Page {
   private async restoreGameSession(): Promise<boolean> {
     if (this.userId === null) {
       const id = sessionStorage.getItem('userId');
-      this.userId = id ? parseInt(id, 10) : null;
+      const parsed = id !== null ? parseInt(id, 10) : NaN;
+      this.userId = Number.isNaN(parsed) ? null : parsed;
       if (this.userId === null) {
         console.error('Cannot check for active game session. No user ID found.');
         return false;
@@ -395,10 +398,10 @@ export class PongGamePage implements Page {
 
   // On submit or cancel button
   private hideJoinGameForm(): void {
-    console.log('hideJoinGameForm() called');
+    // console.log('hideJoinGameForm() called');
     const joinGameFormElement = this.element?.querySelector('#join-game-form');
     if (joinGameFormElement) {
-      console.log('Join game form hidden');
+      // console.log('Join game form hidden');
       joinGameFormElement.classList.add('hidden');
       
       // Clear the input field
@@ -615,7 +618,7 @@ export class PongGamePage implements Page {
     this.ctx.fillText(this.state.scoreLeft.toString(), this.gameWidth / 4, 50);
     this.ctx.fillText(this.state.scoreRight.toString(), (this.gameWidth / 4) * 3, 50);
     // Draw player names
-    console.log('Drawing player names:', this.leftUserName, this.rightUserName);
+    // console.log('Drawing player names:', this.leftUserName, this.rightUserName);
     const leftPlayerName = this.leftUserName || 'Guest';
     const rightPlayerName = this.rightUserName || 'Guest';
     this.ctx.font = '16px Arial';
