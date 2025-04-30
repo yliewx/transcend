@@ -215,34 +215,38 @@ class GameStats {
       if (userStats) {
         return userStats;
       }
-      
-      const userData = await db.get(
-        `SELECT u.id, u.username, p.display_name
-        FROM 
-          users u
-        LEFT JOIN
-          profiles p ON u.id = p.user_id
-        WHERE 
-          u.id = ?`,
-        userId
-      );
-      
-      if (!userData) {
-        throw new Error(`User with ID ${userId} not found`);
+
+      else {
+        throw new Error(`User ${userId} stats not found`);
       }
       
-      return {
-        ...userData,
-        elo_rating: 1200,
-        games_played: 0,
-        games_won: 0,
-        games_lost: 0,
-        current_win_streak: 0,
-        max_win_streak: 0,
-        win_percentage: 0,
-        rank: null,
-        last_updated: new Date().toISOString()
-      };
+      // const userData = await db.get(
+      //   `SELECT u.id, u.username, p.display_name
+      //   FROM 
+      //     users u
+      //   LEFT JOIN
+      //     profiles p ON u.id = p.user_id
+      //   WHERE 
+      //     u.id = ?`,
+      //   userId
+      // );
+      
+      // if (!userData) {
+      //   throw new Error(`User with ID ${userId} not found`);
+      // }
+      
+      // return {
+      //   ...userData,
+      //   elo_rating: 1200,
+      //   games_played: 0,
+      //   games_won: 0,
+      //   games_lost: 0,
+      //   current_win_streak: 0,
+      //   max_win_streak: 0,
+      //   win_percentage: 0,
+      //   rank: null,
+      //   last_updated: new Date().toISOString()
+      // };
     }
 
     static async getLeaderboard(db: Database) {

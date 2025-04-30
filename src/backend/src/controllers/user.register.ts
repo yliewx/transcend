@@ -57,6 +57,7 @@ export async function registerUser(
 					throw new Error("Failed to create user: No user ID was generated");
 				}
 				const userId = userResult.lastID; // Now userId is guaranteed to be a number
+
 				// Create profile
 				await Profile.create(db, {
 					user_id: userId,
@@ -64,6 +65,14 @@ export async function registerUser(
 				});
 				const profResult = Profile.findByUserId(db, userId);
 				console.log(`profResult: ${profResult}`);
+
+				// Create default player stats entry
+				await db.run(
+					`INSERT INTO player_stats (user_id, elo_rating, games_played, games_won, games_lost, current_win_streak, max_win_streak) 
+					 VALUES (?, 1200, 0, 0, 0, 0, 0)`, 
+					[userId]
+				);
+
 				// Commit transaction
 				await db.run('COMMIT');
 				
@@ -117,6 +126,13 @@ export async function registerGoogleUser(db: Database, server: FastifyInstance, 
 
     const profResult = await Profile.findByUserId(db, userId);
     server.log.info(`profResult: ${profResult}`);
+
+	 // Create default player stats entry
+	 await db.run(
+		`INSERT INTO player_stats (user_id, elo_rating, games_played, games_won, games_lost, current_win_streak, max_win_streak) 
+		 VALUES (?, 1200, 0, 0, 0, 0, 0)`, 
+		[userId]
+	  );
 
     // Commit transaction
     await db.run('COMMIT');
