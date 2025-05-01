@@ -5,6 +5,37 @@ import { TournamentPage } from '../views/tournaments';
 /* Event handlers for external notifications:
 - Sent by server via websocket messages when tournament events occur */
 
+export function handleTourPageUpdate(this: TournamentPage, data: {
+  tournamentId?: number,
+  tournament?: Tournament,
+  allTournaments: Tournament[],
+  userTournaments?: Tournament[],
+  message: string
+}) {
+  console.log('[Tournament Socket]', data.message);
+  // Update tournament array
+  if (data.allTournaments) {
+    this.allTournaments = data.allTournaments;
+  } else {
+    console.warn('[Tournament Socket] Tournament data missing from message.');
+  }
+  if (data.userTournaments) {
+    this.userTournaments = data.userTournaments;
+  } else {
+    console.warn('[Tournament Socket] User tournament data missing from message.');
+  }
+
+  // Update active tab
+  const contentContainer = this.element?.querySelector('.px-4.py-6');
+  if (contentContainer) {
+    if (this.activeTab === 'all') {
+      contentContainer.innerHTML = this.renderAllTournamentsContent();
+    } else if (this.activeTab === 'my') {
+      contentContainer.innerHTML = this.renderMyTournamentsContent();
+    }
+  }
+}
+
 export function handleParticipantJoined(this: TournamentDetailPage, data: { 
     tournamentId: number, 
     participant: TournamentParticipant,
@@ -13,17 +44,6 @@ export function handleParticipantJoined(this: TournamentDetailPage, data: {
   console.log("handleParticipantJoined called", data);
   this.update();
   this.showNotification(`${data.participant.alias} has joined the tournament!`, 'info');
-}
-
-export function handleTournamentCreated(this: TournamentPage, data: {
-  tournamentId: number,
-  tournament: Tournament,
-  message: string
-}) {
-  console.log('handleTournamentCreated called');
-  if (this.activeTab === 'all') {
-    this.update();
-  }
 }
 
 // type: 'tournament-started'

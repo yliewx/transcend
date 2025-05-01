@@ -7,6 +7,99 @@ import { Database } from 'sqlite';
 import Tournament from '../models/tournament';
 import { onlineUsers } from '../game/ws.types.js'; // Import to access online users websockets
 
+/*-----------------------------NOTIFY RECIPIENT-----------------------------*/
+
+// notify all online users (not only participants)
+async function notifyOnlineUsers(eventType: string, eventData: {
+  tournamentId?: number,
+  tournament?: any,
+  allTournaments: any,
+  userTournaments?: any,
+  message: string
+}) {
+  for (const [id, socket] of onlineUsers.entries()) {
+    if (socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({
+        type: eventType,
+        data: eventData
+      }));
+    }
+  }
+}
+
+// Notification helper for tournament participants
+async function notifyTournamentParticipants(
+  db: Database,
+  tournamentId: number,
+  eventType: string,
+  eventData: any,
+  excludeUserId?: number
+): Promise<void> {
+  try {
+    // Get all participants of the tournament
+    const participants = await Tournament.getTournamentParticipants(db, tournamentId);
+    
+    // Send notifications to all online participants
+    for (const participant of participants) {
+      // Skip excluded user if provided
+      if (excludeUserId && participant.id === excludeUserId) {
+        continue;
+      }
+      
+      const participantSocket = onlineUsers.get(participant.id);
+      const userTournaments = await Tournament.findTournamentsByUserId(db, participant.id);
+      if (participantSocket && participantSocket.readyState === WebSocket.OPEN) {
+        participantSocket.send(JSON.stringify({
+          type: eventType,
+          data: { ...eventData, userTournaments }
+        }));
+      }
+    }
+  } catch (error) {
+    console.error('Error notifying tournament participants:', error);
+  }
+}
+
+async function notifyMatchUpdate(db: Database, tournamentId: number, matchId: number): Promise<void> {
+  try {
+    console.log('Notifying match update:', tournamentId, matchId);
+    // Get updated match data
+    const match = await db.get(`
+      SELECT 
+        tm.*,
+        tp1.alias as player1_alias,
+        tp2.alias as player2_alias,
+        u1.username as player1_username,
+        u2.username as player2_username
+      FROM tournament_matches tm
+      LEFT JOIN tournament_participants tp1 ON tm.player1_id = tp1.user_id AND tp1.tournament_id = tm.tournament_id
+      LEFT JOIN tournament_participants tp2 ON tm.player2_id = tp2.user_id AND tp2.tournament_id = tm.tournament_id
+      LEFT JOIN users u1 ON tm.player1_id = u1.id
+      LEFT JOIN users u2 ON tm.player2_id = u2.id
+      WHERE tm.id = ? AND tm.tournament_id = ?`,
+      [matchId, tournamentId]
+    );
+
+    if (!match) return;
+
+    // Notify all participants about match update
+    await notifyTournamentParticipants(
+      db,
+      tournamentId,
+      'match-updated',
+      {
+        tournamentId,
+        match,
+        message: `Match #${match.match_number} has been updated`
+      }
+    );
+  } catch (error) {
+    console.error('Error notifying match update:', error);
+  }
+}
+
+/*----------------------------TOURNAMENT ROUTES-----------------------------*/
+
 // Controller for tournament operations
 export async function getTournaments(request: AuthenticatedRequest, reply: FastifyReply): Promise<FastifyReply> {
   const db = await getDb();
@@ -55,26 +148,6 @@ export async function getTournamentDetails(request: AuthenticatedRequest, reply:
   }
 }
 
-// notify users when tournament updates
-/*   tournamentId: number,
-  eventType: string,
-  eventData: any, */
-async function notifyOnlineUsers(eventType: string, eventData: {
-  tournamentId: number,
-  tournament: any,
-  message: string
-}) {
-  for (const [id, socket] of onlineUsers.entries()) {
-    if (socket.readyState === WebSocket.OPEN) {
-      socket.send(JSON.stringify({
-        type: eventType,
-        data: eventData
-      }));
-    }
-  }
-}
-
-//update available tournament and registered tournament
 export async function registerForTournament(request: AuthenticatedRequest, reply: FastifyReply): Promise<FastifyReply> {
   if (!request.params.id) {
     return reply.status(400).send({
@@ -187,6 +260,13 @@ export async function registerForTournament(request: AuthenticatedRequest, reply
     }
     
     await db.run('COMMIT');
+
+    // Update tournament page
+    notifyOnlineUsers('tournament-update', {
+      allTournaments: await Tournament.findActiveTournaments(db),
+      userTournaments: await Tournament.findTournamentsByUserId(db, userId),
+      message: `A new participant joined tournament ${tournamentId}!`
+    });
     
     return reply.send({ 
       success: true, 
@@ -264,7 +344,6 @@ export async function joinTournamentMatch(request: AuthenticatedRequest, reply: 
   }
 }
 
-//Update available matches tab
 // Admin function to create a tournament
 export async function createTournament(request: AuthenticatedRequest, reply: FastifyReply): Promise<FastifyReply> {
   const { name, description } = request.body as any;
@@ -273,9 +352,8 @@ export async function createTournament(request: AuthenticatedRequest, reply: Fas
   try {
     const result = await Tournament.create(db, { name, description });
     if (result) {
-      notifyOnlineUsers('tournament-created', {
-        tournamentId: result.lastID!,
-        tournament: result,
+      notifyOnlineUsers('tournament-update', {
+        allTournaments: await Tournament.findActiveTournaments(db),
         message: 'A new tournament was created'
       });
     }
@@ -291,76 +369,6 @@ export async function createTournament(request: AuthenticatedRequest, reply: Fas
       success: false, 
       error: 'Failed to create tournament' 
     });
-  }
-}
-
-// Notification helper for tournament participants
-async function notifyTournamentParticipants(
-  db: Database,
-  tournamentId: number,
-  eventType: string,
-  eventData: any,
-  excludeUserId?: number
-): Promise<void> {
-  try {
-    // Get all participants of the tournament
-    const participants = await Tournament.getTournamentParticipants(db, tournamentId);
-    
-    // Send notifications to all online participants
-    for (const participant of participants) {
-      // Skip excluded user if provided
-      if (excludeUserId && participant.id === excludeUserId) {
-        continue;
-      }
-      
-      const participantSocket = onlineUsers.get(participant.id);
-      if (participantSocket && participantSocket.readyState === WebSocket.OPEN) {
-        participantSocket.send(JSON.stringify({
-          type: eventType,
-          data: eventData
-        }));
-      }
-    }
-  } catch (error) {
-    console.error('Error notifying tournament participants:', error);
-  }
-}
-
-async function notifyMatchUpdate(db: Database, tournamentId: number, matchId: number): Promise<void> {
-  try {
-    console.log('Notifying match update:', tournamentId, matchId);
-    // Get updated match data
-    const match = await db.get(`
-      SELECT 
-        tm.*,
-        tp1.alias as player1_alias,
-        tp2.alias as player2_alias,
-        u1.username as player1_username,
-        u2.username as player2_username
-      FROM tournament_matches tm
-      LEFT JOIN tournament_participants tp1 ON tm.player1_id = tp1.user_id AND tp1.tournament_id = tm.tournament_id
-      LEFT JOIN tournament_participants tp2 ON tm.player2_id = tp2.user_id AND tp2.tournament_id = tm.tournament_id
-      LEFT JOIN users u1 ON tm.player1_id = u1.id
-      LEFT JOIN users u2 ON tm.player2_id = u2.id
-      WHERE tm.id = ? AND tm.tournament_id = ?`,
-      [matchId, tournamentId]
-    );
-
-    if (!match) return;
-
-    // Notify all participants about match update
-    await notifyTournamentParticipants(
-      db,
-      tournamentId,
-      'match-updated',
-      {
-        tournamentId,
-        match,
-        message: `Match #${match.match_number} has been updated`
-      }
-    );
-  } catch (error) {
-    console.error('Error notifying match update:', error);
   }
 }
 
@@ -506,6 +514,19 @@ export async function updateTournamentMatchResult(gameId: string, winnerId: numb
           message: `The tournament has been completed! ${winner?.alias || 'Someone'} is the champion!`
         }
       );
+      await notifyTournamentParticipants(
+        db,
+        match.tournament_id,
+        'tournament-update',
+        {
+          tournamentId: match.tournament_id,
+          tournament,
+          matches,
+          participants,
+          winner,
+          message: `The tournament has been completed! ${winner?.alias || 'Someone'} is the champion!`
+        }
+      );
     } else {
       // Otherwise, advance winner to the final
       await advanceToNextRound(db, match, winnerId);
@@ -541,7 +562,6 @@ async function advanceToNextRound(
     // Check if both players are set for the final match
     const finalMatch = await Tournament.getFinalMatch(db, match.tournament_id);
     
-    //Update registerd tournaments tab
     // If both players are set, update status to ready
     if (finalMatch.player1_id && finalMatch.player2_id) {
       await db.run(`

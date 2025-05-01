@@ -1,7 +1,7 @@
 import { Page } from '../types';
 import { Router } from '../router';
 import { TournamentService, Tournament } from '../services/tournament.service';
-import { handleTournamentCreated } from '../tournament/tournament.socket';
+import { handleTourPageUpdate } from '../tournament/tournament.socket';
 
 export class TournamentPage implements Page {
   private router: Router;
@@ -20,7 +20,7 @@ export class TournamentPage implements Page {
   // WebSocket notification handlers
   private setupMessageHandlers(): void {
     const wss = this.router.getWsManager();
-    wss.onTournamentEvent('tournament-created', handleTournamentCreated.bind(this));
+    wss.onTournamentEvent('tournament-update', handleTourPageUpdate.bind(this));
   }
 
   async render(): Promise<HTMLElement> {
@@ -281,7 +281,7 @@ export class TournamentPage implements Page {
     `;
   }
 
-  private renderAllTournamentsContent(): string {
+  public renderAllTournamentsContent(): string {
     return `
       <div class="dark:bg-gray-900 shadow-md rounded-lg p-8">
         <div class="flex items-center justify-between mb-6">
@@ -293,7 +293,7 @@ export class TournamentPage implements Page {
     `;
   }
 
-  private renderMyTournamentsContent(): string {
+  public renderMyTournamentsContent(): string {
     return `
       <div class="dark:bg-gray-900 shadow-md rounded-lg p-8">
         <div class="flex items-center justify-between mb-6">
