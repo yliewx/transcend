@@ -52,26 +52,26 @@ export class RegisterPage implements Page {
               <div class="rounded-md shadow-sm space-y-4">
                 <div>
                   <label for="username" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Username</label>
-                  <input id="username" name="username" type="text" required 
+                  <input id="username" name="username" type="text" maxlength="20" required 
                         class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500 dark:bg-gray-800 dark:text-white">
                 </div>
                 
                 <div>
                   <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Email address</label>
-                  <input id="email" name="email" type="email" required 
+                  <input id="email" name="email" type="email" maxlength="30" required 
                         class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500 dark:bg-gray-800 dark:text-white">
                 </div>
                 
                 <div>
                   <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Password</label>
-                  <input id="password" name="password" type="password" required 
+                  <input id="password" name="password" type="password" maxlength="20" required 
                         class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500 dark:bg-gray-800 dark:text-white">
                   <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Must be at least 8 characters</p>
                 </div>
                 
                 <div>
                   <label for="confirm-password" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Confirm Password</label>
-                  <input id="confirm-password" name="confirmPassword" type="password" required 
+                  <input id="confirm-password" name="confirmPassword" type="password" maxlength="20" required 
                         class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500 dark:bg-gray-800 dark:text-white">
                 </div>
               </div>
@@ -148,6 +148,27 @@ export class RegisterPage implements Page {
       errorContainer.classList.remove('hidden');
       return;
     }
+    if (username.length < 3 || username.length > 50) {
+      errorMessage.textContent = 'Username must be between 3 and 50 characters';
+      errorContainer.classList.remove('hidden');
+      return;
+    }
+    if (username.includes(' ')) {
+      errorMessage.textContent = 'Username cannot contain spaces';
+      errorContainer.classList.remove('hidden');
+      return;
+    }
+    if (email.length < 5 || email.length > 50) {
+      errorMessage.textContent = 'Email must be between 5 and 50 characters';
+      errorContainer.classList.remove('hidden');
+      return;
+    }
+    if (email.includes(' ')) {
+      errorMessage.textContent = 'Email cannot contain spaces';
+      errorContainer.classList.remove('hidden');
+      return;
+    }
+    
     
     // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -160,6 +181,11 @@ export class RegisterPage implements Page {
     // Password validation
     if (password.length < 8) {
       errorMessage.textContent = 'Password must be at least 8 characters long';
+      errorContainer.classList.remove('hidden');
+      return;
+    }
+    if (password.includes(' ')) {
+      errorMessage.textContent = 'Password cannot contain spaces';
       errorContainer.classList.remove('hidden');
       return;
     }
