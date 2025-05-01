@@ -27,5 +27,7 @@ RUN npm run build
 
 EXPOSE 3000
 
+ENV FORCE_COLOR=1
+
 # run server
 CMD [ "npm", "run", "start" ]

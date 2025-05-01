@@ -24,17 +24,20 @@ export class GameRoom {
     left: Player | null;
     right: Player | null;
   } = { left: null, right: null };
-
+  private leftUserName: string | null = null;
+  private rightUserName: string | null = null;
+  private isTour: boolean = false; // Flag to indicate if the game is part of a tournament
   /*------------------------------CONSTRUCTOR-------------------------------*/
 
   constructor(
     id: string,
     mode: 'local' | 'remote',
-    private onCleanup: (gameId: string) => void // GameManager callback: deleteGame
+    private onCleanup: (gameId: string) => void, // GameManager callback: deleteGame
+    isTour: boolean
   ) {
     this.id = id;
     this.mode = mode;
-
+    this.isTour = isTour;
     // Create game
     this.game = new PongGame(
       id,
@@ -77,17 +80,71 @@ export class GameRoom {
   }
 
   // Broadcast message when a player joins the room
+  // private async announceJoin(playerId: number, side: 'left' | 'right') {
+  //   const db = await getDb();
+  //   const user = await User.findById(db, Number(playerId));
+  //   if (side === 'left') this.leftUserName = user.username;
+  //   if (side === 'right') this.rightUserName = user.username;
+  //   this.broadcast(JSON.stringify({
+  //     type: 'player-joined',
+  //     data: {
+  //       message: `Player joined side: ${side}!`,
+  //       side: side,
+  //       ready: this.roomIsFull(),
+  //       state: this.game.getState(),
+  //       leftUserName: this.leftUserName,
+  //       rightUserName: this.rightUserName
+  //     }
+  //   }));
+  // }
+
+  // Broadcast message when a player joins the room
   private async announceJoin(playerId: number, side: 'left' | 'right') {
     const db = await getDb();
     const user = await User.findById(db, Number(playerId));
     
+    let playerName = user.username;
+    
+    // If this is a tournament game, get the player's tournament alias instead
+    if (this.isTour) {
+      try {
+        // We need to find which tournament this game belongs to
+        // This would require knowing the tournament_id for this game
+        // Assuming we can get it from the tournament_matches table using game_id
+        const match = await db.get(
+          `SELECT tournament_id FROM tournament_matches WHERE game_id = ?`,
+          [this.id]
+        );
+        
+        if (match) {
+          const participant = await db.get(
+            `SELECT alias FROM tournament_participants 
+            WHERE tournament_id = ? AND user_id = ?`,
+            [match.tournament_id, playerId]
+          );
+          
+          if (participant && participant.alias) {
+            playerName = participant.alias;
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching tournament alias:", error);
+        // Fall back to username if there's an error
+      }
+    }
+    
+    if (side === 'left') this.leftUserName = playerName;
+    if (side === 'right') this.rightUserName = playerName;
+    
     this.broadcast(JSON.stringify({
       type: 'player-joined',
       data: {
-        message: `Player ${user.username} joined!`,
+        message: `Player joined side: ${side}!`,
         side: side,
         ready: this.roomIsFull(),
-        state: this.game.getState()
+        state: this.game.getState(),
+        leftUserName: this.leftUserName,
+        rightUserName: this.rightUserName
       }
     }));
   }
@@ -183,6 +240,9 @@ export class GameRoom {
         case 'pause':
           this.pauseGame(socket);
           break;
+        case 'reset':
+          this.game.resetGame();
+          break;
         default:
           sendError(socket, 'Unknown message type');
           break;
@@ -217,7 +277,8 @@ export class GameRoom {
       paddleDown: boolean;
     };
   }; */
-  private handleInput(data: InputMessage, socket: WebSocket) {
+  public handleInput(data: InputMessage, socket: WebSocket) {
+    console.log('[GameRoom handleInput] Full data:', JSON.stringify(data, null, 2));
     let side;
     if (this.mode === 'local') {
       // Local: Player side must be included in input message
@@ -242,14 +303,14 @@ export class GameRoom {
 
   // Local: Check if local socket is set
   // Remote: Check if both players are present
-  private roomIsFull(): boolean {
+  public roomIsFull(): boolean {
     return (
       (this.mode === 'local' && !!this.localSocket) ||
       (this.mode === 'remote' && !!this.players?.left && !!this.players?.right)
     );
   }
 
-  private startGame(socket: WebSocket) {
+  public startGame(socket: WebSocket) {
     if (!this.roomIsFull()) {
       sendError(socket, 'Not enough players to start the game.');
       return;
@@ -263,7 +324,7 @@ export class GameRoom {
     this.broadcastGameState('start');
   }
 
-  private pauseGame(socket: WebSocket) {
+  public pauseGame(socket: WebSocket) {
     const status = this.game.pauseGame();
     if (status === 'paused' || status === 'playing') {
       this.broadcastGameState('update');
@@ -278,12 +339,11 @@ export class GameRoom {
     this.scheduleCleanup();
   }
   
-  // Notify GameManager to delete game 15s after it ends
+  // Notify GameManager to delete game after it ends
   private scheduleCleanup(): void {
     setTimeout(() => {
-      console.log(`[GameRoom] Cleaning up game with ID: ${this.id}`);
       this.onCleanup(this.id);
-    }, 15 * 1000);
+    }, 1000);
   }
 
   /*---------------------------RECORD GAME RESULTS--------------------------*/
@@ -334,6 +394,12 @@ export class GameRoom {
   }
 
   async recordResults(state: GameState) {
+    const winScore = state.winner === 'left' ? state.scoreLeft : state.scoreRight;
+    if (winScore !== 5) {
+      console.log("Game ended before reaching a score of 5. Match result not recorded.");
+      return;
+    }
+
     const db = await getDb();
     const leftPlayerId = this.players.left?.id ?? null;
     const rightPlayerId = this.players.right?.id ?? null;
@@ -372,5 +438,9 @@ export class GameRoom {
       return playerId === this.players.left.id;
     }
     return false;
+  }
+
+  public isTourMatch(): boolean {
+    return this.isTour;
   }
 }

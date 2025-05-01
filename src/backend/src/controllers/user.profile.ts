@@ -1,4 +1,4 @@
-import { FastifyRequest, FastifyReply } from 'fastify';
+import {FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import bcrypt from 'bcrypt';
 import User from '../models/user';
 import Profile from '../models/profile';
@@ -8,7 +8,7 @@ import fs from 'fs';
 import path from 'path';
 import { pipeline } from 'stream/promises';
 import { v4 as uuidv4 } from 'uuid';
-import { MultipartFile } from '@fastify/multipart';
+import { avatarsDir, publicDir, uploadsDir } from '../constants';
 
 export async function profileHandler(request: AuthenticatedRequest, reply: FastifyReply) {
     try {
@@ -218,14 +218,6 @@ export async function updatePasswordHandler(request: AuthenticatedRequest, reply
 }
 
 
-// Define the upload directory - make sure this path exists and is writable
-const UPLOAD_DIR = path.join(process.cwd(), 'public', 'uploads', 'avatars');
-
-// Create directory if it doesn't exist
-if (!fs.existsSync(UPLOAD_DIR)) {
-  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-}
-
 export async function uploadAvatarHandler(request: AuthenticatedRequest, reply: FastifyReply) {
   try {
     // Get the authenticated user's ID
@@ -239,15 +231,16 @@ export async function uploadAvatarHandler(request: AuthenticatedRequest, reply: 
     }
     
     // Validate the file type
-    const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/gif'];
+    const allowedMimeTypes = ['image/jpeg', 'image/png'];
     if (!allowedMimeTypes.includes(data.mimetype)) {
-      return reply.status(400).send({ error: 'Only JPG, PNG and GIF images are allowed' });
+      return reply.status(400).send({ error: 'Only JPG or PNG images are allowed' });
     }
     
     // Generate a unique filename to prevent collisions
     const fileExtension = data.filename.split('.').pop() || 'jpg';
-    const filename = `user_${userId}_${uuidv4()}.${fileExtension}`;
-    const filePath = path.join(UPLOAD_DIR, filename);
+    //const filename = `user_${userId}_${uuidv4()}.${fileExtension}`;
+    const filename = `${uuidv4()}.${fileExtension}`; // <<<< no user id!
+    const filePath = path.join(avatarsDir, filename);
     
     // Save the file to disk
     await pipeline(data.file, fs.createWriteStream(filePath));
@@ -268,7 +261,7 @@ export async function uploadAvatarHandler(request: AuthenticatedRequest, reply: 
       // Extract the filename from the path
       const oldFilename = existingProfile.avatar_path.split('/').pop();
       if (oldFilename) {
-        const oldFilePath = path.join(UPLOAD_DIR, oldFilename);
+        const oldFilePath = path.join(avatarsDir, oldFilename);
         // Check if file exists before attempting to delete
         if (fs.existsSync(oldFilePath)) {
           fs.unlinkSync(oldFilePath); // Delete the old file
@@ -285,14 +278,37 @@ export async function uploadAvatarHandler(request: AuthenticatedRequest, reply: 
       [userId, avatarPath, avatarPath]
     );
     
-    return reply.status(200).send({ 
-      success: true, 
-      avatarPath: avatarPath 
-    });
+    return reply.status(200).send({ success: true });
   } catch (error) {
     console.error('Avatar upload error:', error);
     return reply.status(500).send({ 
       error: 'Failed to process avatar upload'
     });
+  }
+}
+
+export async function getAvatarHandler(request: AuthenticatedRequest, reply: FastifyReply) {
+  const userId = request.user.id;  
+  const db = await getDb();
+  const profile = await Profile.findByUserId(db, userId);
+  let filename: string;
+  
+  if (profile && profile.avatar_path) {
+    filename = profile.avatar_path.split('/').pop();
+  } else {
+    filename = 'default-avatar.png';
+  }
+  
+  // Check if file exists
+  const avatarFilePath = path.join(avatarsDir, filename);
+  const fileExists = fs.existsSync(avatarFilePath);
+  
+  if (fileExists) {    
+    // Set Cache-Control header
+    reply.header('Cache-Control', 'public, max-age=3600');
+    // Let Fastify handle the file sending
+    return reply.sendFile(filename, avatarsDir);
+  } else {
+    return reply.code(404).send('Avatar not found');
   }
 }

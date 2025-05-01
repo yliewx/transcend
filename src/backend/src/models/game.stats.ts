@@ -1,5 +1,16 @@
 import { Database } from 'sqlite';
 
+interface EloHistoryRow {
+  id: number;
+  user_id: number;
+  match_id: number;
+  elo_rating: number;
+  previous_rating: number;
+  rating_change: number;
+  match_date: string; // SQLite dates often come as strings
+}
+
+
 class GameStats {
     static async recordGameResult(
         db: Database,
@@ -169,31 +180,31 @@ class GameStats {
     //   );
     // }
 
-    static async updatePlayerElo(db: Database, userId: number, opponentId: number, actualScore: number): Promise<void> {
-      const result = await db.get(
-        `SELECT elo_rating, games_played FROM player_stats WHERE user_id = ?`,
-        userId
-      );
+    // static async updatePlayerElo(db: Database, userId: number, opponentId: number, actualScore: number): Promise<void> {
+    //   const result = await db.get(
+    //     `SELECT elo_rating, games_played FROM player_stats WHERE user_id = ?`,
+    //     userId
+    //   );
       
-      const playerRating = result ? result.elo_rating : 1200;
-      const gamesPlayed = result ? result.games_played : 0;
+    //   const playerRating = result ? result.elo_rating : 1200;
+    //   const gamesPlayed = result ? result.games_played : 0;
       
-      let kFactor = gamesPlayed < 10 ? 40 : gamesPlayed < 30 ? 32 : 24;
-      const opponentRating = await this.getUserEloRating(db, opponentId);
+    //   let kFactor = gamesPlayed < 10 ? 40 : gamesPlayed < 30 ? 32 : 24;
+    //   const opponentRating = await this.getUserEloRating(db, opponentId);
       
-      const newRating = this.calculateNewEloRating(playerRating, opponentRating, actualScore, kFactor);
+    //   const newRating = this.calculateNewEloRating(playerRating, opponentRating, actualScore, kFactor);
       
-      // Insert if not exists, update if exists
-      await db.run(
-        `INSERT INTO player_stats (user_id, elo_rating) 
-         VALUES (?, ?) 
-         ON CONFLICT(user_id) DO UPDATE SET 
-         elo_rating = ?`,
-        userId,
-        newRating,
-        newRating
-      );
-    }
+    //   // Insert if not exists, update if exists
+    //   await db.run(
+    //     `INSERT INTO player_stats (user_id, elo_rating) 
+    //      VALUES (?, ?) 
+    //      ON CONFLICT(user_id) DO UPDATE SET 
+    //      elo_rating = ?`,
+    //     userId,
+    //     newRating,
+    //     newRating
+    //   );
+    // }
     
     static async getUserStats(db: Database, userId: number) {
       const userStats = await db.get(
@@ -204,34 +215,38 @@ class GameStats {
       if (userStats) {
         return userStats;
       }
-      
-      const userData = await db.get(
-        `SELECT u.id, u.username, p.display_name
-        FROM 
-          users u
-        LEFT JOIN
-          profiles p ON u.id = p.user_id
-        WHERE 
-          u.id = ?`,
-        userId
-      );
-      
-      if (!userData) {
-        throw new Error(`User with ID ${userId} not found`);
+
+      else {
+        throw new Error(`User ${userId} stats not found`);
       }
       
-      return {
-        ...userData,
-        elo_rating: 1200,
-        games_played: 0,
-        games_won: 0,
-        games_lost: 0,
-        current_win_streak: 0,
-        max_win_streak: 0,
-        win_percentage: 0,
-        rank: null,
-        last_updated: new Date().toISOString()
-      };
+      // const userData = await db.get(
+      //   `SELECT u.id, u.username, p.display_name
+      //   FROM 
+      //     users u
+      //   LEFT JOIN
+      //     profiles p ON u.id = p.user_id
+      //   WHERE 
+      //     u.id = ?`,
+      //   userId
+      // );
+      
+      // if (!userData) {
+      //   throw new Error(`User with ID ${userId} not found`);
+      // }
+      
+      // return {
+      //   ...userData,
+      //   elo_rating: 1200,
+      //   games_played: 0,
+      //   games_won: 0,
+      //   games_lost: 0,
+      //   current_win_streak: 0,
+      //   max_win_streak: 0,
+      //   win_percentage: 0,
+      //   rank: null,
+      //   last_updated: new Date().toISOString()
+      // };
     }
 
     static async getLeaderboard(db: Database) {
@@ -279,6 +294,99 @@ class GameStats {
         `, userId, userId, userId, userId, userId, userId, userId, userId, userId);
         
         return rows;
+    }
+
+
+    static async updatePlayerElo(db: Database, userId: number, opponentId: number, actualScore: number): Promise<void> {
+      
+      try {
+        const result = await db.get(
+          `SELECT elo_rating, games_played FROM player_stats WHERE user_id = ?`,
+          userId
+        );
+        
+        const playerRating = result ? result.elo_rating : 1200;
+        const gamesPlayed = result ? result.games_played : 0;
+        
+        let kFactor = gamesPlayed < 10 ? 40 : gamesPlayed < 30 ? 32 : 24;
+        const opponentRating = await this.getUserEloRating(db, opponentId);
+        
+        const newRating = this.calculateNewEloRating(playerRating, opponentRating, actualScore, kFactor);
+        const ratingChange = newRating - playerRating;
+        
+        // Insert or update player stats
+        await db.run(
+          `INSERT INTO player_stats (user_id, elo_rating) 
+           VALUES (?, ?) 
+           ON CONFLICT(user_id) DO UPDATE SET 
+           elo_rating = ?`,
+          userId,
+          newRating,
+          newRating
+        );
+        
+        // Get the latest match_id for this user
+        const match = await db.get(
+          `SELECT id FROM match_history 
+           WHERE (player1_id = ? OR player2_id = ?) 
+           ORDER BY match_date DESC LIMIT 1`,
+          userId, userId
+        );
+        
+        if (match) {
+          // Record ELO history
+          await db.run(
+            `INSERT INTO elo_history 
+             (user_id, match_id, elo_rating, previous_rating, rating_change, match_date) 
+             VALUES (?, ?, ?, ?, ?, datetime('now'))`,
+            userId,
+            match.id,
+            newRating,
+            playerRating,
+            ratingChange
+          );
+        }
+        
+      } catch (error) {
+        console.error('Error updating ELO rating:', error);
+        throw error;
+      }
+    }
+
+    // New method to get ELO history for a user
+    static async getUserEloHistory(db: Database, userId: number) {
+      try {
+        const rows = await db.all(`
+          SELECT 
+            eh.id,
+            eh.elo_rating,
+            eh.previous_rating,
+            eh.rating_change,
+            eh.match_date,
+            ehv.opponent_name,
+            ehv.result
+          FROM 
+            elo_history eh
+          JOIN
+            elo_history_view ehv ON eh.id = ehv.id
+          WHERE 
+            eh.user_id = ?
+          ORDER BY 
+            eh.match_date ASC
+        `, userId);
+        
+        // Format dates for frontend display
+        return rows.map((row: EloHistoryRow) => ({
+          ...row,
+          formatted_date: new Date(row.match_date).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric'
+          })
+        }));
+      } catch (error) {
+        console.error('Error fetching ELO history:', error);
+        throw error;
+      }
     }
 }
  

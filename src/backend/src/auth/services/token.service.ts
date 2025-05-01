@@ -14,8 +14,8 @@ interface CookieOptions {
 }
 
 export const accessCookieOptions: CookieOptions = {
-  maxAge: 15 * 60, // expires after 15min (in seconds)
-  expires: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes (in milliseconds)
+  maxAge: 60 * 60, // expires after 1 hour (in seconds)
+  expires: new Date(Date.now() + 60 * 60 * 1000), // 1 hour (in milliseconds)
   httpOnly: true,
   secure: true,
   sameSite: 'strict',
@@ -29,6 +29,15 @@ export const refreshCookieOptions: CookieOptions = {
   secure: true,
   sameSite: 'strict',
   path: '/api/auth/refresh'
+};
+
+export const cliCookieOptions: CookieOptions = {
+  maxAge: 2 * 60 * 60, // expires after 2 hours
+  expires: new Date(Date.now() + 2 * 60 * 60 * 1000), // 2 hours (in milliseconds)
+  httpOnly: true,
+  secure: true,
+  sameSite: 'strict',
+  path: '/'
 };
 
 /*-------------------------------CREATE TOKENS------------------------------*/
@@ -52,9 +61,21 @@ export async function createAccessToken(user: any, reply: FastifyReply) {
     username: user.username,
     email: user.email,
     token_type: 'access'
-  }, process.env.ACCESS_TOKEN_SECRET as string, { expiresIn: '15m' });
+  }, process.env.ACCESS_TOKEN_SECRET as string, { expiresIn: '1h' });
 
   return accessToken;
+}
+
+export async function createCLIToken(user: any, reply: FastifyReply) {
+  // Create cli token with user data
+  const cliToken = reply.server.jwtSign({ 
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    token_type: 'cli'
+  }, process.env.CLI_TOKEN_SECRET as string, { expiresIn: '2h' });
+
+  return cliToken;
 }
 
 export async function createRefreshToken(db: Database, user: any, reply: FastifyReply) {

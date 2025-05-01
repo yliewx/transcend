@@ -5,18 +5,18 @@ import crypto from 'crypto';
 import { AuthenticatedRequest } from '../../@types/fastify';
 import { getDb } from '../db.js';
 
-interface GameParams {
-  id: string;
-}
+// interface GameParams {
+//   id: string;
+// }
 
-interface PollQuery {
-  hash?: string;
-}
+// interface PollQuery {
+//   hash?: string;
+// }
 
-// Helper function to create state hash for efficient polling
-async function createStateHash(state: any) {
-  return crypto.createHash('md5').update(JSON.stringify(state)).digest('hex');
-}
+// // Helper function to create state hash for efficient polling
+// async function createStateHash(state: any) {
+//   return crypto.createHash('md5').update(JSON.stringify(state)).digest('hex');
+// }
 
 export async function createGame(request: FastifyRequest, reply: FastifyReply) {
   // Extract game mode from request body
@@ -30,7 +30,7 @@ export async function createGame(request: FastifyRequest, reply: FastifyReply) {
     });
   }
 
-  const gameId = gameManager.createGame(mode);
+  const gameId = gameManager.createGame(mode, false);
   return { gameId, success: true };
 }
 
@@ -39,14 +39,14 @@ export function getExistingGame(request: AuthenticatedRequest, reply: FastifyRep
   const playerId = request.user.id;
   const existingGame = gameManager.getPlayerSession(playerId);
   if (!existingGame) {
-    return reply.status(404).send({
-      success: false,
+    return reply.status(200).send({
+      hasExistingGame: false,
       message: 'No existing game found.'
     });
   }
 
-  const { gameId, gameMode, isCreator } = existingGame;
-  return { success: true, gameId, gameMode, isCreator };
+  const { gameId, gameMode, state, isCreator, isTourMatch } = existingGame;
+  return { hasExistingGame: true, gameId, gameMode, state, isCreator, isTourMatch };
 }
 /*
 export async function startGame(request: FastifyRequest<{ Params: GameParams }>, reply: FastifyReply) {
@@ -223,9 +223,22 @@ export async function getMatchHistory(request: FastifyRequest, reply: FastifyRep
     const authRequest = request as AuthenticatedRequest;
     const db = await getDb();
     const matchHistory = await GameStats.getUserMatchHistory(db, authRequest.user.id);
+    //const matchHistory = await GameStats.getUserMatchHistory(db, request.user.id);
     return reply.send({ success: true, matchHistory });
   } catch (error) {
     console.error('Error fetching match history:', error);
     return reply.status(500).send({ success: false, message: 'Failed to fetch match history' });
+  }
+}
+
+export async function getUserEloHistory(request: FastifyRequest, reply: FastifyReply) {
+  try {
+    const authRequest = request as AuthenticatedRequest;
+    const db = await getDb();
+    const eloHistory = await GameStats.getUserEloHistory(db, authRequest.user.id);
+    return reply.send({ success: true, eloHistory });
+  } catch (error) {
+    console.error('Error fetching Elo history:', error);
+    return reply.status(500).send({ success: false, message: 'Failed to fetch Elo history' });
   }
 }

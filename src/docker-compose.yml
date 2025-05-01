@@ -26,6 +26,7 @@ services:
       args:
         - BASE_API_URL=${BASE_API_URL}
         - BASE_WSS_URL=${BASE_WSS_URL}
+        - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
     environment:
       - NODE_ENV=development
     env_file:
@@ -68,6 +69,20 @@ services:
       - nginx
     restart: unless-stopped
     
+#-------------------------------PONG-CLI---------------------------------
+
+  pong-cli:
+    container_name: pong-cli
+    build:
+      context: ./pong-cli
+      dockerfile: Dockerfile
+    networks:
+      - ft_transcendence
+    volumes:
+      - pong_cli_data:/usr/src/app
+    depends_on:
+      - backend
+
 #--------------------------------VOLUMES---------------------------------
 
 volumes:
@@ -77,6 +92,12 @@ volumes:
     driver: local
   avatar_data:
     driver: local
+  pong_cli_data:
+    driver: local
+    driver_opts:
+      type: none
+      device: ./pong-cli
+      o: bind
 
 #--------------------------------NETWORKS--------------------------------
 
