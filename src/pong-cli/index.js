@@ -11,7 +11,7 @@ const os = require('os');
 
 // Configuration
 const CONFIG = {
-  wsUrl: process.env.PONG_WS_URL || 'wss://localhost:8080/ws'
+  wsUrl: process.env.PONG_WS_URL || 'wss://parsleypong.com/ws'
 };
 
 // CLI options
