@@ -15,6 +15,6 @@ export interface InputMessage {
 
 export function sendError(socket: WebSocket, error: string) {
   if (socket.readyState === socket.OPEN) {
-    socket.send(JSON.stringify({ type: 'error', data: error }));
+    socket.send(JSON.stringify({ type: 'error', data: { message: error } }));
   }
 }

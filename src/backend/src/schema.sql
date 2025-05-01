@@ -149,9 +149,7 @@ FROM
 JOIN 
   users u ON ps.user_id = u.id
 LEFT JOIN
-  profiles p ON u.id = p.user_id
-WHERE
-  ps.games_played > 0;
+  profiles p ON u.id = p.user_id;
 
 
 -- Tournaments table
@@ -196,3 +194,53 @@ CREATE TABLE IF NOT EXISTS tournament_matches (
   FOREIGN KEY (winner_id) REFERENCES users(id) ON DELETE SET NULL,
   UNIQUE(tournament_id, round, match_number)
 );
+
+
+-- Create a table to track ELO rating history
+CREATE TABLE IF NOT EXISTS elo_history (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  match_id INTEGER NOT NULL,
+  elo_rating INTEGER NOT NULL,
+  previous_rating INTEGER NOT NULL,
+  rating_change INTEGER NOT NULL,
+  match_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+  FOREIGN KEY (match_id) REFERENCES match_history (id) ON DELETE CASCADE
+);
+
+-- Create a view to get the complete ELO history with match details
+CREATE VIEW IF NOT EXISTS elo_history_view AS
+SELECT 
+  eh.id,
+  eh.user_id,
+  eh.match_id,
+  eh.elo_rating,
+  eh.previous_rating,
+  eh.rating_change,
+  eh.match_date,
+  mh.player1_id,
+  mh.player2_id,
+  CASE 
+    WHEN mh.player1_id = eh.user_id THEN mh.player2_id
+    ELSE mh.player1_id
+  END as opponent_id,
+  CASE
+    WHEN mh.player1_id = eh.user_id THEN u2.username
+    ELSE u1.username
+  END as opponent_name,
+  mh.winner_id,
+  CASE 
+    WHEN mh.winner_id = eh.user_id THEN 'Win'
+    ELSE 'Loss'
+  END as result
+FROM 
+  elo_history eh
+JOIN 
+  match_history mh ON eh.match_id = mh.id
+LEFT JOIN 
+  users u1 ON mh.player1_id = u1.id
+LEFT JOIN 
+  users u2 ON mh.player2_id = u2.id
+ORDER BY 
+  eh.match_date ASC;

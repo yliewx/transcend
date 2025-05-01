@@ -57,8 +57,9 @@ export class PongViewComponents {
     return  `
       <div id="game-controls" class="flex justify-center mb-6 hidden">
         <button id="start-game-btn" class="btn-green mx-2">Start</button>
-        <button id="pause-game-btn" class="btn-yellow mx-2">Pause/Resume</button>
-        <button id="reset-game-btn" class="btn-red mx-2 hidden">Reset</button>
+        <button id="pause-game-btn" class="btn-yellow mx-2">Pause</button>
+        <button id="reset-game-btn" class="btn-red mx-2">Reset</button>
+        <button id="cli-btn" class="btn-blue mx-2">CLI Token</button>
       </div>
     `;
   }

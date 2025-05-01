@@ -1,18 +1,26 @@
 import { Page } from '../types';
 import { Router } from '../router';
 import { TournamentService, Tournament } from '../services/tournament.service';
+import { handleTourPageUpdate } from '../tournament/tournament.socket';
 
 export class TournamentPage implements Page {
   private router: Router;
-  private tournamentService: TournamentService;
-  private element: HTMLElement | null = null;
-  private allTournaments: Tournament[] = [];
-  private userTournaments: Tournament[] = [];
-  private activeTab: 'all' | 'my' | 'admin' = 'all';
+  public tournamentService: TournamentService;
+  public element: HTMLElement | null = null;
+  public allTournaments: Tournament[] = [];
+  public userTournaments: Tournament[] = [];
+  public activeTab: 'all' | 'my' | 'admin' = 'all';
 
   constructor(router: Router) {
     this.router = router;
     this.tournamentService = new TournamentService();
+    this.setupMessageHandlers();
+  }
+
+  // WebSocket notification handlers
+  private setupMessageHandlers(): void {
+    const wss = this.router.getWsManager();
+    wss.onTournamentEvent('tournament-update', handleTourPageUpdate.bind(this));
   }
 
   async render(): Promise<HTMLElement> {
@@ -26,9 +34,9 @@ export class TournamentPage implements Page {
     // Initial empty state
     container.innerHTML = this.renderTabs() + `
       <div class="px-4 py-6 sm:px-0">
-        <div class="bg-white shadow-md rounded-lg p-8">
+        <div class="dark:bg-gray-900 shadow-md rounded-lg p-8">
           <div class="text-center">
-            <p class="text-gray-500">Select a tab to view tournaments</p>
+            <p class="text-gray-500 dark:text-gray-400">Select a tab to view tournaments</p>
           </div>
         </div>
       </div>
@@ -81,10 +89,10 @@ export class TournamentPage implements Page {
         const contentContainer = this.element.querySelector('.px-4.py-6');
         if (contentContainer) {
           contentContainer.innerHTML = `
-            <div class="bg-white shadow-md rounded-lg p-8">
+            <div class="dark:bg-gray-900 shadow-md rounded-lg p-8">
               <div class="text-center py-8">
                 <p class="text-red-500">An error occurred while loading tournaments.</p>
-                <button id="retry-btn" class="mt-4 bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">
+                <button id="retry-btn" class="mt-4 btn-primary">
                   Retry
                 </button>
               </div>
@@ -210,7 +218,7 @@ export class TournamentPage implements Page {
         
         // Show success message
         const successMessage = document.createElement('div');
-        successMessage.className = 'bg-green-50 text-green-800 p-3 rounded mt-4';
+        successMessage.className = 'bg-green-50 dark:bg-green-900 text-green-800 dark:text-green-200 p-3 rounded mt-4';
         successMessage.textContent = 'Tournament created successfully! Players can now join.';
         
         form.appendChild(successMessage);
@@ -218,10 +226,8 @@ export class TournamentPage implements Page {
         // Remove the message after 5 seconds
         setTimeout(() => {
           successMessage.remove();
+          this.loadData();
         }, 5000);
-        
-        // Reload data
-        this.loadData();
       } else {
         alert(data.error || 'Failed to create tournament');
       }
@@ -246,25 +252,25 @@ export class TournamentPage implements Page {
   private renderTabs(): string {
     return `
       <div class="px-4 sm:px-0">
-        <div class="border-b border-gray-200">
+        <div class="border-b border-gray-200 dark:border-gray-700">
           <nav class="-mb-px flex" aria-label="Tabs">
             <a 
               href="#" 
-              class="tab-link ${this.activeTab === 'all' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} w-1/3 py-4 px-1 text-center border-b-2 font-medium text-sm" 
+              class="tab-link ${this.activeTab === 'all' ? 'border-pink-600 text-pink-600 dark:text-pink-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'} w-1/3 py-4 px-1 text-center border-b-2 font-medium text-base md:text-lg" 
               data-tab="all"
             >
               Browse
             </a>
             <a 
               href="#" 
-              class="tab-link ${this.activeTab === 'my' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} w-1/3 py-4 px-1 text-center border-b-2 font-medium text-sm" 
+              class="tab-link ${this.activeTab === 'my' ? 'border-pink-600 text-pink-600 dark:text-pink-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'} w-1/3 py-4 px-1 text-center border-b-2 font-medium text-base md:text-lg" 
               data-tab="my"
             >
               Joined
             </a>
             <a 
               href="#" 
-              class="tab-link ${this.activeTab === 'admin' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} w-1/3 py-4 px-1 text-center border-b-2 font-medium text-sm" 
+              class="tab-link ${this.activeTab === 'admin' ? 'border-pink-600 text-pink-600 dark:text-pink-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'} w-1/3 py-4 px-1 text-center border-b-2 font-medium text-base md:text-lg" 
               data-tab="admin"
             >
               Create
@@ -275,11 +281,11 @@ export class TournamentPage implements Page {
     `;
   }
 
-  private renderAllTournamentsContent(): string {
+  public renderAllTournamentsContent(): string {
     return `
-      <div class="bg-white shadow-md rounded-lg p-8">
+      <div class="dark:bg-gray-900 shadow-md rounded-lg p-8">
         <div class="flex items-center justify-between mb-6">
-          <h1 class="text-3xl font-bold text-gray-900">Available Tournaments</h1>
+          <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Available Tournaments</h1>
         </div>
         
         ${this.renderTournamentList(this.allTournaments)}
@@ -287,11 +293,11 @@ export class TournamentPage implements Page {
     `;
   }
 
-  private renderMyTournamentsContent(): string {
+  public renderMyTournamentsContent(): string {
     return `
-      <div class="bg-white shadow-md rounded-lg p-8">
+      <div class="dark:bg-gray-900 shadow-md rounded-lg p-8">
         <div class="flex items-center justify-between mb-6">
-          <h1 class="text-3xl font-bold text-gray-900">Registered Tournaments</h1>
+          <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Registered Tournaments</h1>
         </div>
         
         ${this.renderTournamentList(this.userTournaments, true)}
@@ -301,36 +307,36 @@ export class TournamentPage implements Page {
 
   private renderAdminContent(): string {
     return `
-      <div class="bg-white shadow-md rounded-lg p-8">
+      <div class="dark:bg-gray-900 shadow-md rounded-lg p-8">
         <div class="flex items-center justify-between mb-6">
-          <h1 class="text-3xl font-bold text-gray-900">Create Tournament</h1>
+          <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Create Tournament</h1>
         </div>
         
-        <div class="mb-8 bg-blue-50 p-4 rounded-lg">
-          <p class="text-sm text-blue-800">
+        <div class="mb-8 bg-blue-50 dark:bg-blue-900 p-4 rounded-lg">
+          <p class="text-sm text-blue-800 dark:text-blue-200">
             <strong>How tournaments work:</strong>
-            <ul class="list-disc pl-5 mt-2">
-              <li>All tournaments have exactly 4 participants</li>
-              <li>Tournaments automatically start once 4 players have joined</li>
-              <li>Create as many tournaments as you need</li>
-            </ul>
           </p>
+          <ul class="list-disc pl-5 mt-2 text-sm text-blue-800 dark:text-blue-200">
+            <li>All tournaments have exactly 4 participants</li>
+            <li>Tournaments automatically start once 4 players have joined</li>
+            <li>Create as many tournaments as you need</li>
+          </ul>
         </div>
         
         <div class="mb-8">
           <form id="create-tournament-form" class="space-y-4">
             <div>
-              <label for="name" class="block text-sm font-medium text-gray-700">Tournament Name</label>
-              <input type="text" id="name" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2">
+              <label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Tournament Name</label>
+              <input type="text" id="name" required class="input-field">
             </div>
             
             <div>
-              <label for="description" class="block text-sm font-medium text-gray-700">Description</label>
-              <textarea id="description" rows="3" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"></textarea>
+              <label for="description" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
+              <textarea id="description" rows="3" class="input-field"></textarea>
             </div>
             
             <div>
-              <button type="submit" class="bg-indigo-600 text-white px-6 py-3 rounded hover:bg-indigo-700 font-medium">
+              <button type="submit" class="card-button">
                 Create Tournament
               </button>
             </div>
@@ -345,46 +351,50 @@ export class TournamentPage implements Page {
       return isUserTournaments 
         ? `
           <div class="text-center py-8">
-            <p class="text-gray-500">You haven't joined any tournaments yet.</p>
-            <p class="text-gray-500 mt-2">Check out the available tournaments to get started!</p>
+            <p class="text-gray-500 dark:text-gray-400">You haven't joined any tournaments yet.</p>
+            <p class="text-gray-500 dark:text-gray-400 mt-2">Check out the available tournaments to get started!</p>
           </div>
         `
         : `
           <div class="text-center py-8">
-            <p class="text-gray-500">No tournaments available at the moment.</p>
+            <p class="text-gray-500 dark:text-gray-400">No tournaments available at the moment.</p>
           </div>
         `;
     }
     
     return `
       <div class="grid grid-cols-1 gap-4 mt-4">
-        ${tournaments.map(tournament => `
-          <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-            <div class="flex justify-between items-start">
-              <div>
-                <h3 class="text-lg font-semibold">${tournament.name}</h3>
-                <p class="text-sm text-gray-500">${tournament.description || 'No description available'}</p>
-                
-                <div class="mt-2 text-sm">
-                  <div><span class="font-medium">Status:</span> ${this.formatStatus(tournament.status)}</div>
-                  ${isUserTournaments && tournament.participant_status ? 
-                    `<div><span class="font-medium">Your Status:</span> ${this.formatParticipantStatus(tournament.participant_status)}</div>` 
-                    : ''}
-                  <div><span class="font-medium">Participants:</span> ${tournament.current_participants || 0} / 4</div>
-                </div>
-              </div>
-              
-              <div>
-                <button 
-                  class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 view-details"
-                  data-id="${tournament.id}"
-                >
-                  View Details
-                </button>
-              </div>
+        ${tournaments.map(tournament => this.renderTournamentCard(tournament, isUserTournaments)).join('')}
+      </div>
+    `;
+  }
+
+  private renderTournamentCard(tournament: Tournament, isUserTournament: boolean = false): string {
+    return `
+      <div class="card hover:shadow-md transition-shadow">
+        <div class="flex justify-between items-start">
+          <div class="text-left">
+            <h3 class="card-title">${tournament.name}</h3>
+            <p class="card-description">${tournament.description || 'No description available'}</p>
+            
+            <div class="mt-2 text-sm text-gray-600 dark:text-gray-300">
+              <div><span class="font-medium">Status:</span> ${this.formatStatus(tournament.status)}</div>
+              ${isUserTournament && tournament.participant_status ? 
+                `<div><span class="font-medium">Your Status:</span> ${this.formatParticipantStatus(tournament.participant_status)}</div>` 
+                : ''}
+              <div><span class="font-medium">Participants:</span> ${tournament.current_participants || 0} / 4</div>
             </div>
           </div>
-        `).join('')}
+          
+          <div>
+            <button 
+              class="view-details card-button"
+              data-id="${tournament.id}"
+            >
+              View Details
+            </button>
+          </div>
+        </div>
       </div>
     `;
   }
@@ -393,13 +403,13 @@ export class TournamentPage implements Page {
   private formatStatus(status: string): string {
     switch (status) {
       case 'pending':
-        return '<span class="text-yellow-600 font-medium">Registration Open</span>';
+        return '<span class="text-green-600 dark:text-green-400 font-medium">Registration Open</span>';
       case 'active':
-        return '<span class="text-green-600 font-medium">In Progress</span>';
+        return '<span class="text-yellow-600 dark:text-yellow-400 font-medium">In Progress</span>';
       case 'completed':
-        return '<span class="text-blue-600 font-medium">Completed</span>';
+        return '<span class="text-blue-600 dark:text-blue-400 font-medium">Completed</span>';
       case 'cancelled':
-        return '<span class="text-red-600 font-medium">Cancelled</span>';
+        return '<span class="text-red-600 dark:text-red-400 font-medium">Cancelled</span>';
       default:
         return status;
     }
@@ -408,13 +418,13 @@ export class TournamentPage implements Page {
   private formatParticipantStatus(status: string): string {
     switch (status) {
       case 'registered':
-        return '<span class="text-blue-600 font-medium">Registered</span>';
+        return '<span class="text-green-600 dark:text-green-400 font-medium">Registered</span>';
       case 'active':
-        return '<span class="text-green-600 font-medium">Active</span>';
+        return '<span class="text-yellow-600 dark:text-yellow-400 font-medium">Active</span>';
       case 'eliminated':
-        return '<span class="text-red-600 font-medium">Eliminated</span>';
+        return '<span class="text-red-600 dark:text-red-400 font-medium">Eliminated</span>';
       case 'winner':
-        return '<span class="text-yellow-600 font-medium">Winner! 🏆</span>';
+        return '<span class="text-blue-600 dark:text-blue-400 font-medium">Winner! 🏆</span>';
       default:
         return status;
     }

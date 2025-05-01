@@ -23,8 +23,12 @@ all: down up
 # --build: build images before starting
 # -d: run detached in background
 up:
-	@echo "$(BROWN)[ Starting containers... ]$(END)"
+	@echo "$(GREEN)[ Starting containers... ]$(END)"
 	@$(COMPOSE) -f $(COMPOSE_FILE) up --build --force-recreate -d
+
+cli:
+	@echo "$(GREEN)[ Running Pong-CLI... ]$(END)"
+	@docker run -it --network="host" src-pong-cli bash
 
 down:
 	@echo "$(BROWN)[ Stopping and removing containers... ]$(END)"

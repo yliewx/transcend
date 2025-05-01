@@ -25,7 +25,7 @@ export class OTPVerificationPage implements Page {
       <div class="py-10">
         <main>
           <div class="max-w-md mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="bg-gray-800 shadow-md rounded-lg p-8">
+            <div class="bg-gray-800 dark:bg-gray-900 shadow-md rounded-lg p-8">
               <div class="text-center">
                 <h1 class="text-2xl font-bold text-white">Enter OTP Code</h1>
                 <p class="mt-2 text-sm text-gray-300">We have sent a 6-digit verification code to your registered device.</p>
@@ -35,7 +35,7 @@ export class OTPVerificationPage implements Page {
                 <div class="flex justify-center gap-2">
                   ${Array.from({ length: 6 }).map((_, i) => `
                     <input id="otp-${i}" type="text" maxlength="1" 
-                      class="w-12 h-12 text-center text-xl font-semibold border border-gray-500 bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-white"
+                      class="w-12 h-12 text-center text-xl font-semibold border border-gray-500 dark:border-gray-600 bg-gray-700 dark:bg-gray-800 rounded-md shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500 text-white"
                     />
                   `).join('')}
                 </div>
@@ -44,12 +44,12 @@ export class OTPVerificationPage implements Page {
                 
                 <div>
                   <button type="submit" id="verify-otp"
-                    class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    class="w-full card-button">
                     Verify OTP
                   </button>
                 </div>
                 <p class="text-sm text-center text-gray-300 mt-2">
-                  Didn't receive the code? <button id="resend-otp" class="text-indigo-400 hover:text-indigo-300">Resend OTP</button>
+                  Didn't receive the code? <button id="resend-otp" class="text-pink-400 hover:text-pink-300">Resend OTP</button>
                 </p>
               </form>
             </div>

@@ -4,6 +4,7 @@ import { GameState } from '../types';
 import { PongGameService } from '../services/pong.game.service';
 import { WebSocketManager } from '../services/websocket.manager';
 import { PongViewComponents } from '../components/pong.components';
+import { Notifications } from '../components/notifications';
 
 export class PongGamePage implements Page {
   private router: Router;
@@ -24,6 +25,7 @@ export class PongGamePage implements Page {
   private gameId: string | null = null;
   private userId: number | null = null;
   private isCreator: boolean = false;
+  private isTourMatch: boolean = false;
   private state: GameState | null = null;
   private gameLoopId: number | null = null;
   private buttonHandlers: Record<string, EventListener> = {};
@@ -39,18 +41,21 @@ export class PongGamePage implements Page {
     this.handleKeyUp(e);
   };
 
+  private leftUserName: string | null = null;
+  private rightUserName: string | null = null;
   /*------------------------------CONSTRUCTOR-------------------------------*/
 
   constructor(router: Router, pongService: PongGameService) {
     this.router = router;
     this.pongService = pongService;
     this.pongViewComponents = new PongViewComponents();
+
+    const id = sessionStorage.getItem('userId');
+    const parsed = id !== null ? parseInt(id, 10) : NaN;
+    this.userId = Number.isNaN(parsed) ? null : parsed;
+    
     this.wss = this.router.getWsManager();
     this.setupMessageHandlers();
-
-    // Get user ID from session storage
-    const userIdString = sessionStorage.getItem('userId');
-    this.userId = userIdString ? parseInt(userIdString, 10) : null;
   }
 
   /*-----------------------------RENDER ELEMENT-----------------------------*/
@@ -79,8 +84,8 @@ export class PongGamePage implements Page {
   /*----------------------------RESET GAME STATE----------------------------*/
 
   async update() {
+    console.log('Inside update() function');
     // When revisiting the page: Reconnect if there is an existing game
-    console.log("Pong game update method called")
     const reconnected = await this.restoreGameSession();
     if (!reconnected) {
       this.resetGame();
@@ -88,6 +93,7 @@ export class PongGamePage implements Page {
   }
   
   private resetGame(): void {
+    // console.log("resetGame() called");
     // Clear any existing game state and intervals
     this.stopGameLoop();
     // Reset game state
@@ -99,11 +105,14 @@ export class PongGamePage implements Page {
       const gameControlsElement = this.element.querySelector('#game-controls');
       const gameStatusElement = this.element.querySelector('#game-status');
       const joinButton = this.element?.querySelector('#join-game-btn');
+      const resetButton = this.element?.querySelector('#reset-game-btn');
       
       if (gameIdElement) gameIdElement.textContent = '-';
       if (gameControlsElement) gameControlsElement.classList.add('hidden');
       if (gameStatusElement) gameStatusElement.textContent = '';
       if (joinButton) joinButton.classList.remove('hidden');
+      if (resetButton) resetButton.classList.remove('hidden');
+      this.hideJoinGameForm();
       this.element?.querySelector('#pong-canvas-container')?.classList.add('hidden');
       this.element?.querySelector('#mode-selection')?.classList.remove('hidden');
 
@@ -117,26 +126,37 @@ export class PongGamePage implements Page {
 
   private async restoreGameSession(): Promise<boolean> {
     if (this.userId === null) {
-      console.error('Cannot check for active game session. No user ID found.');
-      return false;
+      const id = sessionStorage.getItem('userId');
+      const parsed = id !== null ? parseInt(id, 10) : NaN;
+      this.userId = Number.isNaN(parsed) ? null : parsed;
+      if (this.userId === null) {
+        console.error('Cannot check for active game session. No user ID found.');
+        return false;
+      }
     }
   
-    const existingGame = await this.pongService.getExistingGame(this.userId!);
-    if (existingGame.success) {
-      this.gameId = existingGame.gameId ?? null;
-      this.gameMode = existingGame.gameMode ?? 'local';
-      this.isCreator = existingGame.isCreator ?? false;
+    const response = await this.pongService.getExistingGame(this.userId!);
+    if (response.hasExistingGame) {
+      this.gameId = response.gameId ?? null;
+      this.gameMode = response.gameMode ?? 'local';
+      this.state = response.state ?? null;
+      this.isCreator = response.isCreator ?? false;
+      this.isTourMatch = response.isTourMatch ?? false;
 
-      if (this.gameId) {
+      if (this.gameId && this.state?.status !== 'finished') {
+        this.updateGameStatusUI('Reconnecting to previous game...');
         console.log(`Attempting to connect to previous game: ${this.gameId}. Creator: ${this.isCreator}.`);
-        const success = await this.wss.connectGame(this.gameId, this.userId);
-        if (success) {
-          const gameIdElement = this.element?.querySelector('#game-id');
-          if (gameIdElement) gameIdElement.textContent = this.gameId;
-          this.updateGameStatusUI('Reconnecting to previous game...');
-          return true;
-        } else {
-          console.log('Failed to reconnect to previous game.');
+        try {
+          const success = await this.wss.connectGame(this.gameId, this.userId);
+          if (success) {
+            const gameIdElement = this.element?.querySelector('#game-id');
+            if (gameIdElement) gameIdElement.textContent = this.gameId;
+            this.updateGameStatusUI('Reconnected to game!');
+            this.startGameLoop();
+            return true;
+          }
+        } catch (error) {
+          console.warn('Failed to reconnect to previous game.');
         }
       }
     }
@@ -168,12 +188,20 @@ export class PongGamePage implements Page {
     this.element?.querySelector('#game-controls')?.classList.remove('hidden');
     this.element?.querySelector('#pong-canvas-container')?.classList.remove('hidden');
     this.element?.querySelector('#mode-selection')?.classList.add('hidden');
-    this.element?.querySelector('#reset-game-btn')?.classList.remove('hidden');
+    // Only show reset button if it isn't a tournament match
+    if (this.isTourMatch) {
+      this.element?.querySelector('#reset-game-btn')?.classList.add('hidden');
+    }
   }
 
   // Called by websocket manager on 'player-joined' message
   private handleJoinedGame(data: any): void {
+    console.log('handleJoinedGame:', data)
     if (data.state) this.state = data.state;
+    if (data.leftUserName !== null) this.leftUserName = data.leftUserName;
+    console.log('Left user name:', this.leftUserName);
+    if (data.rightUserName !== null) this.rightUserName = data.rightUserName;
+    console.log('Right user name:', this.rightUserName);
 
     this.setupGameUI();
     if (this.state?.status === 'playing') {
@@ -205,6 +233,21 @@ export class PongGamePage implements Page {
   }
 
   /*-----------------------------EVENT HANDLERS-----------------------------*/
+  private cleanResetGame(): void {
+    if (!window.confirm('Are you sure you want to reset the game?\n \
+      Your current result will not be saved.')) {
+      console.log("User canceled reset");
+      return;
+    }
+  
+    this.resetGame();
+    this.wss.sendMessage('reset', {
+      gameId: this.gameId,
+      playerId: this.userId
+    });
+    this.wss.disconnectGame();
+  }
+  
 
   private setupEventHandlers(): void {
     // Remove any existing event listeners first
@@ -228,7 +271,8 @@ export class PongGamePage implements Page {
       'cancel-join-game-btn': () => this.hideJoinGameForm(),
       'start-game-btn': () => this.startGame(),
       'pause-game-btn': () => this.pauseGame(),
-      'reset-game-btn': () => this.resetGame()
+      'reset-game-btn': () => this.cleanResetGame(),
+      'cli-btn': () => this.showCLIToken()
     };
 
     Object.entries(buttonActions).forEach(([id, action]) => {
@@ -319,8 +363,8 @@ export class PongGamePage implements Page {
     this.gameMode = gameMode;
 
     // Hide join button + input field if "create game" is selected
-    const joinButton = this.element?.querySelector('#join-game-btn');
-    if (joinButton) joinButton.classList.add('hidden');
+    // const joinButton = this.element?.querySelector('#join-game-btn');
+    // if (joinButton) joinButton.classList.add('hidden');
 
     const joinGameFormElement = this.element?.querySelector('#join-game-form');
     if (joinGameFormElement) joinGameFormElement.classList.add('hidden');
@@ -335,9 +379,11 @@ export class PongGamePage implements Page {
     // Connect to game room with the ID returned by the server
     this.gameId = response.gameId!;
     this.isCreator = true;
-    const success = await this.wss.connectGame(this.gameId, this.userId!);
-    if (!success) {
-      console.log('Failed to connect to game room.');
+    try {
+      await this.wss.connectGame(this.gameId, this.userId!);
+    } catch (error) {
+      console.warn('Failed to connect to game room.');
+      Notifications.show('error', 'Failed to join game');
     }
   }
   
@@ -359,8 +405,10 @@ export class PongGamePage implements Page {
 
   // On submit or cancel button
   private hideJoinGameForm(): void {
+    // console.log('hideJoinGameForm() called');
     const joinGameFormElement = this.element?.querySelector('#join-game-form');
     if (joinGameFormElement) {
+      // console.log('Join game form hidden');
       joinGameFormElement.classList.add('hidden');
       
       // Clear the input field
@@ -385,9 +433,11 @@ export class PongGamePage implements Page {
     this.resetGame();
     this.gameId = gameCode;
     this.isCreator = false;
-    const success = await this.wss.connectGame(this.gameId, this.userId!);
-    if (!success) {
-      console.log('Failed to connect to game room.');
+    try {
+      await this.wss.connectGame(this.gameId, this.userId!);
+    } catch (error) {
+      console.warn('Failed to connect to game room.');
+      Notifications.show('error', 'Failed to join game');
     }
     // handleJoinedGame() when the server responds
   }
@@ -403,11 +453,6 @@ export class PongGamePage implements Page {
     if (this.state && this.state.status !== 'waiting') {
       console.log("Cannot start game: game is already finished or already has been started");
       return;
-    }
-
-    if (!this.isCreator) {
-      console.log('Cannot start game: Player who created the game must start!');
-      return ;
     }
 
     // Notify server to start game
@@ -434,6 +479,15 @@ export class PongGamePage implements Page {
       gameId: this.gameId,
       playerId: this.userId
     });
+  }
+
+  /*-------------------=-----------PAUSE GAME-------------------------------*/
+
+  private async showCLIToken(): Promise<void> {
+    const response = await this.pongService.generateCLIToken();
+    if (!response.success) {
+      console.error('Server returned error:', response.error);;
+    }
   }
 
   /*------------------------------GAME STATE--------------------------------*/
@@ -487,10 +541,14 @@ export class PongGamePage implements Page {
     } else if (this.state.status === 'paused') {
       statusElement.textContent= 'Game paused';
     } else if (this.state.status === 'finished') {
-      const winner = this.state.winner === 'left' ? 'Left' : 'Right';
+      const winner = this.state.winner === 'left' ? this.leftUserName : this.rightUserName;
       const winningScore = this.state.winner === 'left' ? this.state.scoreLeft : this.state.scoreRight;
       const losingScore = this.state.winner === 'left' ? this.state.scoreRight : this.state.scoreLeft;
-      statusElement.textContent= `Game over! ${winner} player wins ${winningScore}-${losingScore}!`;
+      if (winningScore === 5) {
+        statusElement.textContent= `Game over! ${winner} wins ${winningScore}-${losingScore}!`;
+      } else {
+        statusElement.textContent= `Game over! Match was reset. Final score: ${this.state.scoreLeft}-${this.state.scoreRight}`;
+      }
     }
   }
 
@@ -565,23 +623,45 @@ export class PongGamePage implements Page {
     this.ctx.fillStyle = '#FFFFFF';
     this.ctx.fillText(this.state.scoreLeft.toString(), this.gameWidth / 4, 50);
     this.ctx.fillText(this.state.scoreRight.toString(), (this.gameWidth / 4) * 3, 50);
+    // Draw player names
+    // console.log('Drawing player names:', this.leftUserName, this.rightUserName);
+    const leftPlayerName = this.leftUserName || 'Guest';
+    const rightPlayerName = this.rightUserName || 'Guest';
+    this.ctx.font = '16px Arial';
+    this.ctx.fillText(leftPlayerName, this.gameWidth / 4, 80);
+    this.ctx.fillText(rightPlayerName, (this.gameWidth / 4) * 3, 80);
   }
 
   /*------------------------------DESTROY GAME------------------------------*/
 
   public destroy(): void {
     console.log("Pong game destroy method called");
-
+  
+    // Remove keyboard event listeners
     window.removeEventListener('keydown', this.keyDownHandler);
     window.removeEventListener('keyup', this.keyUpHandler);
-    // Remove warning when leaving game screen
-    window.removeEventListener('beforeunload', this.handleBeforeUnload);
-
-    this.resetGame();
     
-    // if (this.gameId) 
-    //   this.pongService.cleanupGame(this.gameId);
+    // Remove beforeUnload event listener
+    window.removeEventListener('beforeunload', this.handleBeforeUnload);
+    
+    // Remove all button click event listeners
+    Object.entries(this.buttonHandlers).forEach(([id, handler]) => {
+      const button = document.getElementById(id);
+      if (button) {
+        button.removeEventListener('click', handler);
+      }
+    });
+    
+    this.buttonHandlers = {};
+    this.stopGameLoop();
+    this.wss.disconnectGame();
+    
+    // NOT clearing element reference
+    this.element = null;
+    
+    console.log("All event listeners cleaned up, element preserved");
   }
+
 
   private handleBeforeUnload = (event: BeforeUnloadEvent) => {
     if (this.state?.status === 'playing') {

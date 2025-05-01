@@ -203,6 +203,14 @@ export class PongGame {
 
   /*--------------------------------END GAME--------------------------------*/
 
+  // Handle premature end (reset button)
+  public resetGame(): void {
+    this.state.status = 'finished';
+    this.state.winner = this.state.scoreLeft > this.state.scoreRight ? 'left' : 'right';
+    this.cleanup();
+    this.endgameCallback(this.getState());
+  }
+
   private endGame(winner: 'left' | 'right'): void {
     this.state.status = 'finished';
     this.state.winner = winner;

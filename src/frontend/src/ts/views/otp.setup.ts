@@ -13,7 +13,6 @@ export class OTPSetupPage implements Page {
     this.selectedOption = null;
   }
 
-
   render(): HTMLElement {
     // Return cached element if it exists
     if (this.element) {
@@ -21,144 +20,141 @@ export class OTPSetupPage implements Page {
     }
     
     const container = document.createElement('div');
-    container.className = 'py-10';
+    container.className = 'max-w-7xl mx-auto py-6 sm:px-6 lg:px-8';
+
+    const inner = document.createElement('div');
+    inner.className = 'px-4 py-6 sm:px-0';
 
     const userEmail = sessionStorage.getItem('userEmail') || 'you@example.com';
 
-    container.innerHTML = `
-      <div class="py-10">
-        <main>
-          <div class="max-w-lg mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="bg-white dark:bg-gray-900 shadow-md rounded-lg p-8">
-              <div class="text-center">
-                <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Set Up Two-Factor Authentication</h1>
-                <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">Enhance your account security by setting up 2FA.</p>
-              </div>
+    inner.innerHTML = `
+      <div class="card bg-white dark:bg-gray-900 shadow-md rounded-lg p-8">
+        <div class="text-center">
+          <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Set Up Two-Factor Authentication</h1>
+          <p class="mt-4 text-lg text-gray-600 dark:text-gray-400">Enhance your account security by setting up 2FA.</p>
+        </div>
+        
+        <div class="mt-8">
+          <div class="space-y-4">
+            <h2 class="card-title">Select your preferred verification method:</h2>
+            
+            <!-- Method selection radio buttons -->
+            <div class="space-y-3">
+              <label class="flex items-center p-3 border rounded-lg hover:bg-pink-50 dark:hover:bg-gray-800 cursor-pointer">
+                <input type="radio" name="2fa-method" id="tfa-sms" class="h-4 w-4 text-pink-600 dark:text-pink-400" />
+                <div class="ml-3 text-left">
+                  <span class="block text-sm font-medium text-gray-700 dark:text-gray-300">SMS Verification</span>
+                  <span class="block text-xs text-gray-500 dark:text-gray-400">Receive OTP via text message</span>
+                </div>
+              </label>
               
-              <div class="mt-8">
-                <div class="space-y-4">
-                  <h2 class="text-lg font-medium text-gray-700 dark:text-gray-300">Select your preferred verification method:</h2>
-                  
-                  <!-- Method selection radio buttons -->
-                  <div class="space-y-3">
-                    <label class="flex items-center p-3 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer">
-                      <input type="radio" name="2fa-method" id="tfa-sms" class="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-                      <div class="ml-3">
-                        <span class="block text-sm font-medium text-gray-700 dark:text-gray-300">SMS Verification</span>
-                        <span class="block text-xs text-gray-500 dark:text-gray-400">Receive OTP via text message</span>
-                      </div>
-                    </label>
-                    
-                    <label class="flex items-center p-3 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer">
-                      <input type="radio" name="2fa-method" id="tfa-email" class="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-                      <div class="ml-3">
-                        <span class="block text-sm font-medium text-gray-700 dark:text-gray-300">Email Verification</span>
-                        <span class="block text-xs text-gray-500 dark:text-gray-400">Receive OTP via email</span>
-                      </div>
-                    </label>
-                    
-                    <label class="flex items-center p-3 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer">
-                      <input type="radio" name="2fa-method" id="tfa-app" class="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-                      <div class="ml-3">
-                        <span class="block text-sm font-medium text-gray-700 dark:text-gray-300">Authenticator App</span>
-                        <span class="block text-xs text-gray-500 dark:text-gray-400">Receive OTP via Google Authenticator</span>
-                      </div>
-                    </label>
-                  </div>
+              <label class="flex items-center p-3 border rounded-lg hover:bg-pink-50 dark:hover:bg-gray-800 cursor-pointer">
+                <input type="radio" name="2fa-method" id="tfa-email" class="h-4 w-4 text-pink-600 dark:text-pink-400" />
+                <div class="ml-3 text-left">
+                  <span class="block text-sm font-medium text-gray-700 dark:text-gray-300">Email Verification</span>
+                  <span class="block text-xs text-gray-500 dark:text-gray-400">Receive OTP via email</span>
                 </div>
-                
-                <!-- SMS Setup Section (initially hidden) -->
-                <div id="sms-setup" class="mt-6 hidden">
-                  <div class="space-y-4">
-                    <h3 class="text-md font-medium text-gray-700 dark:text-gray-300">Set up SMS verification</h3>
-                    <p class="text-sm text-gray-600 dark:text-gray-400">Enter the mobile number with which you want to enable 2FA.</p>
-                    
-                    <div>
-                      <label for="phone-number" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Phone Number</label>
-                      <div class="mt-1">
-                        <input type="tel" id="phone-number" class="block w-full rounded-md border-gray-300 dark:border-gray-700 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-800 dark:text-white" placeholder="+1 (555) 123-4567" />
-                      </div>
-                    </div>
-                    
-                    <button id="enable-sms" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:bg-indigo-700 dark:hover:bg-indigo-600">
-                      Enable SMS Verification
-                    </button>
-                  </div>
+              </label>
+              
+              <label class="flex items-center p-3 border rounded-lg hover:bg-pink-50 dark:hover:bg-gray-800 cursor-pointer">
+                <input type="radio" name="2fa-method" id="tfa-app" class="h-4 w-4 text-pink-600 dark:text-pink-400" />
+                <div class="ml-3 text-left">
+                  <span class="block text-sm font-medium text-gray-700 dark:text-gray-300">Authenticator App</span>
+                  <span class="block text-xs text-gray-500 dark:text-gray-400">Receive OTP via Google Authenticator</span>
                 </div>
-                
-                <!-- Email Setup Section (initially hidden) -->
-                <div id="email-setup" class="mt-6 hidden">
-                  <div class="space-y-4">
-                    <h3 class="text-md font-medium text-gray-700 dark:text-gray-300">Set up Email verification</h3>
-                    <p class="text-sm text-gray-600 dark:text-gray-400">Enter the email address with which you want to enable 2FA.</p>
-                    
-                    <div>
-                      <label for="email-address" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Email Address</label>
-                      <div class="mt-1">
-                        <input type="email" id="email-address" class="block w-full rounded-md border-gray-300 dark:border-gray-700 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-gray-800 dark:text-white" value="${userEmail}" />
-                      </div>
-                    </div>
-                    
-                    <button id="enable-email" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:bg-indigo-700 dark:hover:bg-indigo-600">
-                      Enable Email Verification
-                    </button>
-                  </div>
-                </div>
-                
-                <!-- App Setup Section (initially hidden) -->
-                <div id="app-setup" class="mt-6 hidden">
-                  <div class="space-y-4">
-                    <h3 class="text-md font-medium text-gray-700 dark:text-gray-300">Set up Authenticator App</h3>
-                    <p class="text-sm text-gray-600 dark:text-gray-400">Follow these steps to set up your authenticator:</p>
-                    
-                    <ol class="list-decimal pl-5 text-sm text-gray-600 dark:text-gray-400 space-y-2">
-                      <li>Download and install Google Authenticator (or similar app)</li>
-                      <li>Scan the QR code below using the app</li>
-                      <li>Use the app to generate codes when you log in</li>
-                    </ol>
-                    
-                    <div class="flex justify-center">
-                      <div id="qr-placeholder" class="w-48 h-48 bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-                        <span class="text-gray-400 dark:text-gray-600">QR Code will appear here</span>
-                      </div>
-                    </div>
-                    
-                    <div class="text-center">
-                      <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">If you can't scan the QR code, enter this key manually:</p>
-                      <div id="secret-key" class="font-mono bg-gray-100 dark:bg-gray-700 p-2 rounded text-sm text-gray-600 dark:text-gray-300">ABCDEF123456</div>
-                    </div>
-                    
-                    <button id="enable-app" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:bg-indigo-700 dark:hover:bg-indigo-600">
-                      Enable App Verification
-                    </button>
-                  </div>
-                </div>
-                
-                <!-- Success Section (initially hidden) -->
-                <div id="success-section" class="mt-6 hidden">
-                  <div class="text-center">
-                    <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 dark:bg-green-700">
-                      <svg class="h-6 w-6 text-green-600 dark:text-green-200" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                      </svg>
-                    </div>
-                    <h3 class="mt-3 text-lg font-medium text-gray-900 dark:text-white">Two-factor authentication enabled!</h3>
-                    <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                      Your account is now more secure. You'll be asked for a verification code when you sign in.
-                    </p>
-                    <div class="mt-4">
-                      <button id="continue-button" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:bg-indigo-700 dark:hover:bg-indigo-600">
-                        Continue to OTP Entry
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              </label>
             </div>
           </div>
-        </main>
+          
+          <!-- SMS Setup Section (initially hidden) -->
+          <div id="sms-setup" class="mt-6 hidden">
+            <div class="card">
+              <h3 class="card-title">Set up SMS verification</h3>
+              <p class="card-description">Enter the mobile number you want to use for 2FA.</p>
+              
+              <div class="mb-4">
+                <label for="phone-number" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Phone Number</label>
+                <div class="mt-1">
+                  <input type="tel" id="phone-number" class="input-field" placeholder="+1 (555) 123-4567" />
+                </div>
+              </div>
+              
+              <button id="enable-sms" class="card-button">
+                Enable SMS Verification
+              </button>
+            </div>
+          </div>
+          
+          <!-- Email Setup Section (initially hidden) -->
+          <div id="email-setup" class="mt-6 hidden">
+            <div class="card">
+              <h3 class="card-title">Set up Email verification</h3>
+              <p class="card-description">Enter the email address you want to use for 2FA.</p>
+              
+              <div class="mb-4">
+                <label for="email-address" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Email Address</label>
+                <div class="mt-1">
+                  <input type="email" id="email-address" class="input-field" value="${userEmail}" />
+                </div>
+              </div>
+              
+              <button id="enable-email" class="card-button">
+                Enable Email Verification
+              </button>
+            </div>
+          </div>
+          
+          <!-- App Setup Section (initially hidden) -->
+          <div id="app-setup" class="mt-6 hidden">
+            <div class="card">
+              <h3 class="card-title">Set up Authenticator App</h3>
+              <p class="card-description">Follow these steps to set up your authenticator:</p>
+              
+              <ol class="list-decimal pl-5 text-sm text-gray-600 dark:text-gray-300 space-y-2 mb-4 text-left">
+                <li>Download and install Google Authenticator (or similar app)</li>
+                <li>Scan the QR code below using the app</li>
+                <li>Use the app to generate codes when you log in</li>
+              </ol>
+              
+              <div class="flex justify-center mb-4">
+                <div id="qr-placeholder" class="w-48 h-48 bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                  <span class="text-gray-400 dark:text-gray-600">QR Code will appear here</span>
+                </div>
+              </div>
+              
+              <div class="text-center mb-4">
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">If you can't scan the QR code, enter this key manually:</p>
+                <div id="secret-key" class="font-mono bg-gray-100 dark:bg-gray-700 p-2 rounded text-sm text-gray-600 dark:text-gray-300">ABCDEF123456</div>
+              </div>
+              
+              <button id="enable-app" class="card-button">
+                Enable App Verification
+              </button>
+            </div>
+          </div>
+          
+          <!-- Success Section (initially hidden) -->
+          <div id="success-section" class="mt-6 hidden">
+            <div class="card bg-green-50 dark:bg-green-900">
+              <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 dark:bg-green-700 mb-4">
+                <svg class="h-6 w-6 text-green-600 dark:text-green-200" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h3 class="card-title text-green-600 dark:text-green-400">Two-factor authentication enabled!</h3>
+              <p class="card-description">
+                Your account is now more secure. You'll be asked for a verification code when you sign in.
+              </p>
+              <button id="continue-button" class="btn-success">
+                Continue to OTP Entry
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     `;
+    
+    container.appendChild(inner);
     
     // Cache the element
     this.element = container;

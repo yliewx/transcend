@@ -3,6 +3,7 @@ import { loginHandler, googleAuthCallbackHandler } from '../controllers/login.co
 import { logoutHandler } from '../controllers/logout.controller';
 import { generateOtp, verifyOtp, generateQRCode, otpPreferenceHandler } from '../controllers/otp.controller';
 import { refreshAccessHandler, getTokenStatus } from '../controllers/token.controller';
+import { generateCLIToken } from '../controllers/cli.controller';
 import fp from 'fastify-plugin';
 
 // Define authentication endpoints
@@ -28,4 +29,8 @@ export default fp(async function authRoutes(server: FastifyInstance) {
   // Auth tokens
   server.post('/api/auth/refresh', { preHandler: server.reAuthenticate }, refreshAccessHandler);
   server.get('/api/auth/refresh/status', getTokenStatus);
+
+  // CLI token
+  server.post('/api/cli/generate', { preHandler: server.authenticate }, generateCLIToken);
+
 });
