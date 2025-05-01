@@ -68,6 +68,7 @@ export class ProfilePage implements Page {
                       id="username" 
                       name="username" 
                       value="a"
+                      maxlength="20"
                       class="input-field"
                     >
                   </div>
@@ -80,6 +81,7 @@ export class ProfilePage implements Page {
                       id="displayName" 
                       name="displayName" 
                       value="a"
+                      maxlength="20"
                       class="input-field"
                     >
                   </div>
@@ -92,6 +94,7 @@ export class ProfilePage implements Page {
                       id="email" 
                       name="email" 
                       value="a@gmail.com"
+                      maxlength="30"
                       class="input-field"
                     >
                   </div>
@@ -107,6 +110,7 @@ export class ProfilePage implements Page {
                         type="password" 
                         id="currentPassword" 
                         name="currentPassword" 
+                        maxlength="20"
                         class="input-field"
                       >
                     </div>
@@ -117,7 +121,7 @@ export class ProfilePage implements Page {
                       <input 
                         type="password" 
                         id="newPassword" 
-                        name="newPassword" 
+                        maxlength="20"
                         class="input-field"
                       >
                     </div>
