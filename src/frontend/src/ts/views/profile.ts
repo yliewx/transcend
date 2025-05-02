@@ -196,19 +196,37 @@ export class ProfilePage implements Page {
     }
   }
 
+  // private async fetchProfileData(): Promise<void> {
+  //   try {
+  //     const profileResponse = await this.userService.getProfile();
+      
+  //     if (profileResponse.success) {
+  //       this.userProfile = profileResponse;
+  //       this.updateUIWithProfileData();
+  //     } else {
+  //       console.error('Failed to fetch profile:', profileResponse.error);
+  //     }
+  //   } catch (error) {
+  //     console.error('Failed to fetch user data:', error);
+  //   }
+  // }
   private async fetchProfileData(): Promise<void> {
+    console.log('Starting fetchProfileData');
     try {
       const profileResponse = await this.userService.getProfile();
+      console.log('Profile API response:', profileResponse);
       
-      if (profileResponse.success) {
+      if (profileResponse && profileResponse.success) {
         this.userProfile = profileResponse;
+        console.log('Setting userProfile to:', this.userProfile);
         this.updateUIWithProfileData();
       } else {
-        console.error('Failed to fetch profile:', profileResponse.error);
+        console.error('Failed to fetch profile:', profileResponse?.error || 'Unknown error');
       }
     } catch (error) {
-      console.error('Failed to fetch user data:', error);
+      console.error('Exception in fetchProfileData:', error);
     }
+    console.log('Completed fetchProfileData');
   }
 
   private updateUIWithProfileData(): void {
@@ -239,10 +257,10 @@ export class ProfilePage implements Page {
       if (passwordSection) {
         const otpOption = this.userProfile?.userData?.otp_option || null;
         
-        if (otpOption !== 'app') {
-          passwordSection.classList.remove('hidden');
-        } else {
+        if (otpOption === null) {
           passwordSection.classList.add('hidden');
+        } else {
+          passwordSection.classList.remove('hidden'); 
         }
       }
     }
@@ -352,8 +370,8 @@ export class ProfilePage implements Page {
       return;
     }
     
-    if (this.userProfile?.userData?.otp_option === 'app' && (currentPassword || newPassword || confirmPassword)) {
-      this.showNotification('Password cannot be changed when using authenticator app', 'error');
+    if (this.userProfile?.userData?.otp_option === null && (currentPassword || newPassword || confirmPassword)) {
+      this.showNotification('Password cannot be changed when signed in with google authentication', 'error');
       return;
     }
     
@@ -381,7 +399,7 @@ export class ProfilePage implements Page {
       displayName: (formData.get('displayName') as string) || undefined,
     };
     
-    const passwordData = (newPassword && this.userProfile?.userData?.otp_option !== 'app') ? {
+    const passwordData = (newPassword && this.userProfile?.userData?.otp_option !== null) ? {
       currentPassword: formData.get('currentPassword') as string,
       newPassword: newPassword,
     } : null;
