@@ -1,7 +1,7 @@
 # Usage
 ### Build and run all services
 ```bash
-make up
+make
 ```
 - Starts all containers (frontend, backend, Nginx)
 - Access the site at: https://localhost:8080
