@@ -74,7 +74,7 @@ export class OTPSetupPage implements Page {
               <div class="mb-4">
                 <label for="phone-number" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Phone Number</label>
                 <div class="mt-1">
-                  <input type="tel" id="phone-number" maxlength="20" class="input-field" placeholder="+65 91562758" />
+                  <input type="tel" id="phone-number" maxlength="20" class="input-field" placeholder="+6590074072" />
                 </div>
               </div>
               
