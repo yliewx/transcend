@@ -92,7 +92,7 @@ export class ProfilePage implements Page {
                       id="email" 
                       name="email" 
                       value="a@gmail.com"
-                      maxlength="30"
+                      maxlength="40"
                       class="input-field"
                     >
                   </div>
@@ -384,8 +384,8 @@ export class ProfilePage implements Page {
       this.showNotification('Display name must be between 3 and 20 characters', 'error');
       return;
     }
-    if (email && email.length > 30) {
-      this.showNotification('Email cannot exceed 30 characters', 'error');
+    if (email && email.length > 40) {
+      this.showNotification('Email cannot exceed 40 characters', 'error');
       return;
     }
     
