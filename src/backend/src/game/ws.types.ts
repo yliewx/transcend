@@ -1,12 +1,11 @@
 import { WebSocket } from 'ws';
 
-// key: user ID, value: client socket
 export const onlineUsers = new Map<number, WebSocket>();
 
 export interface InputMessage {
   gameId: string;
   playerId: number;
-  side?: 'left' | 'right'; // local play only
+  side?: 'left' | 'right';
   input: {
     paddleUp: boolean;
     paddleDown: boolean;

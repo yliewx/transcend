@@ -17,50 +17,41 @@ export class GameRoom {
   private id: string;
   public game: PongGame;
   private mode: 'local' | 'remote';
-  // Local play: only 1 socket required
   private localSocket: WebSocket | null = null;
-  // OR Remote play: each player has their own socket
   private players: {
     left: Player | null;
     right: Player | null;
   } = { left: null, right: null };
   private leftUserName: string | null = null;
   private rightUserName: string | null = null;
-  private isTour: boolean = false; // Flag to indicate if the game is part of a tournament
+  private isTour: boolean = false; 
   /*------------------------------CONSTRUCTOR-------------------------------*/
 
   constructor(
     id: string,
     mode: 'local' | 'remote',
-    private onCleanup: (gameId: string) => void, // GameManager callback: deleteGame
+    private onCleanup: (gameId: string) => void,
     isTour: boolean
   ) {
     this.id = id;
     this.mode = mode;
     this.isTour = isTour;
-    // Create game
     this.game = new PongGame(
       id,
-      // Set callback to broadcast updates in the game loop
       () => this.broadcastGameState('update'),
-      // Set callback to record results & delete game after it ends
       (state: GameState) => this.endGame(state)
     );
   }
 
   /*--------------------------BROADCAST GAME STATE--------------------------*/
 
-  // Broadcast message to players in room
   private broadcast(message: any) {
-    // Local: Only need to send once
     if (this.mode === 'local') {
-      // Check if socket is open before sending message
       if (this.localSocket && this.localSocket.readyState === WebSocket.OPEN) {
         this.localSocket.send(message);
       }
       return;
     }
-    // Remote: Send to both players
     if (this.players.left &&
       this.players.left?.socket?.readyState === WebSocket.OPEN) {
       this.players.left.socket.send(message);
@@ -79,38 +70,15 @@ export class GameRoom {
     this.broadcast(message);
   }
 
-  // Broadcast message when a player joins the room
-  // private async announceJoin(playerId: number, side: 'left' | 'right') {
-  //   const db = await getDb();
-  //   const user = await User.findById(db, Number(playerId));
-  //   if (side === 'left') this.leftUserName = user.username;
-  //   if (side === 'right') this.rightUserName = user.username;
-  //   this.broadcast(JSON.stringify({
-  //     type: 'player-joined',
-  //     data: {
-  //       message: `Player joined side: ${side}!`,
-  //       side: side,
-  //       ready: this.roomIsFull(),
-  //       state: this.game.getState(),
-  //       leftUserName: this.leftUserName,
-  //       rightUserName: this.rightUserName
-  //     }
-  //   }));
-  // }
-
-  // Broadcast message when a player joins the room
+  /*------------------------------ANNOUNCE JOIN-----------------------------*/
   private async announceJoin(playerId: number, side: 'left' | 'right') {
     const db = await getDb();
     const user = await User.findById(db, Number(playerId));
     
     let playerName = user.username;
     
-    // If this is a tournament game, get the player's tournament alias instead
     if (this.isTour) {
       try {
-        // We need to find which tournament this game belongs to
-        // This would require knowing the tournament_id for this game
-        // Assuming we can get it from the tournament_matches table using game_id
         const match = await db.get(
           `SELECT tournament_id FROM tournament_matches WHERE game_id = ?`,
           [this.id]
@@ -129,7 +97,6 @@ export class GameRoom {
         }
       } catch (error) {
         console.error("Error fetching tournament alias:", error);
-        // Fall back to username if there's an error
       }
     }
     
@@ -154,7 +121,6 @@ export class GameRoom {
   private addNewPlayer(data: { gameId: string; playerId: number }, socket: WebSocket): boolean {
     console.log('Adding new player');
     if (this.mode === 'local') {
-      // Local: Only one socket
       if (this.localSocket) {
         sendError(socket, 'Local game already has a player.');
         socket.close();
@@ -164,13 +130,10 @@ export class GameRoom {
       this.players.left = { id: data.playerId, socket };
       this.announceJoin(data.playerId, 'left');
     } else {
-      // Remote: Assign player side depending on availability
       if (!this.players.left) {
-        // Assign left
         this.players.left = { id: data.playerId, socket };
         this.announceJoin(data.playerId, 'left');
       } else if (!this.players.right) {
-        // Assign right
         this.players.right = { id: data.playerId, socket };
         this.announceJoin(data.playerId, 'right');
       } else {
@@ -185,22 +148,18 @@ export class GameRoom {
   public handleJoin(data: { gameId: string; playerId: number }, socket: WebSocket): boolean {
     const { playerId } = data;
 
-    // Check if join attempt is from a disconnected player (trying to reconnect) or a new player
     const side = this.getPlayerSide(playerId);
   
     if (this.mode === 'local') {
       if (side === 'left' && this.players.left) {
-        // Local reconnect
         this.localSocket = socket;
         this.players.left.socket = socket;
         this.announceJoin(playerId, 'left');
       } else {
-        // New local join attempt
         const success = this.addNewPlayer(data, socket);
         if (!success) return false;
       }
     } else {
-      // Handle remote reconnect
       if (side === 'left' && this.players.left) {
         console.log('Reconnecting left');
         this.players.left.socket = socket;
@@ -210,7 +169,6 @@ export class GameRoom {
         this.players.right.socket = socket;
         this.announceJoin(playerId, 'right');
       } else {
-        // New remote join attempt
         const success = this.addNewPlayer(data, socket);
         if (!success) return false;
       }
@@ -225,7 +183,6 @@ export class GameRoom {
   private handlePlayerMessages(socket: WebSocket): void {
     socket.removeAllListeners('message');
 
-    // Handle messages after player has joined
     socket.on('message', (msg: any) => {
       const message = JSON.parse(msg.toString());
       console.log('[GameRoom] Full message:', message.type, JSON.stringify(message.data, null, 2));
@@ -249,7 +206,6 @@ export class GameRoom {
       }
     });    
 
-    // Handle disconnect
     socket.on('close', () => {
       if (this.players.left && this.players.left?.socket === socket) {
         this.players.left.socket = null;
@@ -267,28 +223,16 @@ export class GameRoom {
     return null;
   }
 
-  /*
-  InputMessage {
-    gameId: string;
-    playerId: number;
-    side?: 'left' | 'right'; // local play only
-    input: {
-      paddleUp: boolean;
-      paddleDown: boolean;
-    };
-  }; */
   public handleInput(data: InputMessage, socket: WebSocket) {
     console.log('[GameRoom handleInput] Full data:', JSON.stringify(data, null, 2));
     let side;
     if (this.mode === 'local') {
-      // Local: Player side must be included in input message
       if (!data.side || (data.side !== 'left' && data.side !== 'right')) {
         sendError(socket, 'Missing player side in input.');
         return;
       }
       side = data.side;
     } else {
-      // Remote: Match player ID to get the side
       side = this.getPlayerSide(data.playerId);
       if (!side) {
         sendError(socket, 'Unrecognized player.');
@@ -301,8 +245,6 @@ export class GameRoom {
 
   /*-----------------------------STATE HANDLERS-----------------------------*/
 
-  // Local: Check if local socket is set
-  // Remote: Check if both players are present
   public roomIsFull(): boolean {
     return (
       (this.mode === 'local' && !!this.localSocket) ||
@@ -315,11 +257,7 @@ export class GameRoom {
       sendError(socket, 'Not enough players to start the game.');
       return;
     }
-
-    // Check if game has already started
     if (this.game.getState().status !== 'waiting') return;
-
-    // Start pong game and notify players
     this.game.startGame();
     this.broadcastGameState('start');
   }
@@ -339,7 +277,6 @@ export class GameRoom {
     this.scheduleCleanup();
   }
   
-  // Notify GameManager to delete game after it ends
   private scheduleCleanup(): void {
     setTimeout(() => {
       this.onCleanup(this.id);
@@ -370,7 +307,7 @@ export class GameRoom {
         await db.run('ROLLBACK');
       }
       console.error('Error recording player results:', error);
-      throw error; // Re-throw the error for handling by the caller
+      throw error;
     }
   }
 
@@ -409,7 +346,6 @@ export class GameRoom {
       await this.recordMatch(db, leftPlayerId, rightPlayerId, winnerId, state);
       await this.recordPlayerResults(db, leftPlayerId, rightPlayerId, winnerId);
       await this.recordPlayerResults(db, rightPlayerId, leftPlayerId, winnerId);
-      // Check if this game is part of a tournament match
       await updateTournamentMatchResult(this.id, winnerId!);
     }
   }

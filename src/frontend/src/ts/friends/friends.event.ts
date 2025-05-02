@@ -1,10 +1,6 @@
 import type { FriendsPage } from '../views/friends';
 import { Notifications } from '../components/notifications';
 
-/* Event handlers for local notifications:
-- Dispatched in friend.service.ts after receiving API response */
-
-// sendFriendRequest
 export function onFriendRequestSent(this: FriendsPage, event: CustomEvent) {
   const { userId, request } = event.detail;
   
@@ -20,7 +16,6 @@ export function onFriendRequestSent(this: FriendsPage, event: CustomEvent) {
   }
 }
 
-// acceptFriendRequest
 export function onFriendRequestAccepted(this: FriendsPage, event: CustomEvent) {
   const { requestId, userId, friend } = event.detail;
   
@@ -41,7 +36,6 @@ export function onFriendRequestAccepted(this: FriendsPage, event: CustomEvent) {
   }
 }
 
-// declineFriendRequest
 export function onFriendRequestDeclined(this: FriendsPage, event: CustomEvent) {
   const { requestId } = event.detail;
   
@@ -64,7 +58,6 @@ export function onFriendRequestDeclined(this: FriendsPage, event: CustomEvent) {
   }
 }
 
-// cancelFriendRequest
 export function onFriendRequestCancelled(this: FriendsPage, event: CustomEvent) {
   const { requestId } = event.detail;
         
@@ -86,7 +79,6 @@ export function onFriendRequestCancelled(this: FriendsPage, event: CustomEvent) 
   }
 }
 
-// removeFriend
 export function onFriendRemoved(this: FriendsPage, event: CustomEvent) {
   const { friendId } = event.detail;
         
@@ -105,8 +97,6 @@ export function onFriendRemoved(this: FriendsPage, event: CustomEvent) {
   }
 }
 
-// notifySuccess, notifyError
 export function onNotification(this: FriendsPage, event: CustomEvent) {
-  // this.showNotification(event.detail.type, event.detail.message);
   Notifications.show(event.detail.type, event.detail.message);
 }

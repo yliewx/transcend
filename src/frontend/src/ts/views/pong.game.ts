@@ -12,16 +12,13 @@ export class PongGamePage implements Page {
   private pongService: PongGameService;
   private pongViewComponents: PongViewComponents;
   private element: HTMLElement | null = null;
-  // For rendering game
   private ctx: CanvasRenderingContext2D | null = null;
   private gameWidth: number = 800;
   private gameHeight: number = 600;
   private paddleHeight: number = 100;
   private paddleWidth: number = 10;
   private ballSize: number = 30;
-  // For handling game modes
   private gameMode: 'local' | 'remote' = 'local';
-  // Game data
   private gameId: string | null = null;
   private userId: number | null = null;
   private isCreator: boolean = false;
@@ -61,7 +58,6 @@ export class PongGamePage implements Page {
   /*-----------------------------RENDER ELEMENT-----------------------------*/
 
   render(): HTMLElement {
-    // Return cached element if it exists
     if (this.element) {
       return this.element;
     }
@@ -75,7 +71,6 @@ export class PongGamePage implements Page {
         this.setupCanvas();
      }, 0);
     
-    // Cache the element
     this.element = container;
     
     return container;
@@ -85,21 +80,17 @@ export class PongGamePage implements Page {
 
   async update() {
     console.log('Inside update() function');
-    // When revisiting the page: Reconnect if there is an existing game
     const reconnected = await this.restoreGameSession();
     if (!reconnected) {
       this.resetGame();
     }
   }
   
-  private resetGame(): void {
-    // console.log("resetGame() called");
-    // Clear any existing game state and intervals
+  private resetGame(): void {   
     this.stopGameLoop();
-    // Reset game state
     this.state = null;
     this.isCreator = false;
-    // Reset UI elements
+
     if (this.element) {
       const gameIdElement = this.element.querySelector('#game-id');
       const gameControlsElement = this.element.querySelector('#game-controls');
@@ -116,7 +107,6 @@ export class PongGamePage implements Page {
       this.element?.querySelector('#pong-canvas-container')?.classList.add('hidden');
       this.element?.querySelector('#mode-selection')?.classList.remove('hidden');
 
-      // Re-setup canvas
       this.setupEventHandlers();
       this.setupCanvas();
     }
@@ -165,14 +155,12 @@ export class PongGamePage implements Page {
 
   /*--------------------------GAME MESSAGE HANDLERS-------------------------*/
 
-  // Set up handlers for receiving websocket messages
   private setupMessageHandlers(): void {
     this.wss.onGameEvent('start', (state: GameState) => this.handleStartGame(state));
     this.wss.onGameEvent('player-joined', (data: any) => this.handleJoinedGame(data));
     this.wss.onGameEvent('update', (state: GameState) => this.handleUpdateState(state));
   }
 
-  // Called by websocket manager on 'start' message
   private handleStartGame(state: GameState): void {
     console.log('[handleStartGame] Starting game');
     
@@ -181,20 +169,17 @@ export class PongGamePage implements Page {
     this.updateGameStatusUI();
   }
 
-  // Update UI when joining game
   private setupGameUI(): void {
     const gameIdElement = this.element?.querySelector('#game-id');
     if (gameIdElement) gameIdElement.textContent = this.gameId;
     this.element?.querySelector('#game-controls')?.classList.remove('hidden');
     this.element?.querySelector('#pong-canvas-container')?.classList.remove('hidden');
     this.element?.querySelector('#mode-selection')?.classList.add('hidden');
-    // Only show reset button if it isn't a tournament match
     if (this.isTourMatch) {
       this.element?.querySelector('#reset-game-btn')?.classList.add('hidden');
     }
   }
 
-  // Called by websocket manager on 'player-joined' message
   private handleJoinedGame(data: any): void {
     console.log('handleJoinedGame:', data)
     if (data.state) this.state = data.state;
@@ -217,16 +202,13 @@ export class PongGamePage implements Page {
     }
   }
 
-  // Called by websocket manager on 'update' message
   private handleUpdateState(state: GameState): void {
     const prevState = this.state;
     this.state = state;
   
-    // Handle game end
     if (prevState?.status === 'playing' && this.state.status === 'finished') {
       console.log('[handleUpdateState] Game has ended');
       this.drawGame();
-      // this.recordMatchResult();
       this.stopGameLoop();
     }
     this.updateGameStatusUI();
@@ -250,19 +232,15 @@ export class PongGamePage implements Page {
   
 
   private setupEventHandlers(): void {
-    // Remove any existing event listeners first
     window.removeEventListener('keyup', this.keyUpHandler);
     window.removeEventListener('keydown', this.keyDownHandler);
     
-    // Create new handlers based on the game type
     this.keyDownHandler = this.handleKeyDown.bind(this);
     this.keyUpHandler = this.handleKeyUp.bind(this);
     
-    // Add event listeners with the new key handlers
     window.addEventListener('keyup', this.keyUpHandler);
     window.addEventListener('keydown', this.keyDownHandler);
     
-    // Add event listeners for the buttons
     const buttonActions: Record<string, () => void> = {
       'create-local-game-btn': () => this.createGame('local'),
       'create-remote-game-btn': () => this.createGame('remote'),
@@ -279,12 +257,10 @@ export class PongGamePage implements Page {
       const button = document.getElementById(id);
       if (!button) return;
 
-      // If there's already a stored handler, remove it
       if (this.buttonHandlers[id]) {
         button.removeEventListener('click', this.buttonHandlers[id]);
       }
 
-      // Create and store new handler
       const clickHandler = () => {
         console.log(`${id} clicked`);
         action();
@@ -293,7 +269,6 @@ export class PongGamePage implements Page {
       button.addEventListener('click', clickHandler);
     });
 
-    // Add warning when player leaves game screen
     window.addEventListener('beforeunload', this.handleBeforeUnload);
   }
 
@@ -329,7 +304,7 @@ export class PongGamePage implements Page {
         this.keysPressed[key] = true;
   
         if (isRemote) {
-          this.sendInput('right'); // remote: server handles player side
+          this.sendInput('right');
         } else {
           this.sendInput(this.getPlayerSide(key));
         }
@@ -348,7 +323,7 @@ export class PongGamePage implements Page {
         this.keysPressed[key] = false;
   
         if (isRemote) {
-          this.sendInput('right'); // remote: server handles player side
+          this.sendInput('right');
         } else {
           this.sendInput(this.getPlayerSide(key));
         }
@@ -362,21 +337,15 @@ export class PongGamePage implements Page {
     this.resetGame();
     this.gameMode = gameMode;
 
-    // Hide join button + input field if "create game" is selected
-    // const joinButton = this.element?.querySelector('#join-game-btn');
-    // if (joinButton) joinButton.classList.add('hidden');
-
     const joinGameFormElement = this.element?.querySelector('#join-game-form');
     if (joinGameFormElement) joinGameFormElement.classList.add('hidden');
 
-    // API call to create game
     const response = await this.pongService.createGame(this.gameMode);
     if (!response.success) {
       console.error('Server returned error:', response.error);
       return;
     }
     
-    // Connect to game room with the ID returned by the server
     this.gameId = response.gameId!;
     this.isCreator = true;
     try {
@@ -389,13 +358,11 @@ export class PongGamePage implements Page {
   
   /*------------------------------JOIN GAME---------------------------------*/
 
-  // On join game button
   private showJoinGameForm(): void {
     const joinGameFormElement = this.element?.querySelector('#join-game-form');
     if (joinGameFormElement) {
       joinGameFormElement.classList.remove('hidden');
       
-      // Focus the input field
       const inputElement = joinGameFormElement.querySelector('#game-invite-code') as HTMLInputElement;
       if (inputElement) {
         inputElement.focus();
@@ -403,15 +370,11 @@ export class PongGamePage implements Page {
     }
   }
 
-  // On submit or cancel button
   private hideJoinGameForm(): void {
-    // console.log('hideJoinGameForm() called');
     const joinGameFormElement = this.element?.querySelector('#join-game-form');
     if (joinGameFormElement) {
-      // console.log('Join game form hidden');
       joinGameFormElement.classList.add('hidden');
       
-      // Clear the input field
       const inputElement = joinGameFormElement.querySelector('#game-invite-code') as HTMLInputElement;
       if (inputElement) {
         inputElement.value = '';
@@ -419,7 +382,6 @@ export class PongGamePage implements Page {
     }
   }
 
-  // On submit-join-game button
   private async joinGame(): Promise<void> {
     const inputElement = this.element?.querySelector('#game-invite-code') as HTMLInputElement;
     if (!inputElement) return;
@@ -427,6 +389,11 @@ export class PongGamePage implements Page {
     const gameCode = inputElement.value.trim();
     if (!gameCode) {
       alert('Please enter a valid invite code');
+      return;
+    }
+    if (gameCode.length > 50) {
+      alert('Invite code cannot exceed 50 characters');
+      inputElement.value = gameCode.substring(0, 50);
       return;
     }
     
@@ -439,7 +406,6 @@ export class PongGamePage implements Page {
       console.warn('Failed to connect to game room.');
       Notifications.show('error', 'Failed to join game');
     }
-    // handleJoinedGame() when the server responds
   }
 
   /*------------------------------START GAME--------------------------------*/
@@ -455,13 +421,11 @@ export class PongGamePage implements Page {
       return;
     }
 
-    // Notify server to start game
     console.log(`Messaging server to start game ID: ${this.gameId}`);
     this.wss.sendMessage('start', {
       gameId: this.gameId,
       playerId: this.userId
     });
-    // handleStartGame() will start the game loop when the server responds
   }
 
   /*-------------------=-----------PAUSE GAME-------------------------------*/
@@ -557,12 +521,10 @@ export class PongGamePage implements Page {
   private drawGame(): void {
     if (!this.state || !this.ctx) return;
     
-    // Clear the canvas
     this.ctx.fillStyle = '#000000';
     this.ctx.fillRect(0, 0, this.gameWidth, this.gameHeight);
     
     if (this.state.status === 'paused' || this.state.status === 'waiting' || this.state.status === 'finished') {
-      // Add semi-transparent overlay
       this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
       this.ctx.fillRect(0, 0, this.gameWidth, this.gameHeight);
       this.ctx.fillStyle = '#FFFFFF';
@@ -623,8 +585,6 @@ export class PongGamePage implements Page {
     this.ctx.fillStyle = '#FFFFFF';
     this.ctx.fillText(this.state.scoreLeft.toString(), this.gameWidth / 4, 50);
     this.ctx.fillText(this.state.scoreRight.toString(), (this.gameWidth / 4) * 3, 50);
-    // Draw player names
-    // console.log('Drawing player names:', this.leftUserName, this.rightUserName);
     const leftPlayerName = this.leftUserName || 'Guest';
     const rightPlayerName = this.rightUserName || 'Guest';
     this.ctx.font = '16px Arial';
@@ -637,14 +597,10 @@ export class PongGamePage implements Page {
   public destroy(): void {
     console.log("Pong game destroy method called");
   
-    // Remove keyboard event listeners
     window.removeEventListener('keydown', this.keyDownHandler);
-    window.removeEventListener('keyup', this.keyUpHandler);
-    
-    // Remove beforeUnload event listener
+    window.removeEventListener('keyup', this.keyUpHandler);    
     window.removeEventListener('beforeunload', this.handleBeforeUnload);
     
-    // Remove all button click event listeners
     Object.entries(this.buttonHandlers).forEach(([id, handler]) => {
       const button = document.getElementById(id);
       if (button) {
@@ -656,7 +612,6 @@ export class PongGamePage implements Page {
     this.stopGameLoop();
     this.wss.disconnectGame();
     
-    // NOT clearing element reference
     this.element = null;
     
     console.log("All event listeners cleaned up, element preserved");

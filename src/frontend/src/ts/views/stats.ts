@@ -17,8 +17,7 @@ export class StatsPage implements Page {
   private totalPages: number = 1;
   private activeTab: 'stats' | 'leaderboard' = 'stats';
   private eloHistory: EloHistoryItem[] = [];
-  private eloChart: any = null; // Will hold the Chart.js instance
-  // Element caching
+  private eloChart: any = null;
   private element: HTMLElement | null = null;
   
   constructor(router: Router, gameStatsService: GameStatsService) {
@@ -34,7 +33,6 @@ export class StatsPage implements Page {
   }
   
   render(): HTMLElement {
-    // Return cached element if it exists
     if (this.element) {
       return this.element;
     }
@@ -42,7 +40,6 @@ export class StatsPage implements Page {
     const container = document.createElement('div');
     container.className = 'max-w-7xl mx-auto py-6 sm:px-6 lg:px-8';
     
-    // Initial loading state with improved UI
     container.innerHTML = `
       <div class="px-4 py-6 sm:px-0">
         <div class="dark:bg-gray-900 bg-white shadow-lg rounded-xl p-8 transition-all duration-300">
@@ -241,13 +238,8 @@ export class StatsPage implements Page {
       </div>
     `;  
     
-    // Cache the element
     this.element = container;
-    
-    // Set up event handlers
     this.setupEventHandlers();
-    
-    // Load data (defer to not block rendering)
     setTimeout(() => this.loadData(), 0);
     
     return container;
@@ -256,13 +248,11 @@ export class StatsPage implements Page {
   private setupEventHandlers(): void {
     if (!this.element) return;
     
-    // Set up retry button
     const retryBtn = this.element.querySelector('#retry-btn');
     if (retryBtn) {
       retryBtn.addEventListener('click', () => this.loadData());
     }
     
-    // Set up pagination buttons
     const prevBtn = this.element.querySelector('#prev-page-btn');
     if (prevBtn) {
       prevBtn.addEventListener('click', () => {
@@ -283,7 +273,6 @@ export class StatsPage implements Page {
       });
     }
     
-    // Set up tab navigation
     const statsTab = this.element.querySelector('#stats-tab');
     const leaderboardTab = this.element.querySelector('#leaderboard-tab');
     
@@ -306,7 +295,6 @@ export class StatsPage implements Page {
     const statsContent = this.element.querySelector('#stats-content');
     const leaderboardContent = this.element.querySelector('#leaderboard-content');
     
-    // Update tab styles
     if (statsTab && leaderboardTab) {
       if (tab === 'stats') {
         statsTab.classList.add('bg-pink-500', 'text-white', 'shadow-md');
@@ -323,7 +311,6 @@ export class StatsPage implements Page {
       }
     }
     
-    // Show/hide content based on active tab
     if (statsContent) {
       if (tab === 'stats') {
         statsContent.classList.remove('hidden');
@@ -340,88 +327,15 @@ export class StatsPage implements Page {
       }
     }
   }
-  
-  // private async loadData(): Promise<void> {
-  //   if (!this.element) return;
-    
-  //   // Get DOM elements
-  //   const loadingElement = this.element.querySelector('#stats-loading');
-  //   const statsContent = this.element.querySelector('#stats-content');
-  //   const leaderboardContent = this.element.querySelector('#leaderboard-content');
-  //   const errorElement = this.element.querySelector('#stats-error');
-    
-  //   // Show loading state
-  //   if (loadingElement) loadingElement.classList.remove('hidden');
-  //   if (statsContent) statsContent.classList.add('hidden');
-  //   if (leaderboardContent) leaderboardContent.classList.add('hidden');
-  //   if (errorElement) errorElement.classList.add('hidden');
-
-  //   const userIdStr = sessionStorage.getItem('userId');
-  //   this.userId = userIdStr ? parseInt(userIdStr, 10) : null;
-    
-  //   try {
-  //     if (!this.userId) {
-  //       throw new Error('User ID not found');
-  //     }
-      
-  //     // Load all data in parallel for better performance
-  //     const [statsResponse, historyResponse, leaderboardResponse] = await Promise.all([
-  //       this.gameStatsService.getGameStats(),
-  //       this.gameStatsService.getMatchHistory(),
-  //       this.gameStatsService.getLeaderboard()
-  //     ]);
-      
-  //     if (!statsResponse.success) {
-  //       throw new Error('Failed to fetch game stats');
-  //     }
-      
-  //     if (!historyResponse.success) {
-  //       throw new Error('Failed to fetch match history');
-  //     }
-      
-  //     this.stats = statsResponse.stats || null;
-  //     this.matchHistory = historyResponse.matchHistory || [];
-  //     this.leaderboard = leaderboardResponse.success ? leaderboardResponse.leaderboard || [] : [];
-      
-  //     // Calculate total pages
-  //     this.totalPages = Math.max(1, Math.ceil(this.matchHistory.length / this.itemsPerPage));
-      
-  //     // Render data
-  //     this.renderStats();
-  //     this.renderMatchHistory();
-  //     this.renderLeaderboard();
-      
-  //     // Hide loading, show content based on active tab
-  //     if (loadingElement) loadingElement.classList.add('hidden');
-      
-  //     if (this.activeTab === 'stats' && statsContent) {
-  //       statsContent.classList.remove('hidden');
-  //     } else if (this.activeTab === 'leaderboard' && leaderboardContent) {
-  //       leaderboardContent.classList.remove('hidden');
-  //     }
-      
-  //     // Animate stats to make them appear one by one
-  //     this.animateStatsElements();
-      
-  //   } catch (error) {
-  //     console.error('Error loading stats:', error);
-      
-  //     // Show error state
-  //     if (loadingElement) loadingElement.classList.add('hidden');
-  //     if (errorElement) errorElement.classList.remove('hidden');
-  //   }
-  // }
 
   private async loadData(): Promise<void> {
     if (!this.element) return;
     
-    // Get DOM elements
     const loadingElement = this.element.querySelector('#stats-loading');
     const statsContent = this.element.querySelector('#stats-content');
     const leaderboardContent = this.element.querySelector('#leaderboard-content');
     const errorElement = this.element.querySelector('#stats-error');
     
-    // Show loading state
     if (loadingElement) loadingElement.classList.remove('hidden');
     if (statsContent) statsContent.classList.add('hidden');
     if (leaderboardContent) leaderboardContent.classList.add('hidden');
@@ -434,13 +348,12 @@ export class StatsPage implements Page {
       if (!this.userId) {
         throw new Error('User ID not found');
       }
-      
-      // Load all data in parallel for better performance
+
       const [statsResponse, historyResponse, leaderboardResponse, eloHistoryResponse] = await Promise.all([
         this.gameStatsService.getGameStats(),
         this.gameStatsService.getMatchHistory(),
         this.gameStatsService.getLeaderboard(),
-        this.gameStatsService.getEloHistory() // Add this line
+        this.gameStatsService.getEloHistory() 
       ]);
       
       if (!statsResponse.success) {
@@ -454,33 +367,25 @@ export class StatsPage implements Page {
       this.stats = statsResponse.stats || null;
       this.matchHistory = historyResponse.matchHistory || [];
       this.leaderboard = leaderboardResponse.success ? leaderboardResponse.leaderboard || [] : [];
-      this.eloHistory = eloHistoryResponse.success ? eloHistoryResponse.eloHistory || [] : []; // Add this line
-      
-      // Calculate total pages
+      this.eloHistory = eloHistoryResponse.success ? eloHistoryResponse.eloHistory || [] : [];       
       this.totalPages = Math.max(1, Math.ceil(this.matchHistory.length / this.itemsPerPage));
       
-      // Render data
       this.renderStats();
       this.renderMatchHistory();
       this.renderLeaderboard();
-      this.renderEloChart(); // Add this line
+      this.renderEloChart();
       
-      // Hide loading, show content based on active tab
       if (loadingElement) loadingElement.classList.add('hidden');
       
       if (this.activeTab === 'stats' && statsContent) {
         statsContent.classList.remove('hidden');
       } else if (this.activeTab === 'leaderboard' && leaderboardContent) {
         leaderboardContent.classList.remove('hidden');
-      }
-      
-      // Animate stats to make them appear one by one
+      } 
       this.animateStatsElements();
       
     } catch (error) {
       console.error('Error loading stats:', error);
-      
-      // Show error state
       if (loadingElement) loadingElement.classList.add('hidden');
       if (errorElement) errorElement.classList.remove('hidden');
     }
@@ -513,13 +418,11 @@ export class StatsPage implements Page {
   private renderStats(): void {
     if (!this.element || !this.stats) return;
     
-    // Update win rate circle visualization
     const winRateCircle = this.element.querySelector('#win-rate-circle');
     const winRateText = this.element.querySelector('#win-rate-text');
     const winPercentage = this.stats.win_percentage || 0;
     
     if (winRateCircle) {
-      // Update the circle to reflect the win percentage
       (winRateCircle as SVGPathElement).setAttribute(
         'stroke-dasharray', 
         `${winPercentage}, 100`
@@ -530,7 +433,6 @@ export class StatsPage implements Page {
       winRateText.textContent = `${winPercentage}%`;
     }
     
-    // Update Games Played stats
     const gamesPlayedValue = this.element.querySelector('#games-played-circle');
     const gamesWon = this.element.querySelector('#games-won');
     const gamesLost = this.element.querySelector('#games-lost');
@@ -547,34 +449,25 @@ export class StatsPage implements Page {
       gamesLost.textContent = `${this.stats.games_lost} L`;
     }
     
-    // Update Win Rate value
-    const winRateValue = this.element.querySelector('#win-rate-value');
-    
+    const winRateValue = this.element.querySelector('#win-rate-value');    
     if (winRateValue) {
       winRateValue.textContent = `${this.stats.win_percentage}%`;
     }
     
-    // Update Rank & ELO Rating value
     const rankValue = this.element.querySelector('#rank-value');
     const eloRatingValue = this.element.querySelector('#elo-rating-value');
-    
     if (rankValue) {
       rankValue.textContent = `#${this.stats.rank || 0}`;
     }
-    
     if (eloRatingValue) {
       eloRatingValue.textContent = this.stats.elo_rating.toString();
     }
     
-    
-    // Update Win Streak value
     const winStreakValue = this.element.querySelector('#win-streak-circle');
     const maxStreak = this.element.querySelector('#max-streak');
-    
+
     if (winStreakValue) {
-      winStreakValue.textContent = this.stats.current_win_streak.toString();
-      
-      // Add pulse effect for impressive streaks
+      winStreakValue.textContent = this.stats.current_win_streak.toString();      
       if (this.stats.current_win_streak >= 3) {
         winStreakValue.classList.add('text-amber-600', 'animate-pulse');
       } else {
@@ -593,16 +486,13 @@ export class StatsPage implements Page {
     const tableBody = this.element.querySelector('#match-history-table-body');
     if (!tableBody) return;
     
-    // Calculate slice for current page
     const startIndex = (this.currentPage - 1) * this.itemsPerPage;
     const endIndex = Math.min(startIndex + this.itemsPerPage, this.matchHistory.length);
     const currentItems = this.matchHistory.slice(startIndex, endIndex);
     
-    // Clear existing content
     tableBody.innerHTML = '';
     
     if (currentItems.length === 0) {
-      // No match history with improved empty state
       const emptyRow = document.createElement('tr');
       emptyRow.innerHTML = `
         <td colspan="4" class="px-6 py-12 text-center">
@@ -617,11 +507,8 @@ export class StatsPage implements Page {
       `;
       tableBody.appendChild(emptyRow);
     } else {
-      // Create rows for each match item with improved animation
       currentItems.forEach((match, index) => {
-        const row = this.createMatchRow(match);
-        
-        // Add a slight animation delay for each row
+        const row = this.createMatchRow(match);        
         row.style.opacity = '0';
         row.style.transform = 'translateY(10px)';
         
@@ -635,7 +522,6 @@ export class StatsPage implements Page {
       });
     }
 
-    // Update pagination info
     const paginationInfo = this.element.querySelector('#pagination-info');
     if (paginationInfo) {
         if (this.matchHistory.length === 0) {
@@ -645,7 +531,6 @@ export class StatsPage implements Page {
         }
     }
     
-    // Update pagination button states
     const prevButton = this.element.querySelector('#prev-page-btn') as HTMLButtonElement;
     const nextButton = this.element.querySelector('#next-page-btn') as HTMLButtonElement;
     
@@ -659,9 +544,6 @@ export class StatsPage implements Page {
   }
 
 
-/**
- * Creates a match history row 
- */
 private createMatchRow(match: MatchHistoryItem): HTMLElement {
     const matchDate = new Date(match.match_date).toLocaleDateString();
     
@@ -670,7 +552,6 @@ private createMatchRow(match: MatchHistoryItem): HTMLElement {
     
     const isWin = match.user_won === 1;
     
-    // Calculate a subtle background for the row based on the match result
     if (isWin) {
       row.classList.add('hover:bg-green-50');
       row.classList.add('dark:hover:bg-green-900/10');
@@ -715,20 +596,16 @@ private createMatchRow(match: MatchHistoryItem): HTMLElement {
     return row;
   }
 
-/*
- Renders the leaderboard 
- */
+
 private renderLeaderboard(): void {
     if (!this.element) return;
     
     const tableBody = this.element.querySelector('#leaderboard-table-body');
     if (!tableBody) return;
     
-    // Clear existing content
     tableBody.innerHTML = '';
     
     if (this.leaderboard.length === 0) {
-      // No leaderboard data with improved empty state
       const emptyRow = document.createElement('tr');
       emptyRow.innerHTML = `
         <td colspan="5" class="px-6 py-12 text-center">
@@ -743,14 +620,11 @@ private renderLeaderboard(): void {
       `;
       tableBody.appendChild(emptyRow);
     } else {
-      // Create rows for each player with improved styling
       this.leaderboard.forEach((player, index) => {
         const row = document.createElement('tr');
         row.className = 'hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-150';
         
-        // Highlight the current user
         const isCurrentUser = player.id === this.userId;
-        // Fix the multiple class additions for the current user highlighting
         if (isCurrentUser) {
             row.classList.add('bg-gradient-to-r');
             row.classList.add('from-pink-50');
@@ -759,10 +633,8 @@ private renderLeaderboard(): void {
             row.classList.add('dark:to-pink-900/10');
         }
         
-        // Format the player name (use display_name, or "Player #ID" if null)
         const playerName = player.display_name || `Player #${player.id}`;
         
-        // Add rank badges for top 3 positions
         let rankBadge = `<span class="text-gray-700 dark:text-gray-300 font-medium">#${player.rank}</span>`;
         if (player.rank === 1) {
           rankBadge = `<span class="inline-flex items-center justify-center h-8 w-8 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300 font-bold">1</span>`;
@@ -772,7 +644,6 @@ private renderLeaderboard(): void {
           rankBadge = `<span class="inline-flex items-center justify-center h-8 w-8 rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-bold">3</span>`;
         }
         
-        // Animate streak indicator for current win streaks > 3
         const streakElement = player.current_win_streak >= 3 
           ? `<div class="flex items-center">
               <span class="mr-1">${player.current_win_streak}</span>
@@ -780,10 +651,8 @@ private renderLeaderboard(): void {
             </div>` 
           : player.current_win_streak.toString();
         
-        // Calculate a win rate value (fictional, would come from API in real app)
         const winRate = this.stats?.win_percentage || 0;
         
-        // Add animation delay based on position
         row.style.opacity = '0';
         row.style.transform = 'translateY(10px)';
         
@@ -847,14 +716,12 @@ private renderLeaderboard(): void {
     const chartEmpty = this.element.querySelector('#elo-chart-empty');
     const chartError = this.element.querySelector('#elo-chart-error');
     
-    // Hide all states initially
     if (chartLoading) chartLoading.classList.add('hidden');
     if (chartContent) chartContent.classList.add('hidden');
     if (chartEmpty) chartEmpty.classList.add('hidden');
     if (chartError) chartError.classList.add('hidden');
     
     try {
-      // Show appropriate state based on data
       if (this.eloHistory.length === 0) {
         if (chartEmpty) chartEmpty.classList.remove('hidden');
         return;
@@ -862,34 +729,28 @@ private renderLeaderboard(): void {
       
       if (chartContent) chartContent.classList.remove('hidden');
       
-      // Destroy existing chart if it exists
       if (this.eloChart) {
         this.eloChart.destroy();
       }
       
-      // Get canvas context
       const canvas = this.element.querySelector('#elo-history-chart') as HTMLCanvasElement;
       if (!canvas) return;
       
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
       
-      // Prepare data for the chart
       const dates = this.eloHistory.map(item => item.formatted_date);
       const ratings = this.eloHistory.map(item => item.elo_rating);
       const results = this.eloHistory.map(item => item.result);
       
-      // Set point colors based on match result (win=green, loss=red)
       const pointBackgroundColors = results.map(result => 
         result === 'Win' ? 'rgba(34, 197, 94, 1)' : 'rgba(239, 68, 68, 1)'
       );
       
-      // Set point border colors based on match result
       const pointBorderColors = results.map(result => 
         result === 'Win' ? 'rgba(21, 128, 61, 1)' : 'rgba(185, 28, 28, 1)'
       );
       
-      // Create the chart using Chart.js
       this.eloChart = new Chart(canvas, {
         type: 'line',
         data: {
@@ -952,7 +813,7 @@ private renderLeaderboard(): void {
                 }
               }
             },
-            x: { // This is valid in v4
+            x: {
               grid: {
                 display: false
               },

@@ -2,8 +2,6 @@ import { Database } from 'sqlite';
 
 class Friend {
   /*------------------------------ FRIEND RELATIONSHIPS -----------------------------*/
-
-  // Get a user's friends
   static async getFriendsList(db: Database, userId: number) {
     return db.all(`
       SELECT 
@@ -25,7 +23,6 @@ class Friend {
     `, userId);
   }
 
-  // Check if users are friends
   static async areFriends(db: Database, userId: number, friendId: number) {
     const friendship = await db.get(
       'SELECT id FROM friendships WHERE (user_id = ? AND friend_id = ?)',
@@ -34,7 +31,6 @@ class Friend {
     return !!friendship;
   }
 
-  // Remove a friend (bidirectional)
   static async removeFriend(db: Database, userId: number, friendId: number) {
     return db.run(
       'DELETE FROM friendships WHERE (user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)',
@@ -42,7 +38,6 @@ class Friend {
     );
   }
 
-  // Create friendship (bidirectional)
   static async createFriendship(db: Database, userId: number, friendId: number) {
     await db.run(
       'INSERT INTO friendships (user_id, friend_id) VALUES (?, ?)',
@@ -57,7 +52,6 @@ class Friend {
 
   /*------------------------------ FRIEND REQUESTS -----------------------------*/
 
-  // Get pending incoming requests using the view
   static async getIncomingRequests(db: Database, userId: number) {
     return db.all(`
       SELECT 
@@ -75,7 +69,6 @@ class Friend {
     `, userId);
   }
 
-  // Get pending outgoing requests using the view
   static async getOutgoingRequests(db: Database, userId: number) {
     return db.all(`
       SELECT 
@@ -93,7 +86,6 @@ class Friend {
     `, userId);
   }
 
-  // Check for existing friend request
   static async getExistingRequest(db: Database, userId1: number, userId2: number) {
     return db.get(
       'SELECT id, sender_id, recipient_id, status FROM friend_requests WHERE (sender_id = ? AND recipient_id = ?) OR (sender_id = ? AND recipient_id = ?)',
@@ -101,7 +93,6 @@ class Friend {
     );
   }
 
-  // Get friend request by ID
   static async getRequestById(db: Database, requestId: number) {
     return db.get(
       'SELECT id, sender_id, recipient_id, status, created_at FROM friend_requests WHERE id = ?',
@@ -109,7 +100,6 @@ class Friend {
     );
   }
 
-  // Get a specific incoming request by ID, only if recipient is the current user
   static async getIncomingRequestById(db: Database, requestId: number, userId: number) {
     return db.get(`
       SELECT 
@@ -125,7 +115,6 @@ class Friend {
     `, [requestId, userId]);
   }
 
-  // Create friend request
   static async createRequest(db: Database, senderId: number, recipientId: number) {
     const result = await db.run(
       'INSERT INTO friend_requests (sender_id, recipient_id, status) VALUES (?, ?, ?)',
@@ -145,7 +134,6 @@ class Friend {
     return null;
   }
 
-  // Delete request by ID
   static async deleteRequestById(db: Database, requestId: number) {
     return db.run(
       'DELETE FROM friend_requests WHERE id = ?',
@@ -156,7 +144,6 @@ class Friend {
 
   /*------------------------------ USER SEARCH -----------------------------*/
 
-  // Search users by username or display name
   static async searchUsers(db: Database, query: string, currentUserId: number) {
     return db.all(`
       SELECT 

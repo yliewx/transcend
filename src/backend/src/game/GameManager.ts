@@ -6,13 +6,12 @@ import { sendError } from './ws.types';
 import chalk from 'chalk';
 
 export class GameManager {
-  private sessions: Map<string, GameRoom> = new Map(); // track active games
-  private activePlayers: Map<number, GameRoom> = new Map(); // map player ID to game
+  private sessions: Map<string, GameRoom> = new Map();
+  private activePlayers: Map<number, GameRoom> = new Map();
   
   /*------------------------------CONSTRUCTOR-------------------------------*/
 
   constructor() {
-    // Cleanup inactive sessions periodically (every hour)
     setInterval(() => {
       this.cleanupInactiveGames();
     }, 60 * 60 * 1000);
@@ -20,7 +19,6 @@ export class GameManager {
 
   /*--------------------------------GET GAME--------------------------------*/
 
-  // Search for game room by game ID
   public getRoom(gameId: string): GameRoom | undefined {
     console.log(chalk.cyan.bold('\n[GameManager] Fetching game...'));
     console.log(chalk.cyan(`→ Game ID: ${chalk.whiteBright(gameId)}`));
@@ -29,7 +27,6 @@ export class GameManager {
     return this.sessions.get(gameId);
   }
 
-  // Search for game by player ID
   public getPlayerSession(playerId: number): { gameId: string, gameMode: string, state: GameState, isCreator: boolean, isTourMatch: boolean } | undefined {
     console.log(chalk.magenta.bold('\n[GameManager] Fetching sessions for player...'));
     console.log(chalk.magenta(`→ Player ID: ${chalk.whiteBright(playerId)}`));
@@ -61,14 +58,12 @@ export class GameManager {
   /*-------------------------------JOIN GAME--------------------------------*/
 
   public joinRoom(data: { gameId: string, playerId: number }, connection: WebSocket): boolean {
-    // Check if player is already in another game
     const existingGame = this.activePlayers.get(data.playerId);
     if (existingGame && existingGame.getGameId() !== data.gameId) {
       console.error('Player is already in a game');
       sendError(connection, 'Player cannot join more than one match at once');
       return false;
     }
-    // Join game
     const room = this.getRoom(data.gameId);
     if (room && room.handleJoin(data, connection)) {
       this.activePlayers.set(data.playerId, room);
@@ -91,7 +86,6 @@ export class GameManager {
     }
   }
 
-  // Check whether player has already joined via web
   public joinRoomByCLI(data: { gameId: string, playerId: number }, cliSocket: WebSocket): boolean {
     console.log('Joining room by CLI. Player ID:', data.playerId);
     const room = this.getRoom(data.gameId);
@@ -99,7 +93,6 @@ export class GameManager {
       const players = room.getPlayerIds();
       console.log('Players:', players.toString());
       for (let existingPlayerId of players) {
-        // If player joined via web, CLI socket should only be used to forward player input
         if (existingPlayerId === data.playerId) {
           console.log('Found existing player ID:', existingPlayerId);
           this.notifyCLISocket(room, cliSocket);
@@ -121,7 +114,6 @@ export class GameManager {
     console.log(`[GameManager] Cleaning up game with ID: ${gameId}`);
     const room = this.sessions.get(gameId);
     if (room && room.game) {
-      // Clean up resources & remove active players before deleting
       room.game.cleanup();
       const players = room.getPlayerIds();
       players.forEach(playerId => this.activePlayers.delete(playerId));
@@ -130,7 +122,7 @@ export class GameManager {
   }
 
   private cleanupInactiveGames(): void {
-    const inactiveThreshold = 3 * 60 * 60 * 1000; // 3 hours
+    const inactiveThreshold = 3 * 60 * 60 * 1000;
     const now = Date.now();
     
     this.sessions.forEach((room, gameId) => {

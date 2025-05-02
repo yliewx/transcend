@@ -2,9 +2,8 @@ import { JwtPayload } from 'jsonwebtoken';
 
 /*--------------------------GLOBAL TYPE DEFINITIONS-------------------------*/
 
-// jwt.ts
 export interface AuthTokenPayload extends JwtPayload {
-  id: number; // user id
+  id: number; 
   username?: string;
   email?: string;
   token_id?: string;

@@ -6,7 +6,6 @@ export class NotFoundPage implements Page {
     constructor() {}
 
     render(): HTMLElement {
-        // Return cached element if it exists
         if (this.element) {
             return this.element;
         }
@@ -25,7 +24,6 @@ export class NotFoundPage implements Page {
             </div>
         `;
         
-        // Cache the element for future use
         this.element = container;
         
         return container;

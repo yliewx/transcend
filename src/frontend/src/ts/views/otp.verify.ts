@@ -13,7 +13,6 @@ export class OTPVerificationPage implements Page {
   }
 
   render(): HTMLElement {
-    // Return cached element if it exists
     if (this.element) {
       return this.element;
     }
@@ -58,19 +57,15 @@ export class OTPVerificationPage implements Page {
       </div>
     `;
     
-    // Cache the element
     this.element = container;
     
-    // Set up event handlers
     this.setupEventHandlers();
 
     return container;
   }
 
   update(): void {
-    // Reset form when revisiting the page
     if (this.element) {
-      // Clear OTP inputs
       const otpInputs = Array.from({ length: 6 }).map((_, i) => 
         this.element?.querySelector(`#otp-${i}`) as HTMLInputElement
       );
@@ -79,11 +74,9 @@ export class OTPVerificationPage implements Page {
         if (input) input.value = '';
       });
       
-      // Hide error message
       const errorMessage = this.element.querySelector('#error-message');
       if (errorMessage) errorMessage.classList.add('hidden');
       
-      // Focus on first input
       if (otpInputs[0]) otpInputs[0].focus();
     }
   }
@@ -95,7 +88,6 @@ export class OTPVerificationPage implements Page {
       this.element?.querySelector(`#otp-${i}`) as HTMLInputElement
     );
   
-    // OTP input behavior
     otpInputs.forEach((input, index) => {
       if (!input) return;
   
@@ -115,13 +107,11 @@ export class OTPVerificationPage implements Page {
     const form = this.element.querySelector('#otp-form') as HTMLFormElement;
     const resendButton = this.element.querySelector('#resend-otp');
     
-    // Submit OTP on enter or button click
     form?.addEventListener('submit', (e) => {
       e.preventDefault();
       this.handleOTPVerification();
     });
   
-    // Resend OTP button
     resendButton?.addEventListener('click', (e) => {
       e.preventDefault();
       this.resendOTP();
@@ -138,7 +128,6 @@ export class OTPVerificationPage implements Page {
     const errorMessage = this.element.querySelector('#error-message');
     const otpCode = otpInputs.join('');
     
-    // Basic validation
     if (otpCode.length !== 6 || isNaN(Number(otpCode))) {
       if (errorMessage) {
         errorMessage.textContent = 'Invalid OTP. Please enter a 6-digit code.';
@@ -150,7 +139,6 @@ export class OTPVerificationPage implements Page {
     try {
       const result = await this.controlAccess.verifyOtp(otpCode);
       if (result.success) {
-        // Show success message
         console.log("OTP verified. Login successful");
         this.router.navigateTo('/home');
       } else {
@@ -176,7 +164,6 @@ export class OTPVerificationPage implements Page {
       if (result.success) {
         console.log('OTP generated successfully');
         
-        // Show confirmation to user
         if (this.element) {
           const errorMessage = this.element.querySelector('#error-message');
           if (errorMessage) {
@@ -185,7 +172,6 @@ export class OTPVerificationPage implements Page {
             errorMessage.classList.remove('text-red-600');
             errorMessage.classList.add('text-green-600');
             
-            // Reset to error styling after 3 seconds
             setTimeout(() => {
               errorMessage.classList.add('hidden');
               errorMessage.classList.add('text-red-600');

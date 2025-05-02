@@ -13,7 +13,6 @@ export class RegisterPage implements Page {
   }
   
   render(): HTMLElement {
-    // Return cached element if it exists
     if (this.element) {
       return this.element;
     }
@@ -89,14 +88,12 @@ export class RegisterPage implements Page {
     
     this.setupEventHandlers(container);
     
-    // Cache the element for future use
     this.element = container;
     
     return container;
   }
   
   update(): void {
-    // Reset form and messages when revisited
     if (this.element) {
       const registerForm = this.element.querySelector('#register-form') as HTMLFormElement;
       const errorContainer = this.element.querySelector('#register-error');
@@ -125,13 +122,10 @@ export class RegisterPage implements Page {
     const errorMessage = this.element.querySelector('#register-error-message') as HTMLElement;
     const errorContainer = this.element.querySelector('#register-error') as HTMLElement;
     const successMessage = this.element.querySelector('#register-success-message') as HTMLElement;
-    const successContainer = this.element.querySelector('#register-success') as HTMLElement;
-    
-    // Hide messages
+    const successContainer = this.element.querySelector('#register-success') as HTMLElement;    
     errorContainer.classList.add('hidden');
     successContainer.classList.add('hidden');
-    
-    // Get form data
+
     const usernameInput = registerForm.querySelector('#username') as HTMLInputElement;
     const emailInput = registerForm.querySelector('#email') as HTMLInputElement;
     const passwordInput = registerForm.querySelector('#password') as HTMLInputElement;
@@ -142,14 +136,13 @@ export class RegisterPage implements Page {
     const password = passwordInput.value;
     const confirmPassword = confirmPasswordInput.value;
     
-    // Basic validation
     if (!username || !email || !password || !confirmPassword) {
       errorMessage.textContent = 'All fields are required';
       errorContainer.classList.remove('hidden');
       return;
     }
-    if (username.length < 3 || username.length > 50) {
-      errorMessage.textContent = 'Username must be between 3 and 50 characters';
+    if (username.length < 3 || username.length > 20) {
+      errorMessage.textContent = 'Username must be between 3 and 20 characters';
       errorContainer.classList.remove('hidden');
       return;
     }
@@ -158,8 +151,8 @@ export class RegisterPage implements Page {
       errorContainer.classList.remove('hidden');
       return;
     }
-    if (email.length < 5 || email.length > 50) {
-      errorMessage.textContent = 'Email must be between 5 and 50 characters';
+    if (email.length < 3 || email.length > 20) {
+      errorMessage.textContent = 'Email must be between 3 and 20 characters';
       errorContainer.classList.remove('hidden');
       return;
     }
@@ -168,9 +161,7 @@ export class RegisterPage implements Page {
       errorContainer.classList.remove('hidden');
       return;
     }
-    
-    
-    // Email validation
+        
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       errorMessage.textContent = 'Please enter a valid email address';
@@ -178,9 +169,8 @@ export class RegisterPage implements Page {
       return;
     }
     
-    // Password validation
-    if (password.length < 8) {
-      errorMessage.textContent = 'Password must be at least 8 characters long';
+    if (password.length < 8 || password.length > 20) {
+      errorMessage.textContent = 'Password must be between 3 and 20 characters';
       errorContainer.classList.remove('hidden');
       return;
     }
@@ -189,31 +179,24 @@ export class RegisterPage implements Page {
       errorContainer.classList.remove('hidden');
       return;
     }
-    
-    // Confirm password
     if (password !== confirmPassword) {
       errorMessage.textContent = 'Passwords do not match';
       errorContainer.classList.remove('hidden');
       return;
     }
     
-    // Use API service via AuthService
     const result = await this.authService.register(username, email, password);
     
     if (result.success) {
-      // Show success message
       successMessage.textContent = result.message || 'Registration successful!';
       successContainer.classList.remove('hidden');
       
-      // Clear form
       registerForm.reset();
       
-      // Redirect to login after a delay
       setTimeout(() => {
         this.router.navigateTo('/login');
       }, 2000);
     } else {
-      // Show error message
       errorMessage.textContent = result.error || 'Registration failed';
       errorContainer.classList.remove('hidden');
     }

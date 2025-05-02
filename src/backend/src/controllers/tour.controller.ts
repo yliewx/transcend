@@ -1,15 +1,13 @@
-// tournament.controller.ts
 import { FastifyReply } from 'fastify';
 import { AuthenticatedRequest } from '../../@types/fastify';
 import { getDb } from '../db';
 import { gameManager } from '../game/GameManager';
 import { Database } from 'sqlite';
 import Tournament from '../models/tournament';
-import { onlineUsers } from '../game/ws.types.js'; // Import to access online users websockets
+import { onlineUsers } from '../game/ws.types.js';
 
 /*-----------------------------NOTIFY RECIPIENT-----------------------------*/
 
-// notify all online users (not only participants)
 async function notifyOnlineUsers(eventType: string, eventData: {
   tournamentId?: number,
   tournament?: any,
@@ -27,7 +25,6 @@ async function notifyOnlineUsers(eventType: string, eventData: {
   }
 }
 
-// Notification helper for tournament participants
 async function notifyTournamentParticipants(
   db: Database,
   tournamentId: number,
@@ -36,12 +33,9 @@ async function notifyTournamentParticipants(
   excludeUserId?: number
 ): Promise<void> {
   try {
-    // Get all participants of the tournament
     const participants = await Tournament.getTournamentParticipants(db, tournamentId);
     
-    // Send notifications to all online participants
     for (const participant of participants) {
-      // Skip excluded user if provided
       if (excludeUserId && participant.id === excludeUserId) {
         continue;
       }
@@ -63,7 +57,6 @@ async function notifyTournamentParticipants(
 async function notifyMatchUpdate(db: Database, tournamentId: number, matchId: number): Promise<void> {
   try {
     console.log('Notifying match update:', tournamentId, matchId);
-    // Get updated match data
     const match = await db.get(`
       SELECT 
         tm.*,
@@ -82,7 +75,6 @@ async function notifyMatchUpdate(db: Database, tournamentId: number, matchId: nu
 
     if (!match) return;
 
-    // Notify all participants about match update
     await notifyTournamentParticipants(
       db,
       tournamentId,
@@ -100,7 +92,6 @@ async function notifyMatchUpdate(db: Database, tournamentId: number, matchId: nu
 
 /*----------------------------TOURNAMENT ROUTES-----------------------------*/
 
-// Controller for tournament operations
 export async function getTournaments(request: AuthenticatedRequest, reply: FastifyReply): Promise<FastifyReply> {
   const db = await getDb();
   try {
@@ -123,17 +114,14 @@ export async function getTournamentDetails(request: AuthenticatedRequest, reply:
   const db = await getDb();
   
   try {
-    // Get tournament info
     const tournament = await Tournament.findById(db, tournamentId);
     
     if (!tournament) {
       return reply.status(404).send({ success: false, error: 'Tournament not found' });
     }
     
-    // Get tournament matches
     const matches = await Tournament.getTournamentMatches(db, tournamentId);
     
-    // Get participants
     const participants = await Tournament.getTournamentParticipants(db, tournamentId);
     
     return reply.send({ 
@@ -159,20 +147,19 @@ export async function registerForTournament(request: AuthenticatedRequest, reply
   const tournamentId = parseInt(request.params.id);
   const userId = request.user.id;
   const { alias } = request.body as { alias: string };
-  const db = await getDb();
   
-  // Validate alias
-  if (!alias || typeof alias !== 'string' || alias.trim() === '') {
+  if (!alias || typeof alias !== 'string' || alias.trim() === '' || alias.length < 3 || alias.length > 20) {
     return reply.status(400).send({
       success: false,
-      error: 'A valid alias is required to join a tournament'
+      error: 'A valid alias between 3 to 20 characters is required to join a tournament'
     });
   }
+
+  const db = await getDb();
   
   try {
     await db.run('BEGIN TRANSACTION');
     
-    // Check if tournament exists and is in registration phase
     const tournament = await Tournament.isPendingTournament(db, tournamentId);
     
     if (!tournament) {
@@ -183,7 +170,6 @@ export async function registerForTournament(request: AuthenticatedRequest, reply
       });
     }
     
-    // Check if user is already registered
     const existingRegistration = await Tournament.isUserRegistered(db, tournamentId, userId);
     
     if (existingRegistration) {
@@ -194,7 +180,6 @@ export async function registerForTournament(request: AuthenticatedRequest, reply
       });
     }
     
-    // Check if alias is already taken in this tournament
     const existingAlias = await Tournament.isAliasTaken(db, tournamentId, alias);
     
     if (existingAlias) {
@@ -205,7 +190,6 @@ export async function registerForTournament(request: AuthenticatedRequest, reply
       });
     }
     
-    // Check if tournament is full (now always 4 players)
     const participantCount = await Tournament.getParticipantCount(db, tournamentId);
     
     if (participantCount >= 4) {
@@ -216,10 +200,8 @@ export async function registerForTournament(request: AuthenticatedRequest, reply
       });
     }
     
-    // Register user with alias
     const newParticipantCount = await Tournament.addParticipant(db, tournamentId, userId, alias);
     
-    // Get user info for notification
     const userData = await db.get(
       `SELECT u.id, u.username, p.display_name
        FROM users u
@@ -228,16 +210,14 @@ export async function registerForTournament(request: AuthenticatedRequest, reply
       userId
     );
     
-    // Create participant object for notifications
     const newParticipant = {
       id: userId,
       username: userData.username,
       alias: alias,
-      elo: 1000, // Default ELO
+      elo: 1000,
       status: 'active'
     };
     
-    // Notify all current participants that someone joined
     await notifyTournamentParticipants(
       db,
       tournamentId,
@@ -247,21 +227,17 @@ export async function registerForTournament(request: AuthenticatedRequest, reply
         participant: newParticipant,
         message: `${alias} has joined the tournament!`
       },
-      userId // Exclude the joining user from notifications
+      userId 
     );
     
-    // If we have exactly 4 participants, start the tournament automatically
     let tournamentStarted = false;
     if (newParticipantCount === 4) {
-      // Update available tournaments tab
-      // Start tournament logic
       await startTournamentInternal(db, tournamentId);
       tournamentStarted = true;
     }
     
     await db.run('COMMIT');
 
-    // Update tournament page
     notifyOnlineUsers('tournament-update', {
       allTournaments: await Tournament.findActiveTournaments(db),
       userTournaments: await Tournament.findTournamentsByUserId(db, userId),
@@ -311,7 +287,6 @@ export async function joinTournamentMatch(request: AuthenticatedRequest, reply: 
   const db = await getDb();
   
   try {
-    // Get match details
     const match = await Tournament.getMatchForPlayer(db, matchId, userId);
     
     if (!match) {
@@ -323,14 +298,10 @@ export async function joinTournamentMatch(request: AuthenticatedRequest, reply: 
     
     let gameId = match.game_id;
     
-    // If match doesn't have a game yet, create one
     if (!gameId) {
       gameId = gameManager.createGame('remote', true);
       console.log('Created new game:', gameId);
-      // Update match with game ID and status
-      await Tournament.setMatchGameId(db, matchId, gameId);
-      
-      // Notify match status update
+      await Tournament.setMatchGameId(db, matchId, gameId);      
       await notifyMatchUpdate(db, match.tournament_id, matchId);
     }
     
@@ -344,7 +315,6 @@ export async function joinTournamentMatch(request: AuthenticatedRequest, reply: 
   }
 }
 
-// Admin function to create a tournament
 export async function createTournament(request: AuthenticatedRequest, reply: FastifyReply): Promise<FastifyReply> {
   const { name, description } = request.body as any;
   const db = await getDb();
@@ -372,40 +342,24 @@ export async function createTournament(request: AuthenticatedRequest, reply: Fas
   }
 }
 
-// Internal function to start a tournament
 async function startTournamentInternal(db: Database, tournamentId: number): Promise<void> {
   try {
-    // Update tournament status
     await Tournament.updateStatus(db, tournamentId, 'active');
     
-    // Mark all participants as active
     await db.run(`
       UPDATE tournament_participants
       SET status = 'active'
       WHERE tournament_id = ?
     `, [tournamentId]);
     
-    // Get participants with their ELO ratings
     const participants = await Tournament.getParticipantsForSeeding(db, tournamentId);
-    
-    // Since there are always 4 participants, we'll organize 2 semifinal matches
-    
-    // Semifinal 1: 1st seed vs 4th seed
-    await Tournament.createMatch(db, tournamentId, 1, 1, participants[0].user_id, participants[3].user_id);
-    
-    // Semifinal 2: 2nd seed vs 3rd seed
-    await Tournament.createMatch(db, tournamentId, 1, 2, participants[1].user_id, participants[2].user_id);
-    
-    // Create empty final match (round 2)
+    await Tournament.createMatch(db, tournamentId, 1, 1, participants[0].user_id, participants[3].user_id);    
+    await Tournament.createMatch(db, tournamentId, 1, 2, participants[1].user_id, participants[2].user_id);    
     await Tournament.createMatch(db, tournamentId, 2, 1);
 
-    // Get the updated tournament data
-    const tournament = await Tournament.findById(db, tournamentId);
-    
-    // Get the newly created matches
+    const tournament = await Tournament.findById(db, tournamentId);    
     const matches = await Tournament.getTournamentMatches(db, tournamentId);
     
-    // Notify all participants that the tournament has started
     await notifyTournamentParticipants(
       db,
       tournamentId,
@@ -423,7 +377,6 @@ async function startTournamentInternal(db: Database, tournamentId: number): Prom
   }
 }
 
-// Admin function to manually start a tournament - now only used as a backup
 export async function startTournament(request: AuthenticatedRequest, reply: FastifyReply): Promise<FastifyReply> {
   if (!request.params.id) {
     return reply.status(400).send({
@@ -438,7 +391,6 @@ export async function startTournament(request: AuthenticatedRequest, reply: Fast
   try {
     await db.run('BEGIN TRANSACTION');
     
-    // Check if we have exactly 4 participants
     const participantCount = await Tournament.getParticipantCount(db, tournamentId);
     
     if (participantCount !== 4) {
@@ -467,40 +419,31 @@ export async function startTournament(request: AuthenticatedRequest, reply: Fast
   }
 }
 
-// Update match result from a game
 export async function updateTournamentMatchResult(gameId: string, winnerId: number): Promise<void> {
   const db = await getDb();
   
   try {
-    // Find the match with this game ID
     const match = await Tournament.findMatchByGameId(db, gameId);
-    
     if (!match) return;
     
     await db.run('BEGIN TRANSACTION');
     
-    // Update match result
     await Tournament.setMatchWinner(db, match.id, winnerId);
     
-    // Update participant status for the loser
     const loserId = winnerId === match.player1_id ? match.player2_id : match.player1_id;
     await Tournament.setParticipantStatus(db, match.tournament_id, loserId, 'eliminated');
     
-    // Notify match update
     await notifyMatchUpdate(db, match.tournament_id, match.id);
     
-    // If this is the final match (round 2), update tournament and winner
     if (match.round === 2) {
       await Tournament.updateStatus(db, match.tournament_id, 'completed');
       await Tournament.setParticipantStatus(db, match.tournament_id, winnerId, 'winner');
       
-      // Get final tournament data for notification
       const tournament = await Tournament.findById(db, match.tournament_id);
       const matches = await Tournament.getTournamentMatches(db, match.tournament_id);
       const participants = await Tournament.getTournamentParticipants(db, match.tournament_id);
       const winner = participants.find((p: any) => p.id === winnerId);
       
-      // Notify tournament completed
       await notifyTournamentParticipants(
         db,
         match.tournament_id,
@@ -528,7 +471,6 @@ export async function updateTournamentMatchResult(gameId: string, winnerId: numb
         }
       );
     } else {
-      // Otherwise, advance winner to the final
       await advanceToNextRound(db, match, winnerId);
     }
     
@@ -539,7 +481,6 @@ export async function updateTournamentMatchResult(gameId: string, winnerId: numb
   }
 }
 
-// Helper to advance winner to next round
 async function advanceToNextRound(
   db: Database, 
   match: { 
@@ -550,19 +491,13 @@ async function advanceToNextRound(
   }, 
   winnerId: number
 ): Promise<void> {
-  // For a 4-player tournament, there's only one path:
-  // Round 1, Match 1 winner goes to Round 2, Match 1 as player1
-  // Round 1, Match 2 winner goes to Round 2, Match 1 as player2
-  
   if (match.round === 1) {
     const isPlayer1 = match.match_number === 1;
     
     await Tournament.updateMatchPlayer(db, match.tournament_id, 2, 1, isPlayer1, winnerId);
     
-    // Check if both players are set for the final match
     const finalMatch = await Tournament.getFinalMatch(db, match.tournament_id);
     
-    // If both players are set, update status to ready
     if (finalMatch.player1_id && finalMatch.player2_id) {
       await db.run(`
         UPDATE tournament_matches
@@ -570,7 +505,6 @@ async function advanceToNextRound(
         WHERE id = ?
       `, [finalMatch.id]);
       
-      // Notify about final match update
       await notifyMatchUpdate(db, match.tournament_id, finalMatch.id);
     }
   }

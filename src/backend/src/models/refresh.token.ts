@@ -5,20 +5,16 @@ import bcrypt from 'bcrypt';
 class RefreshToken {
     /*------------------------------SEARCH USER-----------------------------*/
 
-    // Find by user_id
     static async findByUser(db: Database, user_id: number) {
         return db.get('SELECT * FROM refresh_tokens WHERE user_id = ?', user_id);
     }
 
     /*-----------------------------MANAGE TOKEN-----------------------------*/
 
-    // Create refresh token id which expires in 7 days
     static async create(db: Database, user_id: number) {
-        // Generate and hash token id
         const token_id = crypto.randomUUID();
         const hashed_token_id = await bcrypt.hash(token_id, 10); 
 
-        // Replace existing entry if it already exists for that user
         await db.run(
             'INSERT OR REPLACE INTO refresh_tokens (user_id, token_id, expires_at) VALUES (?, ?, ?)',
             [user_id, hashed_token_id, Date.now() + 7 * 24 * 60 * 60 * 1000]
@@ -27,9 +23,7 @@ class RefreshToken {
         return token_id;
     }
 
-    // Check whether decoded token_id matches the user's token_id in database
     static async verify(db: Database, user_id: number, decoded: AuthTokenPayload) {
-        // Check for invalid/missing field in token payload
         if (decoded.token_type !== 'refresh' || !decoded.token_id) {
             throw new Error('Invalid token type or missing token ID');
         }
@@ -38,7 +32,6 @@ class RefreshToken {
             'SELECT * FROM refresh_tokens WHERE user_id = ?', decoded.id
         );
 
-        // Check if token doesn't exist or has expired
         if (!storedToken) {
             throw new Error('Invalid or expired refresh token (1)');
         }
@@ -47,14 +40,12 @@ class RefreshToken {
             throw new Error('Invalid or expired refresh token (2)');
         }
 
-        // Validate token_id
         const match = await bcrypt.compare(decoded.token_id, storedToken.token_id);
         if (!match) {
             throw new Error('Invalid or expired refresh token (3)');
         }
     }
 
-    // Invalidate refresh token (for security purposes)
     static async deleteByUser(db: Database, user_id: number) {
         const storedToken = await db.get(
             'DELETE * FROM refresh_tokens WHERE user_id = ?', user_id

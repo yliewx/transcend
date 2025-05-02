@@ -8,10 +8,8 @@ import { createAccessToken, accessCookieOptions } from '../services/token.servic
 
 /*---------------------------REFRESH ACCESS TOKEN---------------------------*/
 
-// Route: /api/auth/refresh
 export async function refreshAccessHandler(request: FastifyRequest, reply: FastifyReply) {
   try {
-    // Get refresh token data from request
     const userData = request.user as AuthTokenPayload;
     if (!userData) {
       throw new Error('User authentication failed');
@@ -22,10 +20,8 @@ export async function refreshAccessHandler(request: FastifyRequest, reply: Fasti
       throw new Error('User not found');
     }
 
-    // Verify refresh token with the database token_id
     await RefreshToken.verify(db, Number(userData.id), userData);
 
-    // Create new access token and set it in cookie
     const accessToken = await createAccessToken(user, reply);
     reply.setCookie('accessToken', accessToken, accessCookieOptions);
 
@@ -63,8 +59,6 @@ async function getTokenExpiry(token: any, secret: string, request: FastifyReques
   return new Date(decoded.exp * 1000);
 }
 
-// Route: /api/auth/refresh/status
-// Check validity and expiry of access token and refresh token
 export async function getTokenStatus(request: FastifyRequest, reply: FastifyReply) {
   const accessToken = request.cookies.accessToken;
   const refreshToken = request.cookies.refreshToken;

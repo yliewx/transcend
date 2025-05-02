@@ -52,19 +52,16 @@ export class Notifications {
     this.container!.appendChild(notification);
     this.notifications.push(notification);
 
-    // Animate in
     requestAnimationFrame(() => {
       notification.classList.remove('opacity-0', 'translate-y-4');
       notification.classList.add('opacity-100', 'translate-y-0');
     });
 
-    // Add close button functionality
     const closeBtn = notification.querySelector('.notification-close');
     if (closeBtn) {
       closeBtn.addEventListener('click', () => this.dismiss(notification));
     }
 
-    // Auto dismiss after duration
     setTimeout(() => {
       if (this.container!.contains(notification)) {
         this.dismiss(notification);
@@ -72,7 +69,6 @@ export class Notifications {
     }, duration);
   }
 
-  // Auto dismiss after 5 seconds
   private static dismiss(notification: HTMLElement) {
     notification.classList.remove('opacity-100', 'translate-y-0');
     notification.classList.add('opacity-0', 'translate-y-4');

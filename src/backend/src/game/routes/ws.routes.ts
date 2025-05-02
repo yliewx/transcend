@@ -13,13 +13,11 @@ interface PongParams {
   gameId: string;
 }
 
-// Notify user's online friends
 export async function notifyFriends(userId: number, online: boolean) {
   try {
     const db = await getDb();
     const friends = await Friend.getFriendsList(db, userId);
     friends.forEach((friend: any) => {
-      // Check if friends are online
       const friendSocket = onlineUsers.get(friend.user_id);
       if (friendSocket && friendSocket.readyState === WebSocket.OPEN) {
         friendSocket.send(JSON.stringify({
@@ -37,8 +35,8 @@ async function websocketRoutes(server: FastifyInstance) {
   /*-----------------------------ONLINE STATUS------------------------------*/
   
   server.get('/', { websocket: true }, async (connection: WebSocket, request: FastifyRequest) => {
-    // Check for access token
     let user;
+
     try {
         user = await request.server.authenticateUser(request);
     } catch (error) {
@@ -50,18 +48,15 @@ async function websocketRoutes(server: FastifyInstance) {
     printAuthTokenPayload(user);
     connection.send('Connected to server');
 
-    // Add user to map of online users
     onlineUsers.set(user.id, connection);
     notifyFriends(user.id, true);
 
-    // Ping client every 30 seconds to keep connection alive
     const pingInterval = setInterval(() => {
       if (connection.readyState === WebSocket.OPEN) {
         connection.ping();
       }
     }, 30000);
     
-    // Message handler
     connection.on('message', (msg: string) => {
       const message = JSON.parse(msg);
       console.log(`Received: ${message}`);
@@ -86,7 +81,6 @@ async function websocketRoutes(server: FastifyInstance) {
   /*-----------------------------GAME SESSION-------------------------------*/
   
   server.get('/pong/:gameId', { websocket: true }, async (connection: WebSocket, request: FastifyRequest<{ Params: PongParams }>) => {
-    // Check for access token
     let user;
     try {
         user = await request.server.authenticateUser(request);
@@ -95,7 +89,7 @@ async function websocketRoutes(server: FastifyInstance) {
         connection.close();
         return;
     }
-    // On connection: Extract game ID and get game instance
+
     const gameId = request.params.gameId;
     const room = gameManager.getRoom(gameId);
     if (!room) {
@@ -106,7 +100,6 @@ async function websocketRoutes(server: FastifyInstance) {
     console.log(chalk.green.bold('\n[/pong/:gameId] New connection to game: ' + chalk.green(gameId)));
     printAuthTokenPayload(user);
 
-    // Message handler
     connection.on('message', function onFirstMessage (msg: any) {
       const message = JSON.parse(msg.toString());
       console.log('[ws.routes] Full message:', message.type, JSON.stringify(message.data, null, 2));
@@ -125,7 +118,6 @@ async function websocketRoutes(server: FastifyInstance) {
   /*----------------------------GAME CLI SESSION----------------------------*/
 
   server.get('/pong/cli/:gameId', { websocket: true }, async (connection: WebSocket, request: FastifyRequest<{ Params: PongParams }>) => {
-    // Check for access token
     let user;
     try {
         user = await request.server.authenticateUser(request);
@@ -134,7 +126,7 @@ async function websocketRoutes(server: FastifyInstance) {
         connection.close();
         return;
     }
-    // On connection: Extract game ID and get game instance
+
     const gameId = request.params.gameId;
     const room = gameManager.getRoom(gameId);
     if (!room) {
@@ -146,7 +138,6 @@ async function websocketRoutes(server: FastifyInstance) {
     console.log(chalk.green.bold('\n[/pong/cli/:gameId] New CLI connection to game: ' + chalk.green(gameId)));
     printAuthTokenPayload(user);
 
-    // Message handler
     connection.on('message', (msg: string) => {
       const message = JSON.parse(msg.toString());
       console.log('[ws.routes] Full message:', message.type, JSON.stringify(message.data, null, 2));

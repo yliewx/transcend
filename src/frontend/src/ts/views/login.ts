@@ -15,7 +15,6 @@ export class LoginPage implements Page {
   }
   
   render(): HTMLElement {
-    // Return cached element if it exists
     if (this.element) {
       console.log('Returning cached element');
       return this.element;
@@ -89,18 +88,15 @@ export class LoginPage implements Page {
       </main>
     `;  
     
-    // Add event listeners after rendering
     setTimeout(() => this.setupEventHandlers(container), 0);
     setTimeout(() => this.loadGoogleScript(), 0);
     
-    // Cache the element for future use
     this.element = container;
     
     return container;
   }
 
   update(): void {
-    // Reset form and error messages if the page is revisited
     if (this.element) {
       const loginForm = this.element.querySelector('#login-form') as HTMLFormElement;
       const errorMessage = this.element.querySelector('#error-message');
@@ -115,7 +111,6 @@ export class LoginPage implements Page {
   private loadGoogleScript(): void {
     if (!this.googleClientId) return;
   
-    // Only load script if not already loaded
     if (!document.querySelector('script[src="https://accounts.google.com/gsi/client"]')) {
       const script = document.createElement('script');
       script.src = "https://accounts.google.com/gsi/client";
@@ -126,14 +121,12 @@ export class LoginPage implements Page {
       script.onload = () => {
         const signInDiv = document.querySelector('#g_id_div');
   
-        // Init google identity services
         window.google.accounts.id.initialize({
           client_id: this.googleClientId,
           context: "signin",
           callback: this.handleGoogleCredentialResponse.bind(this)
         });
   
-        // Render google sign-in button in the specified div
         window.google.accounts.id.renderButton(signInDiv, {
           theme: "outline",
           size: "large",
@@ -144,7 +137,6 @@ export class LoginPage implements Page {
           width: 300
         });
   
-        // Auto sign-in
         window.google.accounts.id.prompt();
       };
     }
@@ -153,6 +145,24 @@ export class LoginPage implements Page {
   private setupEventHandlers(container: HTMLElement): void {
     const loginButton = container.querySelector('#login-button');
     const loginForm = container.querySelector('#login-form');
+    const usernameInput = container.querySelector('#username') as HTMLInputElement;
+    const passwordInput = container.querySelector('#password') as HTMLInputElement;
+    
+    if (usernameInput) {
+      usernameInput.addEventListener('input', () => {
+        if (usernameInput.value.length > 20) {
+          usernameInput.value = usernameInput.value.slice(0, 20);
+        }
+      });
+    }
+    
+    if (passwordInput) {
+      passwordInput.addEventListener('input', () => {
+        if (passwordInput.value.length > 20) {
+          passwordInput.value = passwordInput.value.slice(0, 20);
+        }
+      });
+    }
     
     if (loginButton) {
       loginButton.addEventListener('click', () => this.handleLogin());
@@ -167,7 +177,6 @@ export class LoginPage implements Page {
       }) as EventListener);
     }
     
-    // Define the global callback for Google Sign-In
     window.handleGoogleCredentialResponse = this.handleGoogleCredentialResponse.bind(this);
   }
 
@@ -184,7 +193,6 @@ export class LoginPage implements Page {
     const username = usernameInput.value.trim();
     const password = passwordInput.value.trim();
     
-    // Basic validation
     if (!username || !password) {
       if (errorMessage) {
         errorMessage.textContent = 'Please enter both username and password';
@@ -192,13 +200,27 @@ export class LoginPage implements Page {
       }
       return;
     }
+
+    if (username.length > 20) {
+      if (errorMessage) {
+        errorMessage.textContent = 'Username cannot exceed 20 characters';
+        errorMessage.classList.remove('hidden');
+      }
+      return;
+    }
+    
+    if (password.length > 20) {
+      if (errorMessage) {
+        errorMessage.textContent = 'Password cannot exceed 20 characters';
+        errorMessage.classList.remove('hidden');
+      }
+      return;
+    }
     
     try {
-      // Use ControlAccess for login
       const result = await this.controlAccess.login(username, password);
       
       if (result.success) {
-        // Show success message
         if (loginMessage) {
           loginMessage.classList.remove('hidden');
         }
@@ -207,16 +229,13 @@ export class LoginPage implements Page {
           sessionStorage.setItem('userId', result.user.id);
         }
         
-        // Check if user's preferred 2FA option is set
         if (result.user.otp_option !== null) {
-          // No need to generate OTP if using authenticator app
           if (result.user.otp_option === 'app') {
             console.log('App OTP is enabled. Navigating to verification page');
             this.router.navigateTo('/otp/verify');
             return;
           }
 
-          // Send request to generate OTP before navigating to /otp/verify
           console.log(`Requesting OTP via ${result.user.otp_option}`);
           const res = await this.controlAccess.getAuthService().generateOtp();
           if (res.success) {
@@ -227,19 +246,17 @@ export class LoginPage implements Page {
             alert(`Failed to generate OTP: ${res.message || 'Unknown error'}`);
           }
         }
-        else { // First time login: 2FA setup required
+        else {
           if (result.user.email) {
             sessionStorage.setItem('userEmail', result.user.email);
           }
           this.router.navigateTo('/otp/setup');
         }
 
-        // Hide error message if it was shown
         if (errorMessage) {
           errorMessage.classList.add('hidden');
         }
-      } else { // If login is unsuccessful
-        // Show error message
+      } else { 
         if (errorMessage) {
           errorMessage.textContent = result.error || 'Login failed. Please try again.';
           errorMessage.classList.remove('hidden');
@@ -256,14 +273,10 @@ export class LoginPage implements Page {
 
   private async handleGoogleCredentialResponse(response: any): Promise<void> {
     try {
-      // Get the ID token from the response
       const idToken = response.credential;
-      
-      // Verify ID token in the backend
       const result = await this.controlAccess.loginWithGoogle(idToken);
       
       if (result.success) {
-        // Show success message
         const loginMessage = this.element?.querySelector('#login-message');
         if (loginMessage) {
           loginMessage.classList.remove('hidden');
@@ -275,13 +288,11 @@ export class LoginPage implements Page {
 
         console.log('Signed in with Google; no need for 2FA');
         
-        // Hide error message if it was shown
         const errorMessage = this.element?.querySelector('#error-message');
         if (errorMessage) {
           errorMessage.classList.add('hidden');
         }
       } else {
-        // Show error message
         const errorMessage = this.element?.querySelector('#error-message');
         if (errorMessage) {
           errorMessage.textContent = result.error || 'Google login failed. Please try again.';

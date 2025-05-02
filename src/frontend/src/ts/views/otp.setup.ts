@@ -14,7 +14,6 @@ export class OTPSetupPage implements Page {
   }
 
   render(): HTMLElement {
-    // Return cached element if it exists
     if (this.element) {
       return this.element;
     }
@@ -156,17 +155,13 @@ export class OTPSetupPage implements Page {
     
     container.appendChild(inner);
     
-    // Cache the element
-    this.element = container;
-    
-    // Set up event handlers
+    this.element = container;    
     this.setupEventHandlers();
 
     return container;
   }
 
   update(): void {
-    // Reset the form state when revisiting the page
     if (this.element) {
       const smsSetup = this.element.querySelector('#sms-setup');
       const emailSetup = this.element.querySelector('#email-setup');
@@ -178,7 +173,6 @@ export class OTPSetupPage implements Page {
       if (appSetup) appSetup.classList.add('hidden');
       if (successSection) successSection.classList.add('hidden');
       
-      // Reset radio buttons
       const radioButtons = this.element.querySelectorAll('input[type="radio"]');
       radioButtons.forEach(btn => (btn as HTMLInputElement).checked = false);
     }
@@ -187,49 +181,38 @@ export class OTPSetupPage implements Page {
   private setupEventHandlers(): void {
     if (!this.element) return;
     
-    // Method selection radio buttons
     const smsRadio = this.element?.querySelector('#tfa-sms') as HTMLInputElement;
     const emailRadio = this.element?.querySelector('#tfa-email') as HTMLInputElement;
     const appRadio = this.element?.querySelector('#tfa-app') as HTMLInputElement;
-    
-    // Setup sections
     const smsSetup = this.element?.querySelector('#sms-setup') as HTMLElement;
     const emailSetup = this.element?.querySelector('#email-setup') as HTMLElement;
     const appSetup = this.element?.querySelector('#app-setup') as HTMLElement;
-
-    // QR code elements in appSetup section
     const qrPlaceholder = this.element?.querySelector('#qr-placeholder');
     const secretKey = this.element?.querySelector('#secret-key');
     
-    // SMS radio button click handler
     smsRadio?.addEventListener('change', () => {
       this.showSection(smsSetup);
       this.hideSection(emailSetup);
       this.hideSection(appSetup);
     });
     
-    // Email radio button click handler
     emailRadio?.addEventListener('change', () => {
       this.hideSection(smsSetup);
       this.showSection(emailSetup);
       this.hideSection(appSetup);
     });
     
-    // App radio button click handler
     appRadio?.addEventListener('change', async () => {
       this.hideSection(smsSetup);
       this.hideSection(emailSetup);
       this.showSection(appSetup);
 
-      // Display QR code
       try {
         console.log('Generating QR code...');
         const response = await this.authService.generateQRCode();
         if (response.success) {
           console.log('response secret:', response.secret);
         }
-
-        // Update placeholders
         if (response.success && response.qrCode && qrPlaceholder && secretKey) {
           qrPlaceholder.innerHTML = `<img src="${response.qrCode}" alt="QR Code" class="w-48 h-48" />`;
           secretKey.textContent = response.secret;
@@ -242,13 +225,11 @@ export class OTPSetupPage implements Page {
       }
     });
     
-    // Action buttons
     const enableSmsBtn = this.element.querySelector('#enable-sms');
     const enableEmailBtn = this.element.querySelector('#enable-email');
     const enableAppBtn = this.element.querySelector('#enable-app');
     const continueBtn = this.element.querySelector('#continue-button');
 
-    // When enable SMS button is clicked
     enableSmsBtn?.addEventListener('click', async () => {
       try {
         this.selectedOption = 'sms';
@@ -256,17 +237,14 @@ export class OTPSetupPage implements Page {
         const phoneInput = document.getElementById('phone-number') as HTMLInputElement;
         const phoneNumber = phoneInput.value;
         
-        if (!phoneNumber) {
+        if (!phoneNumber || !this.isValidPhoneNumber(phoneNumber)) {
           alert('Please enter a valid phone number');
           return;
         }
         
-        // Call API to enable SMS 2FA
         const result = await this.authService.update2FAMethod("sms", phoneNumber);
         
         if (result.success) {
-          // The server now knows which 2FA method is enabled
-          // No need to store sensitive authentication data in client storage
           this.showSuccessSection();
         } else {
           alert(`Failed to enable SMS verification: ${result.message}`);
@@ -277,7 +255,6 @@ export class OTPSetupPage implements Page {
       }
     });
     
-    // When enable Email button is clicked
     enableEmailBtn?.addEventListener('click', async () => {
       try {
         this.selectedOption = 'email';
@@ -285,16 +262,14 @@ export class OTPSetupPage implements Page {
         const emailInput = document.getElementById('email-address') as HTMLInputElement;
         const email = emailInput.value;
         
-        if (!email || !this.isValidEmail(email)) {
+        if (!email || email.length > 20 || !this.isValidEmail(email)) {
           alert('Please enter a valid email address');
           return;
         }
         
-        // Call API to enable Email 2FA
         const result = await this.authService.update2FAMethod("email", email);
         
         if (result.success) {
-          // The server now knows which 2FA method is enabled
           this.showSuccessSection();
         } else {
           alert(`Failed to enable Email verification: ${result.message}`);
@@ -305,18 +280,13 @@ export class OTPSetupPage implements Page {
       }
     });
     
-    // When enable App button is clicked
     enableAppBtn?.addEventListener('click', async () => {
       try {
         this.selectedOption = 'app';
-
-        const secretKey = document.getElementById('secret-key')?.textContent || '';
-        
-        // Call API to confirm and enable App 2FA
+        const secretKey = document.getElementById('secret-key')?.textContent || '';        
         const result = await this.authService.update2FAMethod("app", secretKey);
         
         if (result.success) {
-          // The server now knows which 2FA method is enabled
           this.showSuccessSection();
         } else {
           alert(`Failed to enable Authenticator App verification: ${result.message}`);
@@ -327,7 +297,6 @@ export class OTPSetupPage implements Page {
       }
     });
     
-    // When continue button is clicked
     continueBtn?.addEventListener('click', async () => {
       try {
         if (this.selectedOption === 'app') {
@@ -355,22 +324,22 @@ export class OTPSetupPage implements Page {
 
   private isValidEmail(email: string): boolean {
     if (!email) return false;
-    
-    // Basic email validation regex
-    // Checks for format: something@something.something
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
   }
+
+  private isValidPhoneNumber(phoneNumber: string): boolean {
+    if (!phoneNumber) return false;
+    const cleanedNumber = phoneNumber.replace(/[\s()+\-\.]/g, '');
+    const phoneRegex = /^\d{7,15}$/;
+    return phoneRegex.test(cleanedNumber);
+  }
   
   private showSuccessSection(): void {
-    if (!this.element) return;
-    
-    // Hide all setup sections
+    if (!this.element) return;    
     this.hideSection(this.element.querySelector('#sms-setup'));
     this.hideSection(this.element.querySelector('#email-setup'));
-    this.hideSection(this.element.querySelector('#app-setup'));
-    
-    // Show success section
+    this.hideSection(this.element.querySelector('#app-setup'));    
     this.showSection(this.element.querySelector('#success-section'));
   }
   
