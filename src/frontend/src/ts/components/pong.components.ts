@@ -3,8 +3,11 @@ export class PongViewComponents {
     return  `
       <div class="text-center mb-6">
         <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Pong Game</h1>
-        <p class="mt-2 text-gray-600 dark:text-gray-400 mb-4">
+        <p id="local-key-controls" class="hidden mt-2 text-gray-600 dark:text-gray-400 mb-4">
           <strong>Controls:</strong> Player 1 (W/S) | Player 2 (↑/↓)
+        </p>
+        <p id="remote-key-controls" class="hidden mt-2 text-gray-600 dark:text-gray-400 mb-4">
+          <strong>Controls:</strong> Player 1 (↑/↓) | Player 2 (↑/↓)
         </p>
         <p id="game-status" class="text-xl text-pink-600 dark:text-pink-400 font-medium"></p>
       </div>
