@@ -41,7 +41,7 @@ export class LoginPage implements Page {
               <div id="login-message" class="rounded-md bg-pink-50 dark:bg-pink-800 p-4 hidden">
                 <div class="flex">
                   <div class="ml-3">
-                    <h1 class="text-2xl font-bold text-pink-800 dark:text-pink-200 text-center">Welcome to transcendence!</h1>
+                    <h1 class="text-2xl font-bold text-pink-800 dark:text-pink-200 text-center">Welcome to Parsley Pong!</h1>
                   </div>
                 </div>
               </div>
