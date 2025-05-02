@@ -29,12 +29,10 @@ export class PongGamePage implements Page {
   private keysPressed: { [key: string]: boolean } = {};
 
   private keyDownHandler = (e: KeyboardEvent) => {
-    console.log('Key down event:', e.key);
     this.handleKeyDown(e);
   };
 
   private keyUpHandler = (e: KeyboardEvent) => {
-    console.log('Key up event:', e.key);
     this.handleKeyUp(e);
   };
 
@@ -79,7 +77,6 @@ export class PongGamePage implements Page {
   /*----------------------------RESET GAME STATE----------------------------*/
 
   async update() {
-    console.log('Inside update() function');
     const reconnected = await this.restoreGameSession();
     if (!reconnected) {
       this.resetGame();
@@ -135,7 +132,6 @@ export class PongGamePage implements Page {
 
       if (this.gameId && this.state?.status !== 'finished') {
         this.updateGameStatusUI('Reconnecting to previous game...');
-        console.log(`Attempting to connect to previous game: ${this.gameId}. Creator: ${this.isCreator}.`);
         try {
           const success = await this.wss.connectGame(this.gameId, this.userId);
           if (success) {
@@ -161,9 +157,7 @@ export class PongGamePage implements Page {
     this.wss.onGameEvent('update', (state: GameState) => this.handleUpdateState(state));
   }
 
-  private handleStartGame(state: GameState): void {
-    console.log('[handleStartGame] Starting game');
-    
+  private handleStartGame(state: GameState): void {    
     this.state = state;
     this.startGameLoop();
     this.updateGameStatusUI();
@@ -181,12 +175,9 @@ export class PongGamePage implements Page {
   }
 
   private handleJoinedGame(data: any): void {
-    console.log('handleJoinedGame:', data)
     if (data.state) this.state = data.state;
     if (data.leftUserName !== null) this.leftUserName = data.leftUserName;
-    console.log('Left user name:', this.leftUserName);
     if (data.rightUserName !== null) this.rightUserName = data.rightUserName;
-    console.log('Right user name:', this.rightUserName);
 
     this.setupGameUI();
     if (this.state?.status === 'playing') {
@@ -207,7 +198,6 @@ export class PongGamePage implements Page {
     this.state = state;
   
     if (prevState?.status === 'playing' && this.state.status === 'finished') {
-      console.log('[handleUpdateState] Game has ended');
       this.drawGame();
       this.stopGameLoop();
     }
@@ -218,7 +208,6 @@ export class PongGamePage implements Page {
   private cleanResetGame(): void {
     if (!window.confirm('Are you sure you want to reset the game?\n \
       Your current result will not be saved.')) {
-      console.log("User canceled reset");
       return;
     }
   
@@ -262,7 +251,6 @@ export class PongGamePage implements Page {
       }
 
       const clickHandler = () => {
-        console.log(`${id} clicked`);
         action();
       };
       this.buttonHandlers[id] = clickHandler;
@@ -421,7 +409,6 @@ export class PongGamePage implements Page {
       return;
     }
 
-    console.log(`Messaging server to start game ID: ${this.gameId}`);
     this.wss.sendMessage('start', {
       gameId: this.gameId,
       playerId: this.userId
@@ -438,7 +425,6 @@ export class PongGamePage implements Page {
       return;
     }
 
-    console.log(`Messaging server to pause game ID: ${this.gameId}`);
     this.wss.sendMessage('pause', {
       gameId: this.gameId,
       playerId: this.userId
@@ -594,9 +580,7 @@ export class PongGamePage implements Page {
 
   /*------------------------------DESTROY GAME------------------------------*/
 
-  public destroy(): void {
-    console.log("Pong game destroy method called");
-  
+  public destroy(): void {  
     window.removeEventListener('keydown', this.keyDownHandler);
     window.removeEventListener('keyup', this.keyUpHandler);    
     window.removeEventListener('beforeunload', this.handleBeforeUnload);
@@ -613,8 +597,6 @@ export class PongGamePage implements Page {
     this.wss.disconnectGame();
     
     this.element = null;
-    
-    console.log("All event listeners cleaned up, element preserved");
   }
 
   private handleBeforeUnload = (event: BeforeUnloadEvent) => {

@@ -31,18 +31,14 @@ export class BaseApiService {
       } else {
         requestBody = body ? JSON.stringify(body) : undefined;
       }
-      
-      console.log(`${method} request to ${url}`);
-      
+
       const response = await fetch(url, {
         method,
         headers,
         body: requestBody,
         credentials: requiresAuth ? 'include' : undefined,
       });
-  
-      console.log(`Response status: ${response.status}`);
-  
+    
       if (response.status === 304) {
         return { success: true } as {success: boolean} & T;
       }

@@ -1,7 +1,6 @@
 import type { TournamentDetailPage } from '../views/tournament.detail';
 
 export function onParticipantJoined(this: TournamentDetailPage, event: CustomEvent) {
-  console.log("onParticipantJoined called", event.detail);
   this.update();
 }
 

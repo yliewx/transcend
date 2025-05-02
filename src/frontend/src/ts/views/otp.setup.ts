@@ -208,11 +208,7 @@ export class OTPSetupPage implements Page {
       this.showSection(appSetup);
 
       try {
-        console.log('Generating QR code...');
         const response = await this.authService.generateQRCode();
-        if (response.success) {
-          console.log('response secret:', response.secret);
-        }
         if (response.success && response.qrCode && qrPlaceholder && secretKey) {
           qrPlaceholder.innerHTML = `<img src="${response.qrCode}" alt="QR Code" class="w-48 h-48" />`;
           secretKey.textContent = response.secret;
@@ -300,16 +296,13 @@ export class OTPSetupPage implements Page {
     continueBtn?.addEventListener('click', async () => {
       try {
         if (this.selectedOption === 'app') {
-          console.log('App OTP is enabled. Navigating to verification page');
           this.router.navigateTo('/otp/verify');
           return;
         }
 
-        console.log('Generating OTP before navigating to verification page');
         const result = await this.authService.generateOtp();
         
         if (result.success) {
-          console.log('OTP generated successfully');
           this.router.navigateTo('/otp/verify');
         } else {
           console.error('Failed to generate OTP:', result.message);

@@ -16,7 +16,6 @@ export class LoginPage implements Page {
   
   render(): HTMLElement {
     if (this.element) {
-      console.log('Returning cached element');
       return this.element;
     }
 
@@ -137,7 +136,13 @@ export class LoginPage implements Page {
           width: 300
         });
   
-        window.google.accounts.id.prompt();
+        requestIdleCallback(() => {
+          try {
+            window.google.accounts.id.prompt();
+          } catch (err) {
+            console.warn('GSI prompt error:', err);
+          }
+        });
       };
     }
   }  
@@ -213,12 +218,10 @@ export class LoginPage implements Page {
         
         if (result.user.otp_option !== null) {
           if (result.user.otp_option === 'app') {
-            console.log('App OTP is enabled. Navigating to verification page');
             this.router.navigateTo('/otp/verify');
             return;
           }
 
-          console.log(`Requesting OTP via ${result.user.otp_option}`);
           const res = await this.controlAccess.getAuthService().generateOtp();
           if (res.success) {
             this.router.navigateTo('/otp/verify');
@@ -267,8 +270,6 @@ export class LoginPage implements Page {
         if (result.user.id) {
           sessionStorage.setItem('userId', result.user.id);
         }
-
-        console.log('Signed in with Google; no need for 2FA');
         
         const errorMessage = this.element?.querySelector('#error-message');
         if (errorMessage) {

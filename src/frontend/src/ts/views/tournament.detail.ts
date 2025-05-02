@@ -73,7 +73,6 @@ export class TournamentDetailPage implements Page {
 
   private async loadData(): Promise<{ success: boolean; error?: string }> {
     try {
-      console.log('Fetching tournament details for ID:', this.tournamentId);
       const response = await this.tournamentService.getTournamentDetails(this.tournamentId);
       
       if (response.success) {
@@ -273,7 +272,6 @@ export class TournamentDetailPage implements Page {
         return;
       }
       
-      console.log('Registering for tournament:', this.tournamentId, 'with alias:', alias);
       const response = await this.tournamentService.registerForTournament(this.tournamentId, alias);
       
       if (response.success) {
@@ -318,11 +316,9 @@ export class TournamentDetailPage implements Page {
   
   private async joinMatch(matchId: number): Promise<void> {
     try {
-      console.log('Joining match:', matchId);
       const response = await this.tournamentService.joinTournamentMatch(matchId);
       if (response.success && response.gameId) {
         const userId = parseInt(sessionStorage.getItem('userId') || '0');
-        console.log('[tournament joinMatch] User ID:', userId);
         const success = await this.router.getWsManager().connectGame(response.gameId, userId);
         if (!success) {
           this.showNotification('Failed to connect to game room.', 'error');
@@ -777,15 +773,12 @@ public renderParticipants(): string {
 }
 
  setTournamentId(id: string): void {
-    console.log('Setting tournament ID:', id);
     this.tournamentId = id;
     this.element = null;    
     this.setupMessageHandlers();
   }
 
-  async update(): Promise<void> {
-    console.log('Updating tournament page, ID:', this.tournamentId);
-    
+  async update(): Promise<void> {    
     if (!this.element) {
       await this.render();
       return;

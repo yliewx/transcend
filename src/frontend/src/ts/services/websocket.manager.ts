@@ -36,14 +36,11 @@ export class WebSocketManager {
     this.gameId = gameId;
     this.playerId = userId;
     this.retryCount = 0;
-    console.log('[WSManager] userId:', userId);
   
     try {
       this.gameSocket = new WebSocket(`${this.baseUrl}/pong/${gameId}`);
       await this.waitForSocketOpen(this.gameSocket);
-  
-      console.log(`Connected to the game room: ${gameId}. Waiting to join game...`);
-  
+    
       const joinSuccess = await this.waitForJoin(this.gameSocket);
       if (!joinSuccess) {
         this.gameSocket.close();
@@ -203,9 +200,6 @@ export class WebSocketManager {
       }
       return;
     }
-    if (type !== 'update') {
-      console.log('[Game Socket] Received from server:', type, JSON.stringify(data, null, 2));
-    }
 
     const callback = this.gameEventCallbacks.get(type);
     if (!callback) {
@@ -216,7 +210,6 @@ export class WebSocketManager {
   }
 
   public sendMessage(type: string, data: any): void {
-    console.log('[Game Socket] Sending message to server:', type);
     if (this.gameSocket && this.gameSocket.readyState === WebSocket.OPEN) {
       this.gameSocket.send(JSON.stringify({ type, data }));
     } else {
@@ -249,11 +242,9 @@ export class WebSocketManager {
       try {
         message = JSON.parse(event.data);
       } catch (error) {
-        console.log('Non-JSON message received:', event.data);
         return;
       }
       const { type, data } = message;
-      console.log(`Message received: type: ${type}; data: ${data}`);
       this.handleMessages(type, data);
     };
 
@@ -272,9 +263,6 @@ export class WebSocketManager {
     if (type === 'error') {
       console.error('[Online Socket] Error from server:', JSON.stringify(data, null, 2));
       return;
-    }
-    if (type !== 'online-status') {
-      console.log('[Online Socket] Received from server:', type, JSON.stringify(data, null, 2));
     }
 
     const userCallback = this.onUserEventCallbacks.get(type);

@@ -102,8 +102,8 @@ export class AuthService extends BaseApiService {
 
   /*--------------------------REFRESH ACCESS TOKEN--------------------------*/
 
-  public async checkTokenStatus(): Promise<{ success: boolean, status?: TokenStatusResponse }> {
-    const response = await this.request<{ success: boolean, status?: TokenStatusResponse }>(
+  public async checkTokenStatus(): Promise<{ success: boolean, error?: string, status?: TokenStatusResponse }> {
+    const response = await this.request<{ success: boolean, error?: string, status?: TokenStatusResponse }>(
       '/auth/refresh/status', 
       'GET',
       undefined,
@@ -112,7 +112,7 @@ export class AuthService extends BaseApiService {
     );
 
     if (!response.status) {
-      return { success: response.success };
+      return { success: response.success, error: response.error };
     }
     
     return response;
