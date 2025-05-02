@@ -114,6 +114,7 @@ export class FriendsPage implements Page {
                   id="search-input" 
                   type="text" 
                   placeholder="Search by username" 
+                  maxlength="20"
                   class="flex-grow px-4 py-2 border rounded-l focus:outline-none focus:ring-2 focus:ring-pink-500 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                   value="${this.searchQuery}"
                 >

@@ -327,12 +327,12 @@ export class TournamentPage implements Page {
           <form id="create-tournament-form" class="space-y-4">
             <div>
               <label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Tournament Name</label>
-              <input type="text" id="name" required class="input-field">
+              <input type="text" id="name" maxlength="20" required class="input-field">
             </div>
             
             <div>
               <label for="description" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
-              <textarea id="description" rows="3" class="input-field"></textarea>
+              <textarea id="description" rows="3" maxlength="100" class="input-field"></textarea>
             </div>
             
             <div>

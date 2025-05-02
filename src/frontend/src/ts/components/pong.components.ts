@@ -34,7 +34,7 @@ export class PongViewComponents {
 
           <div id="join-game-form" class="text-center hidden">
             <div class="flex justify-center items-center">
-              <input type="text" id="game-invite-code" placeholder="Enter invite code"
+              <input type="text" id="game-invite-code" placeholder="Enter invite code" maxlength="50" required
                 class="form-input w-64 dark:bg-gray-800 dark:text-white dark:placeholder-gray-400 border dark:border-gray-700" />
               <button id="submit-join-game-btn" class="btn-blue ml-2">Join</button>
               <button id="cancel-join-game-btn" class="btn-gray ml-2">Cancel</button>
