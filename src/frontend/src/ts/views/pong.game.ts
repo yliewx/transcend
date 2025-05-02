@@ -90,19 +90,20 @@ export class PongGamePage implements Page {
 
     if (this.element) {
       const gameIdElement = this.element.querySelector('#game-id');
-      const gameControlsElement = this.element.querySelector('#game-controls');
-      const gameStatusElement = this.element.querySelector('#game-status');
-      const joinButton = this.element?.querySelector('#join-game-btn');
-      const resetButton = this.element?.querySelector('#reset-game-btn');
-      
       if (gameIdElement) gameIdElement.textContent = '-';
-      if (gameControlsElement) gameControlsElement.classList.add('hidden');
+
+      const gameStatusElement = this.element.querySelector('#game-status');
       if (gameStatusElement) gameStatusElement.textContent = '';
-      if (joinButton) joinButton.classList.remove('hidden');
-      if (resetButton) resetButton.classList.remove('hidden');
+
+      this.element?.querySelector('#game-controls')?.classList.add('hidden');
+      this.element?.querySelector('#join-game-btn')?.classList.remove('hidden');
+      this.element?.querySelector('#reset-game-btn')?.classList.remove('hidden');
+      this.element?.querySelector('#start-game-btn')?.classList.remove('hidden');
       this.hideJoinGameForm();
       this.element?.querySelector('#pong-canvas-container')?.classList.add('hidden');
       this.element?.querySelector('#mode-selection')?.classList.remove('hidden');
+      this.element?.querySelector('#remote-key-controls')?.classList.add('hidden');
+      this.element?.querySelector('#local-key-controls')?.classList.add('hidden');
 
       this.setupEventHandlers();
       this.setupCanvas();
@@ -138,6 +139,12 @@ export class PongGamePage implements Page {
             const gameIdElement = this.element?.querySelector('#game-id');
             if (gameIdElement) gameIdElement.textContent = this.gameId;
             this.updateGameStatusUI('Reconnected to game!');
+            this.toggleDisplayedControls();
+            if (this.state?.status === 'waiting') {
+              this.element?.querySelector('#start-game-btn')?.classList.remove('hidden');
+            } else {
+              this.element?.querySelector('#start-game-btn')?.classList.add('hidden');
+            }
             this.startGameLoop();
             return true;
           }
@@ -159,6 +166,7 @@ export class PongGamePage implements Page {
 
   private handleStartGame(state: GameState): void {    
     this.state = state;
+    this.element?.querySelector('#start-game-btn')?.classList.add('hidden');
     this.startGameLoop();
     this.updateGameStatusUI();
   }
@@ -171,6 +179,17 @@ export class PongGamePage implements Page {
     this.element?.querySelector('#mode-selection')?.classList.add('hidden');
     if (this.isTourMatch) {
       this.element?.querySelector('#reset-game-btn')?.classList.add('hidden');
+    }
+    this.toggleDisplayedControls();
+  }
+
+  private toggleDisplayedControls(): void {
+    if (this.gameMode === 'remote') {
+      this.element?.querySelector('#local-key-controls')?.classList.add('hidden');
+      this.element?.querySelector('#remote-key-controls')?.classList.remove('hidden');
+    } else {
+      this.element?.querySelector('#local-key-controls')?.classList.remove('hidden');
+      this.element?.querySelector('#remote-key-controls')?.classList.add('hidden');
     }
   }
 
