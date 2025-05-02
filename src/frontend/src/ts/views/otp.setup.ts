@@ -75,7 +75,7 @@ export class OTPSetupPage implements Page {
               <div class="mb-4">
                 <label for="phone-number" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Phone Number</label>
                 <div class="mt-1">
-                  <input type="tel" id="phone-number" class="input-field" placeholder="+1 (555) 123-4567" />
+                  <input type="tel" id="phone-number" maxlength="20" class="input-field" placeholder="+1 (555) 123-4567" />
                 </div>
               </div>
               
@@ -94,7 +94,7 @@ export class OTPSetupPage implements Page {
               <div class="mb-4">
                 <label for="email-address" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Email Address</label>
                 <div class="mt-1">
-                  <input type="email" id="email-address" class="input-field" value="${userEmail}" />
+                  <input type="email" id="email-address" maxlength="30" class="input-field" value="${userEmail}" />
                 </div>
               </div>
               

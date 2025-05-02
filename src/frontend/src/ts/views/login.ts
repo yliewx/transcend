@@ -51,13 +51,13 @@ export class LoginPage implements Page {
               <div class="rounded-md shadow-sm space-y-4">
                 <div>
                   <label for="username" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Username</label>
-                  <input id="username" name="username" type="text" 
+                  <input id="username" name="username" type="text" maxlength="20" required
                         class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500 dark:bg-gray-800 dark:text-white">
                 </div>
                 
                 <div>
                   <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Password</label>
-                  <input id="password" name="password" type="password" 
+                  <input id="password" name="password" type="password" maxlength="20" required
                         class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500 dark:bg-gray-800 dark:text-white">
                 </div>
               </div>

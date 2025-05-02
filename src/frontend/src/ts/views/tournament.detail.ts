@@ -209,7 +209,7 @@ export class TournamentDetailPage implements Page {
         <form id="registration-form" class="space-y-5">
           <div class="relative">
             <div class="relative flex justify-start">
-              <input type="text" id="alias" name="alias" required
+              <input type="text" id="alias" name="alias" maxlength="20" required
                   class="pl-10 block w-2/3 h-12 border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:ring-pink-500 focus:border-pink-500 dark:bg-gray-700 dark:text-white"
                   placeholder="Enter something fun">
             </div>
