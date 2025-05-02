@@ -98,7 +98,7 @@ export class ProfilePage implements Page {
                   </div>
                   
                   <!-- Change Password Section -->
-                  <div class="pt-4 border-t border-gray-200 dark:border-gray-600">
+                  <div id="password-section" class="pt-4 border-t border-gray-200 dark:border-gray-600 hidden">
                     <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4 text-center">Change Password</h3>
                     
                     <!-- Current Password -->
@@ -234,6 +234,17 @@ export class ProfilePage implements Page {
       if (emailInput) {
         emailInput.value = this.userProfile?.userData?.email || '';
       }
+      
+      const passwordSection = this.element.querySelector('#password-section');
+      if (passwordSection) {
+        const otpOption = this.userProfile?.userData?.otp_option || null;
+        
+        if (otpOption !== 'app') {
+          passwordSection.classList.remove('hidden');
+        } else {
+          passwordSection.classList.add('hidden');
+        }
+      }
     }
   }
    
@@ -340,17 +351,25 @@ export class ProfilePage implements Page {
       this.showNotification('Email cannot exceed 30 characters', 'error');
       return;
     }
-    if (currentPassword && (currentPassword.length < 8 || currentPassword.length > 20)) {
-      this.showNotification('Current password  must be between 8 and 20 characters', 'error');
+    
+    if (this.userProfile?.userData?.otp_option === 'app' && (currentPassword || newPassword || confirmPassword)) {
+      this.showNotification('Password cannot be changed when using authenticator app', 'error');
       return;
     }
-    if (newPassword && (newPassword.length < 8 || newPassword.length > 20)) {
-      this.showNotification('New password  must be between 8 and 20 characters', 'error');
-      return;
-    }    
-    if (newPassword && newPassword !== confirmPassword) {
-      this.showNotification('New passwords do not match', 'error');
-      return;
+    
+    if (currentPassword || newPassword || confirmPassword) {
+      if (currentPassword && (currentPassword.length < 8 || currentPassword.length > 20)) {
+        this.showNotification('Current password must be between 8 and 20 characters', 'error');
+        return;
+      }
+      if (newPassword && (newPassword.length < 8 || newPassword.length > 20)) {
+        this.showNotification('New password must be between 8 and 20 characters', 'error');
+        return;
+      }    
+      if (newPassword && newPassword !== confirmPassword) {
+        this.showNotification('New passwords do not match', 'error');
+        return;
+      }
     }
 
     const userDataUpdate = {
@@ -362,7 +381,7 @@ export class ProfilePage implements Page {
       displayName: (formData.get('displayName') as string) || undefined,
     };
     
-    const passwordData = newPassword ? {
+    const passwordData = (newPassword && this.userProfile?.userData?.otp_option !== 'app') ? {
       currentPassword: formData.get('currentPassword') as string,
       newPassword: newPassword,
     } : null;

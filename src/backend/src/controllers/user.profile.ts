@@ -8,73 +8,104 @@ import fs from 'fs';
 import path from 'path';
 import { pipeline } from 'stream/promises';
 import { v4 as uuidv4 } from 'uuid';
-import { avatarsDir, publicDir, uploadsDir } from '../constants';
+import { avatarsDir } from '../constants';
 
-export async function profileHandler(request: AuthenticatedRequest, reply: FastifyReply) {
-    try {
-      const userId = request.user.id;
-      const db = await getDb();
+// export async function profileHandler(request: AuthenticatedRequest, reply: FastifyReply) {
+//     try {
+//       const userId = request.user.id;
+//       const db = await getDb();
     
-      const user = await User.findById(db, userId);  
-      if (!user) {
-        return reply.status(404).send({ error: 'User not found' });
-      }
+//       const user = await User.findById(db, userId);  
+//       if (!user) {
+//         return reply.status(404).send({ error: 'User not found' });
+//       }
       
-      const profile = await Profile.findByUserId(db, userId);
+//       const profile = await Profile.findByUserId(db, userId);
       
-      return {
-        user: {
-          id: user.id,
-          username: user.username,
-          email: user.email
-        },
-        profile: profile ? {
-          displayName: profile.display_name,
-          avatarPath: profile.avatar_path
-        } : null
-      };
-    } catch (error) {
-      request.log.error(error);
-      return reply.status(500).send({ error: 'Failed to retrieve profile' });
+//       return {
+//         user: {
+//           id: user.id,
+//           username: user.username,
+//           email: user.email
+//         },
+//         profile: profile ? {
+//           displayName: profile.display_name,
+//           avatarPath: profile.avatar_path
+//         } : null
+//       };
+//     } catch (error) {
+//       request.log.error(error);
+//       return reply.status(500).send({ error: 'Failed to retrieve profile' });
+//     }
+//   }
+export async function profileHandler(request: AuthenticatedRequest, reply: FastifyReply) {
+  try {
+    const userId = request.user.id;
+    const db = await getDb();
+  
+    const user = await User.findById(db, userId);  
+    if (!user) {
+      return reply.status(404).send({ error: 'User not found' });
     }
+    
+    const profile = await Profile.findByUserId(db, userId);
+    
+    return {
+      success: true,
+      userData: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        otp_option: user.otp_option 
+      },
+      profileData: profile ? {
+        displayName: profile.display_name,
+        avatarPath: profile.avatar_path
+      } : null
+    };
+  } catch (error) {
+    request.log.error(error);
+    return reply.status(500).send({ 
+      success: false,
+      error: 'Failed to retrieve profile' 
+    });
   }
+}
 
-  export async function updateProfileDataHandler(request: AuthenticatedRequest, reply: FastifyReply) {
-    try {
-      const userId = request.user.id;
-      const { displayName } = request.body as { displayName?: string };
-      
-      if (displayName === undefined) {
-        return reply.status(400).send({
-          success: false,
-          error: 'Display name is required'
-        });
-      }
-      
-      const db = await getDb();
-      console.log('Database connection established');
-      
-      let profile = await Profile.findByUserId(db, userId);
-
-      profile = await Profile.updateDisplayName(db, userId, displayName);
-      if (!profile) 
-        throw new Error('Failed to update or retrieve profile after update');
-            
-      return {
-        success: true,
-        profile: {
-          displayName: profile.display_name,
-          avatarPath: profile.avatar_path
-        }
-      };
-    } catch (error) {
-      request.log.error(error);
-      return reply.status(500).send({ 
-        success: false, 
-        error: 'Failed to update profile' 
+export async function updateProfileDataHandler(request: AuthenticatedRequest, reply: FastifyReply) {
+  try {
+    const userId = request.user.id;
+    const { displayName } = request.body as { displayName?: string };
+    
+    if (displayName === undefined) {
+      return reply.status(400).send({
+        success: false,
+        error: 'Display name is required'
       });
     }
+    
+    const db = await getDb();
+    let profile = await Profile.findByUserId(db, userId);
+
+    profile = await Profile.updateDisplayName(db, userId, displayName);
+    if (!profile) 
+      throw new Error('Failed to update or retrieve profile after update');
+          
+    return {
+      success: true,
+      profile: {
+        displayName: profile.display_name,
+        avatarPath: profile.avatar_path
+      }
+    };
+  } catch (error) {
+    request.log.error(error);
+    return reply.status(500).send({ 
+      success: false, 
+      error: 'Failed to update profile' 
+    });
   }
+}
 
 
 export async function updateUserDataHandler(request: AuthenticatedRequest, reply: FastifyReply) {
@@ -134,6 +165,63 @@ export async function updateUserDataHandler(request: AuthenticatedRequest, reply
   }
 }
 
+// export async function updatePasswordHandler(request: AuthenticatedRequest, reply: FastifyReply) {
+//   try {
+//     const userId = request.user.id;
+//     const { currentPassword, newPassword } = request.body as { 
+//       currentPassword: string; 
+//       newPassword: string;
+//     };
+    
+//     if (!currentPassword || !newPassword) {
+//       return reply.status(400).send({
+//         success: false,
+//         error: 'Current password and new password are required'
+//       });
+//     }
+    
+//     if (newPassword.length < 8) {
+//       return reply.status(400).send({
+//         success: false,
+//         error: 'New password must be at least 8 characters long'
+//       });
+//     }
+    
+//     const db = await getDb();
+    
+//     const user = await User.findById(db, userId);
+//     if (!user) {
+//       return reply.status(404).send({ 
+//         success: false, 
+//         error: 'User not found' 
+//       });
+//     }
+    
+//     const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
+//     if (!isPasswordValid) {
+//       return reply.status(401).send({
+//         success: false,
+//         error: 'Current password is incorrect'
+//       });
+//     }
+    
+//     const saltRounds = 10;
+//     const passwordHash = await bcrypt.hash(newPassword, saltRounds);    
+//     await User.updatePassword(db, userId, passwordHash);    
+//     request.log.info(`Password changed for user ${userId}`);
+    
+//     return {
+//       success: true,
+//       message: 'Password updated successfully'
+//     };
+//   } catch (error) {
+//     request.log.error(error);
+//     return reply.status(500).send({ 
+//       success: false, 
+//       error: 'Failed to update password' 
+//     });
+//   }
+// }
 export async function updatePasswordHandler(request: AuthenticatedRequest, reply: FastifyReply) {
   try {
     const userId = request.user.id;
@@ -141,6 +229,23 @@ export async function updatePasswordHandler(request: AuthenticatedRequest, reply
       currentPassword: string; 
       newPassword: string;
     };
+
+    const db = await getDb();
+    
+    const user = await User.findById(db, userId);
+    if (!user) {
+      return reply.status(404).send({ 
+        success: false, 
+        error: 'User not found' 
+      });
+    }
+    
+    if (user.otp_option === 'app') {
+      return reply.status(403).send({
+        success: false,
+        error: 'Password cannot be changed when using authenticator app'
+      });
+    }
     
     if (!currentPassword || !newPassword) {
       return reply.status(400).send({
@@ -156,16 +261,6 @@ export async function updatePasswordHandler(request: AuthenticatedRequest, reply
       });
     }
     
-    const db = await getDb();
-    
-    const user = await User.findById(db, userId);
-    if (!user) {
-      return reply.status(404).send({ 
-        success: false, 
-        error: 'User not found' 
-      });
-    }
-    
     const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
     if (!isPasswordValid) {
       return reply.status(401).send({
@@ -177,7 +272,6 @@ export async function updatePasswordHandler(request: AuthenticatedRequest, reply
     const saltRounds = 10;
     const passwordHash = await bcrypt.hash(newPassword, saltRounds);    
     await User.updatePassword(db, userId, passwordHash);    
-    request.log.info(`Password changed for user ${userId}`);
     
     return {
       success: true,
@@ -191,7 +285,6 @@ export async function updatePasswordHandler(request: AuthenticatedRequest, reply
     });
   }
 }
-
 
 export async function uploadAvatarHandler(request: AuthenticatedRequest, reply: FastifyReply) {
   try {
