@@ -41,7 +41,10 @@ module.exports = {
           from: './src/index.html', 
           to: 'index.html' 
         },
-        // Add any other static assets like images, favicon, etc.
+        {
+          from: './src/assets',
+          to: 'assets'
+        }
       ],
     }),
     new webpack.DefinePlugin({ // Inject necessary environment variables
