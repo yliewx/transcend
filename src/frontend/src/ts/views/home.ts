@@ -23,7 +23,6 @@ export class HomePage implements Page {
     const cardWrapper = document.createElement('div');
     cardWrapper.className = 'dark:bg-gray-900 shadow-md rounded-lg p-8';
 
-    // Banner
     const banner = document.createElement('div');
     banner.className = `
       relative w-full h-72 bg-contain bg-no-repeat bg-center rounded-lg 
@@ -32,7 +31,6 @@ export class HomePage implements Page {
     banner.style.backgroundImage = `url('/assets/banner.png')`;
     banner.style.animationDelay = '0s';
 
-    // Banner Text at Top
     const bannerText = document.createElement('h1');
     bannerText.className = `
       absolute top-4 left-1/2 transform -translate-x-1/2 
@@ -45,7 +43,6 @@ export class HomePage implements Page {
 
     banner.appendChild(bannerText);
 
-    // Image cards
     const grid = document.createElement('div');
     grid.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 mt-10';
 
