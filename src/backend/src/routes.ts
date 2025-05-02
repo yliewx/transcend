@@ -34,18 +34,6 @@ export default fp(async function setupRoutes(server: FastifyInstance) {
   defineAuthRoute(server, 'get', '/api/friends', FriendController.getFriends);
   defineAuthRoute(server, 'get', '/api/friends/pending', FriendController.getPendingRequests);
   defineAuthRoute(server, 'get', '/api/users/search', FriendController.searchUsers);
-
-  // defineAuthRoute(server, 'get', '/api/users/search', FriendController.searchUsers, {
-  //   schema: {
-  //     querystring: {
-  //       type: 'object',
-  //       required: ['q'],
-  //       properties: {
-  //         q: { type: 'string' }
-  //       }
-  //     }
-  //   }
-  // });
   defineAuthRoute(server, 'post', '/api/friends/request', FriendController.sendFriendRequest);  
   defineAuthRoute(server, 'post', '/api/friends/request/:id/accept', FriendController.acceptFriendRequest);
   defineAuthRoute(server, 'post', '/api/friends/request/:id/decline', FriendController.declineFriendRequest);
@@ -64,18 +52,6 @@ export default fp(async function setupRoutes(server: FastifyInstance) {
   defineAuthRoute(server, 'get', '/api/tournaments', TournamentController.getTournaments);
   defineAuthRoute(server, 'get', '/api/tournaments/:id', TournamentController.getTournamentDetails);
   defineAuthRoute(server, 'post', '/api/tournaments/:id/register', TournamentController.registerForTournament);
-
-  // defineAuthRoute(server, 'post', '/api/tournaments/:id/register', TournamentController.registerForTournament, {
-  //   schema: {
-  //     body: {
-  //       type: 'object',
-  //       required: ['alias'],
-  //       properties: {
-  //         alias: { type: 'string', minLength: 1 }
-  //       }
-  //     }
-  //   }
-  // });
   defineAuthRoute(server, 'get', '/api/user/tournaments', TournamentController.getUserTournaments);
   defineAuthRoute(server, 'post', '/api/tournaments/matches/:id/join', TournamentController.joinTournamentMatch);
   defineAuthRoute(server, 'post', '/api/admin/tournaments', TournamentController.createTournament);

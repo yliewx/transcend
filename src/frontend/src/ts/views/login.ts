@@ -145,24 +145,6 @@ export class LoginPage implements Page {
   private setupEventHandlers(container: HTMLElement): void {
     const loginButton = container.querySelector('#login-button');
     const loginForm = container.querySelector('#login-form');
-    const usernameInput = container.querySelector('#username') as HTMLInputElement;
-    const passwordInput = container.querySelector('#password') as HTMLInputElement;
-    
-    if (usernameInput) {
-      usernameInput.addEventListener('input', () => {
-        if (usernameInput.value.length > 20) {
-          usernameInput.value = usernameInput.value.slice(0, 20);
-        }
-      });
-    }
-    
-    if (passwordInput) {
-      passwordInput.addEventListener('input', () => {
-        if (passwordInput.value.length > 20) {
-          passwordInput.value = passwordInput.value.slice(0, 20);
-        }
-      });
-    }
     
     if (loginButton) {
       loginButton.addEventListener('click', () => this.handleLogin());
