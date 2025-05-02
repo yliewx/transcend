@@ -617,7 +617,6 @@ export class PongGamePage implements Page {
     console.log("All event listeners cleaned up, element preserved");
   }
 
-
   private handleBeforeUnload = (event: BeforeUnloadEvent) => {
     if (this.state?.status === 'playing') {
       event.preventDefault();

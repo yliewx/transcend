@@ -1,11 +1,12 @@
 import { Page } from '../types';
 import { Router } from '../router';
 import { CardComponent } from '../components/card';
+import { ImageCardComponent } from '../components/image.card';
 
 export class HomePage implements Page {
   private router: Router;
   private element: HTMLElement | null = null;
-  
+
   constructor(router: Router) {
     this.router = router;
   }
@@ -22,28 +23,43 @@ export class HomePage implements Page {
     const cardWrapper = document.createElement('div');
     cardWrapper.className = 'dark:bg-gray-900 shadow-md rounded-lg p-8';
 
-    const header = document.createElement('div');
-    header.className = 'text-center mb-8';
-    header.innerHTML = `
-      <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Welcome to Transcendence!</h1>
-      <p class="mt-4 text-lg text-gray-600 dark:text-gray-400">
-        The ultimate online gaming platform. Challenge your friends to a game of Pong or check your stats.
-      </p>
+    // Banner
+    const banner = document.createElement('div');
+    banner.className = `
+      relative w-full h-72 bg-contain bg-no-repeat bg-center rounded-lg 
+      opacity-0 animate-fade-slide-in
     `;
+    banner.style.backgroundImage = `url('/assets/banner.png')`;
+    banner.style.animationDelay = '0s';
 
+    // Banner Text at Top
+    const bannerText = document.createElement('h1');
+    bannerText.className = `
+      absolute top-4 left-1/2 transform -translate-x-1/2 
+      text-3xl font-bold text-center text-gray-900 dark:text-pink-400 
+      bg-black bg-opacity-40 px-4 py-2 rounded-lg
+    `;
+    bannerText.textContent = 'Welcome to Parsley Pong!';
+
+    banner.appendChild(bannerText);
+
+    banner.appendChild(bannerText);
+
+    // Image cards
     const grid = document.createElement('div');
-    grid.className = 'grid grid-cols-1 md:grid-cols-3 gap-6 mt-10';
+    grid.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 mt-10';
 
-    const cards = [
-      new CardComponent('Play Game', 'Challenge a friend or find a random opponent', 'Play Now', '/play'),
-      new CardComponent('View Stats', 'Check your game history and rankings', 'See Stats', '/stats'),
-      new CardComponent('Profile', 'Update your profile information', 'Edit Profile', '/profile'),
+    const imageCards = [
+      new ImageCardComponent('Play', '/assets/play.jpg', '/play', '0.1s'),
+      new ImageCardComponent('Tournaments', '/assets/tournament.jpg', '/tournaments', '0.2s'),
+      new ImageCardComponent('Profile', '/assets/profile.jpg', '/profile', '0.3s'),
+      new ImageCardComponent('Stats', '/assets/paws.jpg', '/stats', '0.4s'),
     ];
 
-    cards.forEach(card => grid.appendChild(card.render()));
-
-    cardWrapper.appendChild(header);
+    imageCards.forEach(card => grid.appendChild(card.render()));
     cardWrapper.appendChild(grid);
+
+    inner.appendChild(banner);
     inner.appendChild(cardWrapper);
     container.appendChild(inner);
 
