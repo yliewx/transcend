@@ -133,13 +133,6 @@ export class TournamentDetailPage implements Page {
       return;
     }
     
-    // const notificationButton = target.closest('.notification button');
-    // if (notificationButton) {
-    //   const notification = target.closest('.notification');
-    //   if (notification) notification.remove();
-    //   return;
-    // }
-    
     const submitButton = target.id === 'submit-registration' || target.closest('#submit-registration');
     if (submitButton) {
       e.preventDefault();
@@ -347,52 +340,6 @@ export class TournamentDetailPage implements Page {
     const duration = type === 'error' ? 8000 : 5000;
     Notifications.show(type, message, duration);
   }
-
-  // public showNotification(message: string, type: 'success' | 'error' | 'info' = 'success'): void {
-  //   const notificationContainer = document.getElementById('notification-container') || this.createNotificationContainer();
-    
-  //   const notification = document.createElement('div');
-  //   notification.className = `notification ${type === 'error' ? 'bg-red-500' : type === 'success' ? 'bg-green-500' : 'bg-blue-500'} text-white px-5 py-4 rounded-xl shadow-lg flex items-center justify-between transform transition-all duration-300 opacity-0 translate-y-2`;
-    
-  //   const icon = type === 'error' 
-  //     ? '<svg class="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>'
-  //     : type === 'success'
-  //     ? '<svg class="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>'
-  //     : '<svg class="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>';
-    
-  //   notification.innerHTML = `
-  //     <div class="flex items-center">
-  //       ${icon}
-  //       <span class="font-medium">${message}</span>
-  //     </div>
-  //     <button class="ml-4 focus:outline-none text-white opacity-70 hover:opacity-100 transition-opacity">
-  //       <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-  //         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-  //       </svg>
-  //     </button>
-  //   `;
-    
-  //   notificationContainer.appendChild(notification);
-    
-  //   setTimeout(() => {
-  //     notification.classList.remove('opacity-0', 'translate-y-2');
-  //   }, 10);
-    
-  //   setTimeout(() => {
-  //     notification.classList.add('opacity-0', 'translate-y-2');
-  //     setTimeout(() => {
-  //       notification.remove();
-  //     }, 300);
-  //   }, 5000);
-  // }
-  
-  // private createNotificationContainer(): HTMLElement {
-  //   const container = document.createElement('div');
-  //   container.id = 'notification-container';
-  //   container.className = 'fixed top-4 right-4 z-50 flex flex-col gap-3';
-  //   document.body.appendChild(container);
-  //   return container;
-  // }
 
   public renderContent(container: HTMLElement): void {
     if (!this.tournament) return;
