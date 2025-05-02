@@ -296,7 +296,7 @@ export class TournamentDetailPage implements Page {
             id: userId,
             username: userName,
             alias: alias,
-            elo: 1000,
+            elo: 1200,
             status: 'active'
           };
           

@@ -194,15 +194,6 @@ export class FriendsPage implements Page {
     
     type HandlerTuple = [string, string, EventListener];
     
-    const searchInput = this.element.querySelector('#search-input') as HTMLInputElement;
-    if (searchInput) {
-      searchInput.addEventListener('input', (() => {
-        if (searchInput.value.length > 20) {
-          searchInput.value = searchInput.value.substring(0, 20);
-        }
-      }) as EventListener);
-    }
-
     const handlers: HandlerTuple[] = [
       ['#tab-friends', 'click', (() => this.switchTab('friends')) as EventListener],
       ['#tab-pending', 'click', (() => this.switchTab('pending')) as EventListener],
