@@ -1,24 +1,6 @@
 import { BaseApiService } from "./base.api";
 
 export class UserService extends BaseApiService {
-  // public async getProfile(): Promise<{success: boolean, userData?: any, profileData?: any, error?: string}> {
-  //   const response = await this.request<{user?: any, profile?: any, error?: string}>(
-  //     '/profile', 
-  //     'GET', 
-  //     undefined, 
-  //     true
-  //   );
-    
-  //   if (response.success) {
-  //     return {
-  //       success: true,
-  //       userData: response.userData,
-  //       profileData: response.profileData
-  //     };
-  //   }
-    
-  //   return response as any;
-  // }
   public async getProfile(): Promise<{success: boolean, userData?: any, profileData?: any, error?: string}> {
     const response = await this.request<{userData?: any, profileData?: any, error?: string}>(
       '/profile', 

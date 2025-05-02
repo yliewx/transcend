@@ -196,48 +196,12 @@ export class ProfilePage implements Page {
     }
   }
 
-  // private async fetchProfileData(): Promise<void> {
-  //   try {
-  //     const profileResponse = await this.userService.getProfile();
-      
-  //     if (profileResponse.success) {
-  //       this.userProfile = profileResponse;
-  //       this.updateUIWithProfileData();
-  //     } else {
-  //       console.error('Failed to fetch profile:', profileResponse.error);
-  //     }
-  //   } catch (error) {
-  //     console.error('Failed to fetch user data:', error);
-  //   }
-  // }
-  // private async fetchProfileData(): Promise<void> {
-  //   console.log('Starting fetchProfileData');
-  //   try {
-  //     const profileResponse = await this.userService.getProfile();
-  //     console.log('Profile API response:', profileResponse);
-      
-  //     if (profileResponse && profileResponse.success) {
-  //       this.userProfile = profileResponse;
-  //       console.log('Setting userProfile to:', this.userProfile);
-  //       this.updateUIWithProfileData();
-  //     } else {
-  //       console.error('Failed to fetch profile:', profileResponse?.error || 'Unknown error');
-  //     }
-  //   } catch (error) {
-  //     console.error('Exception in fetchProfileData:', error);
-  //   }
-  //   console.log('Completed fetchProfileData');
-  // }
-
   private async fetchProfileData(): Promise<void> {
-    console.log('Starting fetchProfileData');
     try {
       const profileResponse = await this.userService.getProfile();
-      console.log('Raw profile response:', JSON.stringify(profileResponse));
       
       if (profileResponse.success) {
         this.userProfile = profileResponse;
-        console.log('Setting userProfile to:', JSON.stringify(this.userProfile));
         this.updateUIWithProfileData();
       } else {
         console.error('Failed to fetch profile:', profileResponse.error);
@@ -245,7 +209,6 @@ export class ProfilePage implements Page {
     } catch (error) {
       console.error('Failed to fetch user data:', error);
     }
-    console.log('Completed fetchProfileData');
   }
 
   private updateUIWithProfileData(): void {
