@@ -93,7 +93,7 @@ export class OTPSetupPage implements Page {
               <div class="mb-4">
                 <label for="email-address" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Email Address</label>
                 <div class="mt-1">
-                  <input type="email" id="email-address" maxlength="30" class="input-field" value="${userEmail}" />
+                  <input type="email" id="email-address" maxlength="40" class="input-field" value="${userEmail}" />
                 </div>
               </div>
               
@@ -258,7 +258,7 @@ export class OTPSetupPage implements Page {
         const emailInput = document.getElementById('email-address') as HTMLInputElement;
         const email = emailInput.value;
         
-        if (!email || email.length > 20 || !this.isValidEmail(email)) {
+        if (!email || email.length > 40 || !this.isValidEmail(email)) {
           alert('Please enter a valid email address');
           return;
         }

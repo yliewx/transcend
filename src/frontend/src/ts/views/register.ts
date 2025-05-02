@@ -57,7 +57,7 @@ export class RegisterPage implements Page {
                 
                 <div>
                   <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Email address</label>
-                  <input id="email" name="email" type="email" maxlength="30" required 
+                  <input id="email" name="email" type="email" maxlength="40" required 
                         class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500 dark:bg-gray-800 dark:text-white">
                 </div>
                 
@@ -151,8 +151,8 @@ export class RegisterPage implements Page {
       errorContainer.classList.remove('hidden');
       return;
     }
-    if (email.length < 3 || email.length > 20) {
-      errorMessage.textContent = 'Email must be between 3 and 20 characters';
+    if (email.length < 3 || email.length > 40) {
+      errorMessage.textContent = 'Email must be between 3 and 40 characters';
       errorContainer.classList.remove('hidden');
       return;
     }
