@@ -133,10 +133,7 @@ export async function generateOtp(request: FastifyRequest, reply: FastifyReply) 
         id: user.id,
         username: user.username,
         email: user.email,
-        otp_option: user.otp_option,
-        otp: otpToken,
-        base32: user.otp_secret,
-        auth_url: user.otp_auth_url
+        otp_option: user.otp_option
       }
     })
   }
