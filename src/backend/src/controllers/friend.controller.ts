@@ -99,13 +99,11 @@ async function notifyRemovedFriend(friendId: number, userId: number) {
 
 /*------------------------------FRIEND ROUTES-------------------------------*/
 
-// Get a user's friends list
 export async function getFriends(request: AuthenticatedRequest, reply: FastifyReply) {
   try {
     const db = await getDb();
     const userId = request.user.id;
 
-    // Get friends list
     const friends: FriendRecord[] = await Friend.getFriendsList(db, userId);
 
     return reply.send({
@@ -114,7 +112,7 @@ export async function getFriends(request: AuthenticatedRequest, reply: FastifyRe
         id: friend.user_id,
         username: friend.username,
         displayName: friend.display_name || friend.username,
-        online: onlineUsers.has(friend.user_id) // boolean
+        online: onlineUsers.has(friend.user_id)
       }))
     });
   } catch (error) {
@@ -126,19 +124,13 @@ export async function getFriends(request: AuthenticatedRequest, reply: FastifyRe
   }
 }
 
-// Get pending friend requests (both sent and received)
 export async function getPendingRequests(request: AuthenticatedRequest, reply: FastifyReply) {
   try {
     const db = await getDb();
     const userId = request.user.id;
-
-    // Get incoming requests
-    const incomingRequests = await Friend.getIncomingRequests(db, userId);
-    
-    // Get outgoing requests
+    const incomingRequests = await Friend.getIncomingRequests(db, userId);    
     const outgoingRequests = await Friend.getOutgoingRequests(db, userId);
 
-    // Combine requests with type indicator
     const allRequests = [
       ...incomingRequests.map(req => ({
         id: req.id,
@@ -171,7 +163,6 @@ export async function getPendingRequests(request: AuthenticatedRequest, reply: F
   }
 }
 
-// Search for users by username
 export async function searchUsers(request: AuthenticatedRequest, reply: FastifyReply) {
   try {
     const db = await getDb();
@@ -185,7 +176,6 @@ export async function searchUsers(request: AuthenticatedRequest, reply: FastifyR
       });
     }
 
-    // Search for users with matching username
     const users = await Friend.searchUsers(db, query, userId);
 
     return reply.send({
@@ -205,7 +195,6 @@ export async function searchUsers(request: AuthenticatedRequest, reply: FastifyR
   }
 }
 
-// Send a friend request
 export async function sendFriendRequest(request: AuthenticatedRequest, reply: FastifyReply) {
   try {
     const db = await getDb();
@@ -226,7 +215,6 @@ export async function sendFriendRequest(request: AuthenticatedRequest, reply: Fa
       });
     }
 
-    // Check if recipient exists
     const recipient = await User.findById(db, recipientId);
     if (!recipient) {
       return reply.status(404).send({
@@ -235,11 +223,9 @@ export async function sendFriendRequest(request: AuthenticatedRequest, reply: Fa
       });
     }
 
-    // Begin transaction
     await db.run('BEGIN TRANSACTION');
 
     try {
-      // Check if they are already friends
       const areFriends = await Friend.areFriends(db, senderId, recipientId);
       
       if (areFriends) {
@@ -250,11 +236,9 @@ export async function sendFriendRequest(request: AuthenticatedRequest, reply: Fa
         });
       }
 
-      // Check for existing requests
       const existingRequest = await Friend.getExistingRequest(db, senderId, recipientId);
 
       if (existingRequest) {
-        // Since we're deleting processed requests, only pending requests should exist
         if (existingRequest.sender_id === senderId) {
           await db.run('ROLLBACK');
           return reply.status(400).send({
@@ -262,15 +246,14 @@ export async function sendFriendRequest(request: AuthenticatedRequest, reply: Fa
             error: 'You already sent a friend request to this user'
           });
         } else {
-          // If recipient has already sent a request, return an error instead of auto-accepting
           await db.run('ROLLBACK');
+
           return reply.status(400).send({
             success: false,
             error: 'This user has already sent you a friend request. Please accept their request instead.'
           });
         }
       } else {
-        // No existing request, create a new one
         const requestData = await Friend.createRequest(db, senderId, recipientId);
         
         await db.run('COMMIT');
@@ -309,7 +292,6 @@ export async function sendFriendRequest(request: AuthenticatedRequest, reply: Fa
   }
 }
 
-// Accept a friend request
 export async function acceptFriendRequest(request: AuthenticatedRequest, reply: FastifyReply) {
   try {
     const db = await getDb();
@@ -323,11 +305,9 @@ export async function acceptFriendRequest(request: AuthenticatedRequest, reply: 
       });
     }
 
-    // Begin transaction
     await db.run('BEGIN TRANSACTION');
 
     try {
-      // Check if request exists
       const friendRequest = await Friend.getRequestById(db, parseInt(requestId));
 
       if (!friendRequest) {
@@ -349,13 +329,10 @@ export async function acceptFriendRequest(request: AuthenticatedRequest, reply: 
       const senderId = friendRequest.sender_id;
       const recipientId = friendRequest.recipient_id;
 
-      // Delete the request instead of updating status
       await Friend.deleteRequestById(db, parseInt(requestId));
 
-      // Create friendships (bidirectional)
       await Friend.createFriendship(db, userId, senderId);
 
-      // Get user info for response
       const userData = await db.get(
         `SELECT u.id, u.username, p.display_name
          FROM users u
@@ -398,7 +375,6 @@ export async function acceptFriendRequest(request: AuthenticatedRequest, reply: 
   }
 }
 
-// Decline a friend request
 export async function declineFriendRequest(request: AuthenticatedRequest, reply: FastifyReply) {
   try {
     const db = await getDb();
@@ -412,7 +388,6 @@ export async function declineFriendRequest(request: AuthenticatedRequest, reply:
       });
     }
 
-    // Check if request exists
     const friendRequest = await Friend.getRequestById(db, parseInt(requestId));
 
     if (!friendRequest) {
@@ -431,7 +406,6 @@ export async function declineFriendRequest(request: AuthenticatedRequest, reply:
 
     const senderId = friendRequest.sender_id;
 
-    // Delete the request instead of updating status
     await Friend.deleteRequestById(db, parseInt(requestId));
 
     await notifyRecipient(
@@ -456,7 +430,6 @@ export async function declineFriendRequest(request: AuthenticatedRequest, reply:
   }
 }
 
-// Cancel a sent friend request
 export async function cancelFriendRequest(request: AuthenticatedRequest, reply: FastifyReply) {
   try {
     const db = await getDb();
@@ -470,7 +443,6 @@ export async function cancelFriendRequest(request: AuthenticatedRequest, reply: 
       });
     }
 
-    // Check if request exists
     const friendRequest = await Friend.getRequestById(db, parseInt(requestId));
 
     if (!friendRequest) {
@@ -489,7 +461,6 @@ export async function cancelFriendRequest(request: AuthenticatedRequest, reply: 
 
     const recipientId = friendRequest.recipient_id;
 
-    // Delete the request instead of updating status
     await Friend.deleteRequestById(db, parseInt(requestId));
 
     await notifyRecipient(
@@ -514,7 +485,6 @@ export async function cancelFriendRequest(request: AuthenticatedRequest, reply: 
   }
 }
 
-// Remove a friend
 export async function removeFriend(request: AuthenticatedRequest, reply: FastifyReply) {
   try {
     const db = await getDb();
@@ -528,11 +498,9 @@ export async function removeFriend(request: AuthenticatedRequest, reply: Fastify
       });
     }
 
-    // Begin transaction
     await db.run('BEGIN TRANSACTION');
 
     try {
-      // Check if they are actually friends
       const areFriends = await Friend.areFriends(db, userId, parseInt(friendId));
 
       if (!areFriends) {
@@ -543,7 +511,6 @@ export async function removeFriend(request: AuthenticatedRequest, reply: Fastify
         });
       }
 
-      // Delete friendship (bidirectional)
       await Friend.removeFriend(db, userId, parseInt(friendId));
 
       await db.run('COMMIT');

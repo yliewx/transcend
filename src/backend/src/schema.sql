@@ -28,13 +28,11 @@ CREATE TABLE IF NOT EXISTS profiles (
   FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 );
 
-
-
 CREATE TABLE IF NOT EXISTS match_history (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   match_date TEXT NOT NULL,
-  player1_id INTEGER, -- Remove NOT NULL to allow guest players
-  player2_id INTEGER, -- Remove NOT NULL to allow guest players
+  player1_id INTEGER,
+  player2_id INTEGER,
   winner_id INTEGER NULL,
   tournament_id INTEGER NOT NULL DEFAULT 0,
   left_score INTEGER NOT NULL DEFAULT 0,
@@ -43,12 +41,9 @@ CREATE TABLE IF NOT EXISTS match_history (
   FOREIGN KEY (player1_id) REFERENCES users (id) ON DELETE SET NULL,
   FOREIGN KEY (player2_id) REFERENCES users (id) ON DELETE SET NULL,
   FOREIGN KEY (winner_id) REFERENCES users (id) ON DELETE SET NULL
-  -- Remove the CHECK constraint that requires winner to be one of the players
-  -- since we might have null players now
 );
 
 
--- Create a table for friend requests
 CREATE TABLE IF NOT EXISTS friend_requests (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   sender_id INTEGER NOT NULL,
@@ -58,14 +53,11 @@ CREATE TABLE IF NOT EXISTS friend_requests (
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (sender_id) REFERENCES users (id) ON DELETE CASCADE,
   FOREIGN KEY (recipient_id) REFERENCES users (id) ON DELETE CASCADE,
-  -- Ensure a user can't send multiple requests to the same recipient
   UNIQUE(sender_id, recipient_id)
 );
 
--- Create an index for faster lookups by recipient
 CREATE INDEX IF NOT EXISTS friend_requests_recipient_idx ON friend_requests (recipient_id, status);
 
--- Create a view for pending friend requests with user info
 CREATE VIEW IF NOT EXISTS pending_incoming_requests_view AS
 SELECT 
   fr.id,
@@ -84,7 +76,6 @@ LEFT JOIN
 WHERE 
   fr.status = 'pending';
 
--- Create a view for outgoing friend requests with user info
 CREATE VIEW IF NOT EXISTS pending_outgoing_requests_view AS
 SELECT 
   fr.id,
@@ -152,7 +143,6 @@ LEFT JOIN
   profiles p ON u.id = p.user_id;
 
 
--- Tournaments table
 CREATE TABLE IF NOT EXISTS tournaments (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
@@ -162,7 +152,6 @@ CREATE TABLE IF NOT EXISTS tournaments (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- Tournament Participants table
 CREATE TABLE IF NOT EXISTS tournament_participants (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   tournament_id INTEGER NOT NULL,
@@ -176,7 +165,6 @@ CREATE TABLE IF NOT EXISTS tournament_participants (
   UNIQUE(tournament_id, user_id)
 );
 
--- Tournament Matches table
 CREATE TABLE IF NOT EXISTS tournament_matches (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   tournament_id INTEGER NOT NULL,
@@ -196,7 +184,6 @@ CREATE TABLE IF NOT EXISTS tournament_matches (
 );
 
 
--- Create a table to track ELO rating history
 CREATE TABLE IF NOT EXISTS elo_history (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL,
@@ -209,7 +196,6 @@ CREATE TABLE IF NOT EXISTS elo_history (
   FOREIGN KEY (match_id) REFERENCES match_history (id) ON DELETE CASCADE
 );
 
--- Create a view to get the complete ELO history with match details
 CREATE VIEW IF NOT EXISTS elo_history_view AS
 SELECT 
   eh.id,

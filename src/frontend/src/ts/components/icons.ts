@@ -4,7 +4,6 @@ export const homeIcon = `
 </svg>
 `;
 
-// https://www.svgrepo.com/svg/73/game-controller
 export const gamepadIcon = `
 <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
   <path stroke-linecap="round" stroke-linejoin="round" d="M6 15l-2 2a2 2 0 11-2-2l2-6a4 4 0 014-3h8a4 4 0 014 3l2 6a2 2 0 11-2 2l-2-2M10 13h.01M8 13h.01M16 10h.01M18 12h.01" />

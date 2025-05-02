@@ -7,7 +7,6 @@ import { AuthTokenPayload } from '../../../@types/global.js';
 export async function generateCLIToken(request: FastifyRequest, reply: FastifyReply) {
   
     try {
-      // Get user data from request
       const userData = request.user as AuthTokenPayload;
       
       const db = await getDb();
@@ -20,10 +19,8 @@ export async function generateCLIToken(request: FastifyRequest, reply: FastifyRe
         });
       }
   
-      // Create new access and refresh tokens
       const cliToken = await createCLIToken(user, reply);
   
-      // Set access and refresh tokens in cookie
       reply.setCookie('cliToken', cliToken, cliCookieOptions);
   
       return reply.status(200).send({ 

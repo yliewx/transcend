@@ -9,17 +9,13 @@ import { createAccessToken, createRefreshToken, accessCookieOptions, refreshCook
 
 /*------------------------------2FA PREFERENCES-----------------------------*/
 
-// Route: /api/otp/preference
-// Accessed from: /otp/setup -> enable 2FA
 export async function otpPreferenceHandler(request: FastifyRequest, reply: FastifyReply) {
-  // Extract required fields from request body
   const { otp_option, otp_contact } = request.body as { otp_option: string, otp_contact?: string | null };
   if (!otp_option) {
     return reply.status(400).send({ error: 'User OTP option is required' });
   }
 
   try {
-    // Get user data from request
     const userData = request.user as AuthTokenPayload;
     if (!userData) {
       throw new Error('User authentication failed');
@@ -42,7 +38,6 @@ export async function otpPreferenceHandler(request: FastifyRequest, reply: Fasti
 
 export async function generateQRCode(request: FastifyRequest, reply: FastifyReply) {
   try {
-    // Get user data from request
     const userData = request.user as AuthTokenPayload;
     if (!userData) {
       throw new Error('User authentication failed');
@@ -67,7 +62,6 @@ export async function generateQRCode(request: FastifyRequest, reply: FastifyRepl
   }
 }
 
-// Handle sending OTP based on preferred otp_option
 async function sendOtp(request: FastifyRequest, db: Database, user: any, otpToken: string) {
   if (user.otp_option === 'app') return;
 
@@ -91,10 +85,8 @@ async function sendOtp(request: FastifyRequest, db: Database, user: any, otpToke
 
 async function generateOtpToken(db: Database, user_id: number)
 {
-  // Fetch user secret if it exists in database
   const secret_base32 = await User.getOtpSecret(db, user_id);
 
-  // Instantiate TOTP object; generate user secret if it doesn't exist (first time login)
   const totp = new OTPAuth.TOTP({
     issuer: 'ft_transcendence',
     algorithm: 'SHA256',
@@ -103,19 +95,15 @@ async function generateOtpToken(db: Database, user_id: number)
     secret: secret_base32 ? new OTPAuth.Secret(secret_base32) : new OTPAuth.Secret(),
   });
 
-  // Generate OTP as string
   const token = totp.generate();
 
-  // Store secret and auth url in database
   await User.setOtpSecret(db, user_id, totp.secret.base32, totp.toString());
 
   return token;
 }
 
-// Route: /api/otp/generate
 export async function generateOtp(request: FastifyRequest, reply: FastifyReply) {
   try {
-    // Get user data from request
     const userData = request.user as AuthTokenPayload;
     if (!userData) {
       throw new Error('User authentication failed');
@@ -123,15 +111,12 @@ export async function generateOtp(request: FastifyRequest, reply: FastifyReply) 
     const db = await getDb();
     const user = await User.findById(db, Number(userData.id));
 
-    // Check if OTP option is set
     if (user.otp_option === null) {
       throw new Error('Preferred 2FA option not set');
     }
 
-    // Generate OTP
     const otpToken = await generateOtpToken(db, user.id);
 
-    // Send OTP
     try {
       await sendOtp(request, db, user, otpToken);
     } catch (error) {
@@ -164,12 +149,10 @@ export async function generateOtp(request: FastifyRequest, reply: FastifyReply) 
 
 /*--------------------------------VERIFY OTP--------------------------------*/
 
-// Route: /api/otp/verify
 export async function verifyOtp(request: FastifyRequest, reply: FastifyReply) {
   const { otp } = request.body as { otp: string };
 
   try {
-    // Get user data from request
     const userData = request.user as AuthTokenPayload;
     if (!userData) {
       throw new Error('User authentication failed');
@@ -184,7 +167,6 @@ export async function verifyOtp(request: FastifyRequest, reply: FastifyReply) {
       });
     }
 
-    // Instantiate new TOTP object using user secret
     const totp = new OTPAuth.TOTP({
       issuer: 'ft_transcendence',
       algorithm: 'SHA256',
@@ -193,7 +175,6 @@ export async function verifyOtp(request: FastifyRequest, reply: FastifyReply) {
       secret: OTPAuth.Secret.fromBase32(user.otp_secret)
     });
 
-    // Validate OTP token
     const delta = totp.validate({ token: otp, window: 1 });
     if (delta === null) {
       return reply.status(401).send({
@@ -202,14 +183,11 @@ export async function verifyOtp(request: FastifyRequest, reply: FastifyReply) {
       });
     }
 
-    // Update database
     await User.setOtpVerified(db, user.id, true);
 
-    // Create new access and refresh tokens
     const accessToken = await createAccessToken(user, reply);
     const refreshToken = await createRefreshToken(db, user, reply);
 
-    // Set access and refresh tokens in cookie
     reply.setCookie('accessToken', accessToken, accessCookieOptions);
     reply.setCookie('refreshToken', refreshToken, refreshCookieOptions);
 

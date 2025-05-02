@@ -1,7 +1,5 @@
 import sqlite3 from 'sqlite3';
 import { open, Database } from 'sqlite';
-// import fs from 'fs';
-// import path from 'path';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
@@ -12,14 +10,11 @@ const dbPath = process.env.DB_PATH || './database.sqlite';
 export async function setupDbConnection(): Promise<Database> {
   if (db) return db;
   
-  // Open database connection
   db = await open({
     filename: dbPath,
     driver: sqlite3.Database
   });
-  
-  // Initialize database schema
-  //const schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
+ 
   const schemaPath = join(__dirname, '..', 'src', 'schema.sql');
   const schema = readFileSync(schemaPath, 'utf8');
   await db.exec(schema);

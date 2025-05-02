@@ -4,9 +4,9 @@ import fp from 'fastify-plugin';
 
 export default fp(async function setupCors(server: FastifyInstance) {
     server.register(fastifyCors, {
-        origin: process.env.BASE_HTTPS_URL, // Match nginx frontend url
+        origin: process.env.BASE_HTTPS_URL,
         methods: ['GET', 'POST', 'PUT', 'OPTIONS'],
         allowedHeaders: ['Content-Type', 'Authorization'],
-        credentials: true // Enable credentials
+        credentials: true
     });
 })

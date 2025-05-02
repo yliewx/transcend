@@ -1,7 +1,6 @@
 services:
 
 #---------------------------------BACKEND--------------------------------
-# available on port 3000 inside docker
   backend:
     container_name: backend
     build:

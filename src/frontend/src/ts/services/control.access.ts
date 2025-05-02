@@ -8,24 +8,17 @@ export class ControlAccess {
   private googleClientId: string | null = process.env.GOOGLE_CLIENT_ID ?? null;
   private authCheckTimeoutId: number | null = null;
   
-  constructor(private authService: AuthService) {
-    // this.checkAuthStatus();
-  }
+  constructor(private authService: AuthService) {}
 
-  /**
-   * Starts a periodic dynamic check loop to refresh authentication status
-   */
+
   public startAuthCheckLoop(): void {
     if (this.authCheckTimeoutId !== null) {
-      return; // Already started
+      return;
     }
     console.log('[ControlAccess] Starting auth check loop...');
     this.scheduleNextAuthCheck();
   }
 
-  /**
-   * Stops the dynamic auth check loop
-   */
   public stopAuthCheckLoop(): void {
     if (this.authCheckTimeoutId !== null) {
       console.log('[ControlAccess] Stopping auth check loop...');
@@ -34,9 +27,6 @@ export class ControlAccess {
     }
   }
 
-  /**
-   * Schedules the next authentication check based on token expiry time
-   */
   private scheduleNextAuthCheck(): void {
     if (this.authCheckTimeoutId !== null) {
       clearTimeout(this.authCheckTimeoutId);
@@ -44,14 +34,13 @@ export class ControlAccess {
     }
 
     const now = new Date();
-    let delayMs = 60_000; // Default: check again in 1 minute
+    let delayMs = 60_000;
 
     if (this.accessTokenExpiry) {
       const timeUntilExpiry = this.accessTokenExpiry.getTime() - now.getTime();
       console.log(`[ControlAccess] Time until access token expiry: ${timeUntilExpiry / 1000}s`);
 
       if (timeUntilExpiry > 0) {
-        // Check again in half the remaining time, with a lower bound of 5 seconds
         delayMs = Math.max(Math.floor(timeUntilExpiry / 2), 5_000);
       } else {
         delayMs = 5_000;
@@ -64,20 +53,15 @@ export class ControlAccess {
       } catch (error) {
         console.error('[ControlAccess] Error during periodic auth check:', error);
       } finally {
-        this.scheduleNextAuthCheck(); // schedule next check after this one finishes
+        this.scheduleNextAuthCheck();
       }
     }, delayMs);
   }
 
-  /* valid access: proceed to handleRoute
-  invalid access + invalid refresh: redirect to login
-  invalid access + valid refresh: refresh access token -> redirect to login on failure */
   public async checkAuthStatus(): Promise<boolean> {
     console.log('[ControlAccess] Checking authentication status...', this.accessTokenExpiry, this.refreshTokenExpiry);
-    // Update expiry time of existing tokens
     await this.checkTokenStatus();
 
-    // If access token hasn't expired: no need to check refresh token
     if (!this.isExpiredToken('access')) {
       console.log('[ControlAccess] Access token is valid.');
       this.setAuthenticated(true);
@@ -86,9 +70,7 @@ export class ControlAccess {
 
     console.log('[ControlAccess] Access token expired or invalid.');
 
-    // If access token has expired: check refresh token
     if (!this.isExpiredToken('refresh')) {
-      // Refresh access token if valid refresh token exists
       console.log('[ControlAccess] Attempting token refresh...');
       const result = await this.handleTokenRefresh();
       
@@ -106,16 +88,10 @@ export class ControlAccess {
     return this.isAuthenticated;
   }
 
-  /**
- * Returns the current authentication status
- */
   public isLoggedIn(): boolean {
     return this.isAuthenticated;
   }
   
-  /**
-   * Sets the authentication status and notifies listeners
-   */
   public setAuthenticated(status: boolean): void {
     if (this.isAuthenticated !== status) {
       console.log(`[ControlAccess] Setting authentication status to: ${status}`);
@@ -123,19 +99,16 @@ export class ControlAccess {
       this.notifyListeners();
   
       if (status) {
-        this.startAuthCheckLoop(); // start auth check on login
+        this.startAuthCheckLoop();
       } else {
-        this.stopAuthCheckLoop();  // stop it on logout or token failure
+        this.stopAuthCheckLoop();
       }
     }
   }  
 
-  /**
-   * Check and update expiry time of JWT token in HTTP-only cookie
-   */
+
   private async checkTokenStatus(): Promise<void> {
     try {
-      // Get status of access token and refresh token
       const result = await this.authService.checkTokenStatus();
 
       if (!result.success) {
@@ -145,12 +118,7 @@ export class ControlAccess {
         throw new Error('Token status is missing in response');
       }
 
-      // Set user ID in session storage if it doesn't exist
-      // if (result.status.userId !== null && sessionStorage.getItem('userId') === null) {
-        sessionStorage.setItem('userId', String(result.status.userId));
-      // }
-
-      // Set token expiry
+      sessionStorage.setItem('userId', String(result.status.userId));
       this.accessTokenExpiry = result.status.accessTokenExpiry ? new Date(result.status.accessTokenExpiry) : null;
       this.refreshTokenExpiry = result.status.refreshTokenExpiry ? new Date(result.status.refreshTokenExpiry) : null;
     } catch (error) {
@@ -158,9 +126,6 @@ export class ControlAccess {
     }
   }
   
-  /**
-   * Check if token has expired
-   */
   private isExpiredToken(token_type: 'access' | 'refresh'): boolean {
     const expiry = token_type === 'access' ? this.accessTokenExpiry : this.refreshTokenExpiry;
     const now = new Date();
@@ -177,11 +142,7 @@ export class ControlAccess {
     return true;
   }
 
-  /**
-   * Attempts to request access token if valid refresh token exists (bypass OTP verification)
-   */
   public async handleTokenRefresh(): Promise<{ success: boolean, message?: string }> {
-    // Check if refresh token has expired
     if (this.isExpiredToken('refresh')) {
       this.setAuthenticated(false);
       return { success: false, message: 'Refresh token expired' };
@@ -205,9 +166,6 @@ export class ControlAccess {
     }
   }
   
-  /**
-   * Attempts to log in the user with provided credentials
-   */
   public async login(username: string, password: string): Promise<{ success: boolean, error?: string, user?: any }> {
     try {
       const result = await this.authService.login(username, password);
@@ -218,9 +176,6 @@ export class ControlAccess {
     }
   }
 
-  /**
-   * Attempts to log in the user with provided credentials
-   */
   public async loginWithGoogle(idToken: string): Promise<{ success: boolean, message?: string, error?: string, user?: any }> {
     try {
       const result = await this.authService.loginWithGoogle(idToken);
@@ -238,9 +193,6 @@ export class ControlAccess {
     }
   }
   
-  /**
-   * Set authenticated upon successful OTP verification
-   */
   public async verifyOtp(otp: string): Promise<{ success: boolean, error?: string, user?: any }> {
     try {
       const result = await this.authService.verifyOtp(otp);
@@ -258,9 +210,6 @@ export class ControlAccess {
     }
   }
 
-  /**
-   * Logs out the current user
-   */
   public async logout(): Promise<{ success: boolean, error?: string }> {
     try {
       const result = await this.authService.logout();
@@ -275,16 +224,10 @@ export class ControlAccess {
     }
   }
   
-  /**
-   * Register for authentication state changes
-   */
   public addAuthStateChangeListener(listener: (isAuthenticated: boolean) => void): void {
     this.authStateChangeListeners.push(listener);
   }
   
-  /**
-   * Remove an authentication state change listener
-   */
   public removeAuthStateChangeListener(listener: (isAuthenticated: boolean) => void): void {
     const index = this.authStateChangeListeners.indexOf(listener);
     if (index > -1) {
@@ -292,19 +235,12 @@ export class ControlAccess {
     }
   }
   
-  /**
-   * Notify all listeners of an authentication state change
-   */
   private notifyListeners(): void {
     for (const listener of this.authStateChangeListeners) {
       listener(this.isAuthenticated);
     }
   }
   
-  /**
-   * Get the API service instance
-   * This method provides access to the API service for components
-   */
   public getAuthService(): AuthService {
     return this.authService;
   }

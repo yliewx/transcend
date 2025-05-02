@@ -7,7 +7,6 @@ export class WebSocketManager {
   private gameEventCallbacks: Map<string, (data: any) => void> = new Map();
   private onUserEventCallbacks: Map<string, (data: any) => void> = new Map();
   private onTournamentEventCallbacks: Map<string, (data: any) => void> = new Map();
-  // Handle reconnection
   private retryCount: number = 0;
   private maxRetryCount: number = 5;
   private isReconnecting: boolean = false;
@@ -16,17 +15,14 @@ export class WebSocketManager {
     this.baseUrl = baseUrl;
   }
 
-  // Register handler functions from PongGamePage
   public onGameEvent(type: string, callback: (data: any) => void): void {
     this.gameEventCallbacks.set(type, callback);
   }
 
-  // Register handler functions from FriendsPage
   public onUserEvent(type: string, callback: (data: any) => void): void {
     this.onUserEventCallbacks.set(type, callback);
   }
 
-  // Register handler functions from TournamentDetailPage
   public onTournamentEvent(type: string, callback: (data: any) => void): void {
     this.onTournamentEventCallbacks.set(type, callback);
   }
@@ -73,8 +69,6 @@ export class WebSocketManager {
   
   private waitForJoin(socket: WebSocket): Promise<boolean> {
     return new Promise((resolve) => {
-      // Set up initial message handler: only handle player-joined
-      // Remove message handler after joining (or on error)
       const onMessage = (event: MessageEvent) => {
         let message;
         try {
@@ -111,12 +105,10 @@ export class WebSocketManager {
   
       socket.addEventListener('message', onMessage);
   
-      // Send join message
       this.sendMessage('join', { gameId: this.gameId, playerId: this.playerId });
     });
   }
 
-  // Set up actual game message handlers after joining
   private setupGameSocketHandlers(): void {
     if (!this.gameSocket) {
       console.error('[Game Socket] No active socket to set handlers on.');
@@ -144,20 +136,15 @@ export class WebSocketManager {
     };
   }
 
-  // Only call when reset game button is pressed
   public disconnectGame(): void {
     if (this.gameSocket) {
-      // Prevent automatic reconnection attempts
       this.gameSocket.onclose = () => {
         console.log('[Game Socket] Connection closed during game reset.');
-      };
-      
-      // Close the socket
+      };      
       this.gameSocket.close();
       this.gameSocket = null;
     }
     
-    // Clear game state
     this.gameId = null;
     this.retryCount = 0;
     this.isReconnecting = false;
@@ -192,7 +179,7 @@ export class WebSocketManager {
         if (err?.message === 'Failed to join game' || err?.message === 'Game not found') {
           console.error("[Game Socket] Cannot rejoin: Game not found.");
           this.isReconnecting = false;
-          return false; // stop retrying if game doesn't exist
+          return false; 
         }
       }
     }
@@ -201,94 +188,10 @@ export class WebSocketManager {
     this.isReconnecting = false;
     return false;
   }  
-  
-  // Join a specific room by game ID
-  // public async connectGame(gameId: string, userId: number): Promise<boolean> {
-  //   return new Promise((resolve, reject) => {
-  //     this.gameId = gameId;
-  //     this.playerId = userId;
-  //     this.gameSocket = new WebSocket(`${this.baseUrl}/pong/${gameId}`);
-
-  //     let hasResolved = false;
-
-  //     this.gameSocket.onopen = () => {
-  //       console.log("Connected to the game room:", gameId);
-  //       this.retryCount = 0; // reset no. of attempts to reconnect
-  //       this.sendMessage('join', { gameId: this.gameId, playerId: this.playerId }); // join game
-  //       hasResolved = true;
-  //       resolve(true);
-  //     };
-
-  //     // Handle WebSocket messages for the game room
-  //     this.gameSocket.onmessage = (event) => {
-  //       let message;
-  //       try {
-  //         message = JSON.parse(event.data);
-  //       } catch (error) {
-  //         console.log('Non-JSON message received:', event.data);
-  //         return;
-  //       }
-  //       const { type, data } = message;
-  //       this.handleGameMessages(type, data);
-  //     };
-  
-  //     this.gameSocket.onerror = (error) => {
-  //       console.error("WebSocket error:", error);
-  //       if (!hasResolved) {
-  //         hasResolved = true;
-  //         resolve(false);
-  //       }
-  //     };
-  
-  //     // Handle disconnect/attempt to reconnect
-  //     this.gameSocket.onclose = async () => {
-  //       console.log("Game room connection closed.");
-  //       if (!hasResolved) {
-  //         hasResolved = true;
-  //         resolve(false);
-  //       }
-  //       const success = await this.reconnectGame();
-  //       if (!success) {
-  //         console.warn("Could not reconnect after multiple attempts.");
-  //       }
-  //     };
-  //   });
-  // }
-
-  // private async reconnectGame(): Promise<boolean> {
-  //   if (this.isReconnecting) return false;
-  //   this.isReconnecting = true;
-
-  //   if (!this.gameId || !this.playerId) {
-  //     console.error("[Game Socket] Missing gameId or playerId.");
-  //     this.isReconnecting = false;
-  //     return false;
-  //   }
-  
-  //   while (this.retryCount < this.maxRetryCount) {
-  //     this.retryCount++;
-  //     const delay = 1000 * Math.pow(2, this.retryCount);
-  //     console.log(`[Game Socket] Reconnecting in ${delay}ms...`);
-  
-  //     // Delay execution of next reconnect attempt
-  //     await new Promise(res => setTimeout(res, delay));
-  
-  //     const success = await this.connectGame(this.gameId, this.playerId);
-  //     if (success)
-  //     {
-  //       this.isReconnecting = false;
-  //       return true;
-  //     }
-  //   }
-  
-  //   console.error("[Game Socket] Max retries reached. Giving up.");
-  //   this.isReconnecting = false;
-  //   return false;
-  // }  
+   
 
   /*--------------------------GAME MESSAGE HANDLERS-------------------------*/
 
-  // Types: start, player-joined, update (update also handles pause/resume/end)
   private handleGameMessages(type: string, data: any): void {
     if (type === 'error') {
       console.error('[Game Socket] Error from server:', JSON.stringify(data, null, 2));
@@ -312,7 +215,6 @@ export class WebSocketManager {
     callback(data);
   }
 
-  // Send a message to the server
   public sendMessage(type: string, data: any): void {
     console.log('[Game Socket] Sending message to server:', type);
     if (this.gameSocket && this.gameSocket.readyState === WebSocket.OPEN) {
@@ -322,7 +224,6 @@ export class WebSocketManager {
     }
   }
 
-  // Send paddle input to the server
   public sendInput(input: { paddleUp: boolean, paddleDown: boolean },
     side?: 'left' | 'right'
   ): void {
@@ -330,13 +231,12 @@ export class WebSocketManager {
       gameId: this.gameId,
       playerId: this.playerId,
       input: input,
-      side: side // for local mode
+      side: side
     });
   }
 
   /*-----------------------------ONLINE SOCKET------------------------------*/
 
-  // Initialize general socket for tracking online status
   public connect(): void {
     this.onlineSocket = new WebSocket(this.baseUrl);
 
@@ -357,12 +257,10 @@ export class WebSocketManager {
       this.handleMessages(type, data);
     };
 
-    // Event handler when the connection is closed
     this.onlineSocket.onclose = () => {
       console.log("WebSocket connection closed.");
     };
 
-    // Event handler when an error occurs
     this.onlineSocket.onerror = (error) => {
       console.error("WebSocket error:", error);
     };
@@ -370,11 +268,6 @@ export class WebSocketManager {
 
   /*----------------------------MESSAGE HANDLERS----------------------------*/
 
-  /* notified by server when:
-  - friend goes online/offline
-  - friend request status changes: received/cancelled, accepted/rejected
-  - friend removed
-  - tournament started */
   private handleMessages(type: string, data: any): void {
     if (type === 'error') {
       console.error('[Online Socket] Error from server:', JSON.stringify(data, null, 2));
@@ -384,14 +277,12 @@ export class WebSocketManager {
       console.log('[Online Socket] Received from server:', type, JSON.stringify(data, null, 2));
     }
 
-    // Handle user events (friends, etc.)
     const userCallback = this.onUserEventCallbacks.get(type);
     if (userCallback) {
       userCallback(data);
       return;
     }
   
-    // Handle tournament events
     const tournamentCallback = this.onTournamentEventCallbacks.get(type);
     if (tournamentCallback) {
       tournamentCallback(data);

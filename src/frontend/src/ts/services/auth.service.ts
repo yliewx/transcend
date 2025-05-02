@@ -6,7 +6,6 @@ interface TokenStatusResponse {
   refreshTokenExpiry: Date | null;
 }
 
-// Derived class for handling authentication-related requests
 export class AuthService extends BaseApiService {
 
   /*--------------------------------REGISTER--------------------------------*/

@@ -16,9 +16,7 @@ export class FriendsPage implements Page {
   public currentFriends: any[] = [];
   public pendingRequests: any[] = [];
   private hasError: boolean = false;
-  private boundEventHandlers: {[key: string]: EventListener} = {};
-  
-  // Element caching
+  private boundEventHandlers: {[key: string]: EventListener} = {};  
   private element: HTMLElement | null = null;
 
   /*------------------------------CONSTRUCTOR-------------------------------*/
@@ -33,7 +31,6 @@ export class FriendsPage implements Page {
   /*-----------------------------RENDER ELEMENT-----------------------------*/
 
   render(): HTMLElement {
-    // Return cached element if it exists
     if (this.element) {
       return this.element;
     }
@@ -138,14 +135,11 @@ export class FriendsPage implements Page {
       </div>
     `;  
     
-    // Cache the element
     this.element = container;
     
-    // Set up event handlers
     this.setupEventHandlers();
     this.setupDataEventListeners();
     
-    // Load initial data
     setTimeout(() => this.loadInitialData(), 0);
     
     return container;
@@ -155,7 +149,6 @@ export class FriendsPage implements Page {
 
   update(): void {
     if (this.element) {
-      // Refresh data when page is revisited
       this.loadInitialData();
     }
   }
@@ -172,13 +165,11 @@ export class FriendsPage implements Page {
     this.updateUI();
     
     try {
-      // Load both data sources in parallel
       const [friendsResponse, pendingResponse] = await Promise.all([
         this.friendService.getFriends(),
         this.friendService.getPendingRequests()
       ]);
       
-      // Handle responses
       if (!friendsResponse.success) {
         throw new Error(friendsResponse.error || 'Failed to load friends');
       }
@@ -187,11 +178,9 @@ export class FriendsPage implements Page {
         throw new Error(pendingResponse.error || 'Failed to load pending requests');
       }
       
-      // Update data
       this.currentFriends = friendsResponse.friends || [];
       this.pendingRequests = pendingResponse.requests || [];
       this.updateUI();
-      
     } catch (error) {
       console.error('Error loading friends data:', error);
       this.showError(error instanceof Error ? error.message : 'Unknown error');
@@ -203,9 +192,17 @@ export class FriendsPage implements Page {
   private setupEventHandlers(): void {
     if (!this.element) return;
     
-    // Define tuple type with proper types
     type HandlerTuple = [string, string, EventListener];
     
+    const searchInput = this.element.querySelector('#search-input') as HTMLInputElement;
+    if (searchInput) {
+      searchInput.addEventListener('input', (() => {
+        if (searchInput.value.length > 20) {
+          searchInput.value = searchInput.value.substring(0, 20);
+        }
+      }) as EventListener);
+    }
+
     const handlers: HandlerTuple[] = [
       ['#tab-friends', 'click', (() => this.switchTab('friends')) as EventListener],
       ['#tab-pending', 'click', (() => this.switchTab('pending')) as EventListener],
@@ -232,7 +229,6 @@ export class FriendsPage implements Page {
 
   /*----------------------------MESSAGE HANDLERS----------------------------*/
 
-  // WebSocket notification handlers
   private setupMessageHandlers(): void {
     this.wss.onUserEvent('online-status', (data: any) => this.updateFriendOnlineStatus(data));
     this.wss.onUserEvent('friend-request', handleFriendRequest.bind(this));
@@ -254,11 +250,9 @@ export class FriendsPage implements Page {
 
   /*--------------------------DATA EVENT HANDLERS---------------------------*/
 
-  // Local notification event handlers
   private setupDataEventListeners(): void {
     this.removeDataEventListeners();
     
-    // Define event handlers (implemented in friends.socket.ts)
     this.boundEventHandlers = {
       friendRequestSent: onFriendRequestSent.bind(this) as (e: Event) => void,
       friendRequestAccepted: onFriendRequestAccepted.bind(this) as (e: Event) => void,
@@ -268,7 +262,6 @@ export class FriendsPage implements Page {
       notification: onNotification.bind(this) as (e: Event) => void
     };
     
-    // Register all event handlers
     Object.entries(this.boundEventHandlers).forEach(([eventName, handler]) => {
       document.addEventListener(eventName, handler);
     });
@@ -326,7 +319,6 @@ export class FriendsPage implements Page {
     }
   }
 
-  // Helper function for empty list handling
   public showEmptyState(listSelector: string, emptyStateSelector: string): void {
     const list = this.element?.querySelector(listSelector);
     const emptyState = this.element?.querySelector(emptyStateSelector);
@@ -347,6 +339,16 @@ export class FriendsPage implements Page {
     
     if (!this.searchQuery) {
       return;
+    }
+
+    if (!this.searchQuery) {
+      return;
+    }
+    
+    if (this.searchQuery.length > 20) {
+      this.searchQuery = this.searchQuery.substring(0, 20);
+      searchInput.value = this.searchQuery;      
+      alert('Search query cannot exceed 20 characters');
     }
     
     this.hasError = false;
@@ -396,7 +398,6 @@ export class FriendsPage implements Page {
       friendCard.className = 'bg-gray-50 rounded-lg p-4 flex items-center';
       friendCard.dataset.friendId = friend.id.toString();
 
-      // Avatar wrapper to position the badge
       const avatarWrapper = document.createElement('div');
       avatarWrapper.className = 'relative mr-4';
 
@@ -468,7 +469,6 @@ export class FriendsPage implements Page {
       const details = document.createElement('div');
       details.className = 'flex-grow';
       
-      // Determine if it's an incoming or outgoing request
       const isIncoming = request.requestType === 'incoming';
       
       details.innerHTML = `
@@ -481,14 +481,12 @@ export class FriendsPage implements Page {
       actions.className = 'flex space-x-2';
       
       if (isIncoming) {
-        // Accept button
         const acceptBtn = document.createElement('button');
         acceptBtn.className = 'px-3 py-1 text-sm bg-green-100 text-green-600 rounded hover:bg-green-200';
         acceptBtn.textContent = 'Accept';
         acceptBtn.dataset.requestId = request.id.toString();
         acceptBtn.addEventListener('click', () => this.friendService.acceptFriendRequest(request.id));
         
-        // Decline button
         const declineBtn = document.createElement('button');
         declineBtn.className = 'px-3 py-1 text-sm bg-red-100 text-red-600 rounded hover:bg-red-200';
         declineBtn.textContent = 'Decline';
@@ -498,7 +496,6 @@ export class FriendsPage implements Page {
         actions.appendChild(acceptBtn);
         actions.appendChild(declineBtn);
       } else {
-        // Cancel request button
         const cancelBtn = document.createElement('button');
         cancelBtn.className = 'px-3 py-1 text-sm bg-gray-200 text-gray-600 rounded hover:bg-gray-300';
         cancelBtn.textContent = 'Cancel Request';
@@ -560,28 +557,24 @@ export class FriendsPage implements Page {
       
       const actions = document.createElement('div');
       
-      // Check if this is the current user
       if (user.id === this.userId) {
         const selfTag = document.createElement('span');
         selfTag.className = 'px-3 py-1 text-sm bg-gray-200 text-gray-600 rounded';
         selfTag.textContent = 'You';
         actions.appendChild(selfTag);
       } 
-      // Check if this user is already a friend
       else if (this.currentFriends.some(friend => friend.id === user.id)) {
         const friendTag = document.createElement('span');
         friendTag.className = 'px-3 py-1 text-sm bg-green-100 text-green-600 rounded';
         friendTag.textContent = 'Friend';
         actions.appendChild(friendTag);
       } 
-      // Check if there's a pending request
       else if (this.pendingRequests.some(request => request.id === user.id)) {
         const pendingTag = document.createElement('span');
         pendingTag.className = 'px-3 py-1 text-sm bg-yellow-100 text-yellow-600 rounded';
         pendingTag.textContent = 'Pending';
         actions.appendChild(pendingTag);
       } 
-      // Otherwise, show add friend button
       else {
         const addFriendBtn = document.createElement('button');
         addFriendBtn.className = 'px-3 py-1 text-sm bg-pink-600 text-white rounded hover:bg-pink-700';
@@ -614,41 +607,34 @@ export class FriendsPage implements Page {
     this.updateUI();
   }
   
-  // Helper method to remove a friend card from the DOM
   public removeFriendCard(friendId: number): void {
     if (!this.element) return;
     
     const friendCard = this.element.querySelector(`button[data-friend-id="${friendId}"]`)?.closest('.bg-gray-50');
     
     if (friendCard) {
-      // Add a fade-out animation
       friendCard.classList.add('transition-opacity', 'duration-300', 'opacity-0');
       
-      // Remove after animation
       setTimeout(() => {
         friendCard.remove();
       }, 300);
     }
   }
   
-  // Helper method to remove a request card from the DOM
   public removeRequestCard(requestId: number): void {
     if (!this.element) return;
     
     const requestCard = this.element.querySelector(`button[data-request-id="${requestId}"]`)?.closest('.bg-gray-50');
     
     if (requestCard) {
-      // Add a fade-out animation
       requestCard.classList.add('transition-opacity', 'duration-300', 'opacity-0');
       
-      // Remove after animation
       setTimeout(() => {
         requestCard.remove();
       }, 300);
     }
   }
   
-  // Helper method to update a user card in search results
   public updateSearchUserCard(userId: number, newStatus: 'add' | 'pending' | 'friend'): void {
     const userCard = document.querySelector(`button[data-user-id="${userId}"]`)?.closest('.bg-gray-50');
     
@@ -656,11 +642,9 @@ export class FriendsPage implements Page {
       const actionsContainer = userCard.querySelector('div:last-child');
       
       if (actionsContainer) {
-        // Clear existing actions
         actionsContainer.innerHTML = '';
         
         if (newStatus === 'add') {
-          // Add Friend button
           const addFriendBtn = document.createElement('button');
           addFriendBtn.className = 'px-3 py-1 text-sm bg-pink-600 text-white rounded hover:bg-pink-700';
           addFriendBtn.textContent = 'Add Friend';
@@ -668,13 +652,11 @@ export class FriendsPage implements Page {
           addFriendBtn.addEventListener('click', () => this.friendService.sendFriendRequest(userId));
           actionsContainer.appendChild(addFriendBtn);
         } else if (newStatus === 'pending') {
-          // Pending tag
           const pendingTag = document.createElement('span');
           pendingTag.className = 'px-3 py-1 text-sm bg-yellow-100 text-yellow-600 rounded';
           pendingTag.textContent = 'Pending';
           actionsContainer.appendChild(pendingTag);
         } else if (newStatus === 'friend') {
-          // Friend tag
           const friendTag = document.createElement('span');
           friendTag.className = 'px-3 py-1 text-sm bg-green-100 text-green-600 rounded';
           friendTag.textContent = 'Friend';
@@ -683,78 +665,6 @@ export class FriendsPage implements Page {
       }
     }
   }
-
-  // public showNotification(type: 'success' | 'error' | 'info', message: string): void {
-  //   const notification = document.createElement('div');
-  //   notification.className = `fixed bottom-4 right-4 p-4 rounded-md shadow-lg transition-opacity duration-500 opacity-0 max-w-md ${
-  //     type === 'success' ? 
-  //       'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100' :
-  //     type === 'error' ? 
-  //       'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100' :
-  //       'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100'
-  //   }`;
-    
-  //   notification.innerHTML = `
-  //     <div class="flex items-center">
-  //       <div class="flex-shrink-0">
-  //         ${type === 'success' ? 
-  //           '<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>' :
-  //           type === 'error' ?
-  //           '<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>' :
-  //           '<svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>'
-  //         }
-  //       </div>
-  //       <div class="ml-3">
-  //         <p class="text-sm font-medium">${message}</p>
-  //       </div>
-  //       <div class="ml-auto pl-3">
-  //         <div class="-mx-1.5 -my-1.5">
-  //           <button class="notification-close inline-flex rounded-md p-1.5 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-  //             type === 'success' ? 'text-green-500 hover:text-green-600 focus:ring-green-400 dark:text-green-300 dark:hover:text-green-200' :
-  //             type === 'error' ? 'text-red-500 hover:text-red-600 focus:ring-red-400 dark:text-red-300 dark:hover:text-red-200' :
-  //             'text-blue-500 hover:text-blue-600 focus:ring-blue-400 dark:text-blue-300 dark:hover:text-blue-200'
-  //           }">
-  //             <span class="sr-only">Dismiss</span>
-  //             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-  //               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-  //             </svg>
-  //           </button>
-  //         </div>
-  //       </div>
-  //     </div>
-  //   `;    
-    
-  //   document.body.appendChild(notification);
-    
-  //   // Fade in
-  //   setTimeout(() => {
-  //     notification.classList.remove('opacity-0');
-  //     notification.classList.add('opacity-100');
-  //   }, 10);
-    
-  //   // Add close button functionality
-  //   const closeBtn = notification.querySelector('.notification-close');
-  //   if (closeBtn) {
-  //     closeBtn.addEventListener('click', () => {
-  //       notification.classList.remove('opacity-100');
-  //       notification.classList.add('opacity-0');
-  //       setTimeout(() => {
-  //         notification.remove();
-  //       }, 500);
-  //     });
-  //   }
-    
-  //   // Auto dismiss after 5 seconds
-  //   setTimeout(() => {
-  //     if (document.body.contains(notification)) {
-  //       notification.classList.remove('opacity-100');
-  //       notification.classList.add('opacity-0');
-  //       setTimeout(() => {
-  //         notification.remove();
-  //       }, 500);
-  //     }
-  //   }, 5000);
-  // }
 
   private removeDataEventListeners(): void {
     const events = [
@@ -775,13 +685,5 @@ export class FriendsPage implements Page {
     this.boundEventHandlers = {};
   }
 
-  public destroy(): void {
-    // this.removeDataEventListeners();
-    
-    // console.log('FriendsPage destroyed and event listeners removed');
-  }
-
-  // private logPendingRequests(location: string): void {
-  //   console.log(`${location} - pendingRequests:`, JSON.parse(JSON.stringify(this.pendingRequests)));
-  // }  
+  public destroy(): void {}  
 }

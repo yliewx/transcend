@@ -3,7 +3,6 @@ const webpack = require('webpack');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const TerserPlugin = require('terser-webpack-plugin');
 
-// Load environment variables
 require('dotenv').config();
 
 module.exports = {
@@ -19,9 +18,9 @@ module.exports = {
       {
         test: /\.css$/,
         use: [
-          'style-loader', // Injects styles into the DOM
-          'css-loader', // Resolves CSS imports
-          'postcss-loader', // Processes Tailwind CSS
+          'style-loader',
+          'css-loader', 
+          'postcss-loader',
         ],
       },
     ],
@@ -32,7 +31,7 @@ module.exports = {
   output: {
     filename: 'js/main.js',
     path: path.resolve(__dirname, 'public'),
-    clean: true, // Clean the output directory before emit
+    clean: true,
   },
   plugins: [
     new CopyWebpackPlugin({
@@ -41,10 +40,9 @@ module.exports = {
           from: './src/index.html', 
           to: 'index.html' 
         },
-        // Add any other static assets like images, favicon, etc.
       ],
     }),
-    new webpack.DefinePlugin({ // Inject necessary environment variables
+    new webpack.DefinePlugin({ 
       'process.env.BASE_API_URL': JSON.stringify(process.env.BASE_API_URL),
       'process.env.BASE_WSS_URL': JSON.stringify(process.env.BASE_WSS_URL),
       'process.env.GOOGLE_CLIENT_ID': JSON.stringify(process.env.GOOGLE_CLIENT_ID),

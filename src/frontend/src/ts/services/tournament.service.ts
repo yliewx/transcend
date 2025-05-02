@@ -8,7 +8,7 @@ export interface Tournament {
   current_participants?: number;
   created_at: string;
   participant_status: string;
-  alias?: string; // Player's alias in this tournament
+  alias?: string;
 }
 
 export interface TournamentMatch {
@@ -43,7 +43,6 @@ export interface CreateTournamentData {
 }
 
 export class TournamentService extends BaseApiService {
-  // Get list of all available tournaments
   public async getTournaments(): Promise<{ success: boolean, tournaments?: Tournament[], error?: string }> {
     return this.request<{ tournaments: Tournament[] }>(
       '/tournaments',
@@ -53,8 +52,7 @@ export class TournamentService extends BaseApiService {
     );
   }
 
-   // Get user's tournaments
-   public async getUserTournaments(): Promise<{ success: boolean, tournaments?: Tournament[], error?: string }> {
+  public async getUserTournaments(): Promise<{ success: boolean, tournaments?: Tournament[], error?: string }> {
     return this.request<{ tournaments: Tournament[] }>(
       '/user/tournaments',
       'GET',
@@ -63,7 +61,6 @@ export class TournamentService extends BaseApiService {
     );
   }
 
-  // Get a specific tournament details
   public async getTournamentDetails(tournamentId: string | null): Promise<{ 
     success: boolean, 
     tournament?: Tournament, 
@@ -83,7 +80,6 @@ export class TournamentService extends BaseApiService {
     );
   }
 
-  // Register for a tournament with alias
   public async registerForTournament(tournamentId: string | null, alias: string): Promise<{ 
     success: boolean, 
     message?: string, 
@@ -98,7 +94,6 @@ export class TournamentService extends BaseApiService {
     );
   }
 
-  // Join tournament match
   public async joinTournamentMatch(matchId: number): Promise<{ success: boolean, gameId?: string, error?: string }> {
     return this.request<{ gameId: string }>(
       `/tournaments/matches/${matchId}/join`,
@@ -109,7 +104,6 @@ export class TournamentService extends BaseApiService {
     );
   }
 
-  // Create a new tournament
   public async createTournament(tournamentData: CreateTournamentData): Promise<{ 
     success: boolean, 
     tournamentId?: number,

@@ -14,8 +14,8 @@ interface CookieOptions {
 }
 
 export const accessCookieOptions: CookieOptions = {
-  maxAge: 60 * 60, // expires after 1 hour (in seconds)
-  expires: new Date(Date.now() + 60 * 60 * 1000), // 1 hour (in milliseconds)
+  maxAge: 60 * 60,
+  expires: new Date(Date.now() + 60 * 60 * 1000),
   httpOnly: true,
   secure: true,
   sameSite: 'strict',
@@ -23,8 +23,8 @@ export const accessCookieOptions: CookieOptions = {
 };
 
 export const refreshCookieOptions: CookieOptions = {
-  maxAge: 7 * 24 * 60 * 60, // expires after 7 days (in seconds)
-  expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days (in milliseconds)
+  maxAge: 7 * 24 * 60 * 60,
+  expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
   httpOnly: true,
   secure: true,
   sameSite: 'strict',
@@ -32,8 +32,8 @@ export const refreshCookieOptions: CookieOptions = {
 };
 
 export const cliCookieOptions: CookieOptions = {
-  maxAge: 2 * 60 * 60, // expires after 2 hours
-  expires: new Date(Date.now() + 2 * 60 * 60 * 1000), // 2 hours (in milliseconds)
+  maxAge: 2 * 60 * 60,
+  expires: new Date(Date.now() + 2 * 60 * 60 * 1000),
   httpOnly: true,
   secure: true,
   sameSite: 'strict',
@@ -43,7 +43,6 @@ export const cliCookieOptions: CookieOptions = {
 /*-------------------------------CREATE TOKENS------------------------------*/
 
 export async function createPreAuthToken(user: any, reply: FastifyReply) {
-  // Create JWT pre-auth token with user data
   const preAuthToken = reply.server.jwtSign({ 
     id: user.id,
     username: user.username,
@@ -55,7 +54,6 @@ export async function createPreAuthToken(user: any, reply: FastifyReply) {
 }
 
 export async function createAccessToken(user: any, reply: FastifyReply) {
-  // Create access token with user data
   const accessToken = reply.server.jwtSign({ 
     id: user.id,
     username: user.username,
@@ -67,7 +65,6 @@ export async function createAccessToken(user: any, reply: FastifyReply) {
 }
 
 export async function createCLIToken(user: any, reply: FastifyReply) {
-  // Create cli token with user data
   const cliToken = reply.server.jwtSign({ 
     id: user.id,
     username: user.username,
@@ -79,10 +76,8 @@ export async function createCLIToken(user: any, reply: FastifyReply) {
 }
 
 export async function createRefreshToken(db: Database, user: any, reply: FastifyReply) {
-  // Generate token_id and store in database
   const token = await RefreshToken.create(db, user.id);
 
-  // Sign JWT refresh token using the token_id
   const refreshToken = reply.server.jwtSign({
     id: user.id,
     token_id: token,

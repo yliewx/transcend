@@ -14,15 +14,12 @@ export async function profileHandler(request: AuthenticatedRequest, reply: Fasti
     try {
       const userId = request.user.id;
       const db = await getDb();
-      
-      // Get user data
-      const user = await User.findById(db, userId);
-      
+    
+      const user = await User.findById(db, userId);  
       if (!user) {
         return reply.status(404).send({ error: 'User not found' });
       }
       
-      // Get profile data
       const profile = await Profile.findByUserId(db, userId);
       
       return {
@@ -45,11 +42,7 @@ export async function profileHandler(request: AuthenticatedRequest, reply: Fasti
   export async function updateProfileDataHandler(request: AuthenticatedRequest, reply: FastifyReply) {
     try {
       const userId = request.user.id;
-      // console.log('Updating profile for user:', userId);
-      // console.log('Request body:', request.body);
-      
       const { displayName } = request.body as { displayName?: string };
-      //console.log('Display name to update:', displayName);
       
       if (displayName === undefined) {
         return reply.status(400).send({
@@ -62,14 +55,11 @@ export async function profileHandler(request: AuthenticatedRequest, reply: Fasti
       console.log('Database connection established');
       
       let profile = await Profile.findByUserId(db, userId);
-      //console.log('Existing profile:', profile);
-      
+
       profile = await Profile.updateDisplayName(db, userId, displayName);
-            if (!profile) 
+      if (!profile) 
         throw new Error('Failed to update or retrieve profile after update');
-      
-      // console.log('Profile after update:', profile);
-      
+            
       return {
         success: true,
         profile: {
@@ -78,7 +68,6 @@ export async function profileHandler(request: AuthenticatedRequest, reply: Fasti
         }
       };
     } catch (error) {
-      //console.error('Profile update error:', error);
       request.log.error(error);
       return reply.status(500).send({ 
         success: false, 
@@ -94,7 +83,6 @@ export async function updateUserDataHandler(request: AuthenticatedRequest, reply
     const { username, email } = request.body as { username?: string; email?: string };
     const db = await getDb();
     
-    // Get current user data
     const user = await User.findById(db, userId);
     
     if (!user) {
@@ -104,7 +92,6 @@ export async function updateUserDataHandler(request: AuthenticatedRequest, reply
       });
     }
     
-    // Check if username is unique if it's being changed
     if (username && username !== user.username) {
       const existingUser = await User.findByUsername(db, username);
       if (existingUser && existingUser.id !== userId) {
@@ -115,7 +102,6 @@ export async function updateUserDataHandler(request: AuthenticatedRequest, reply
       }
     }
     
-    // Check if email is unique if it's being changed
     if (email && email !== user.email) {
       const existingUser = await User.findByEmail(db, email);
       if (existingUser && existingUser.id !== userId) {
@@ -126,7 +112,6 @@ export async function updateUserDataHandler(request: AuthenticatedRequest, reply
       }
     }
     
-    // Update user data
     const updatedUser = await User.update(db, userId, {
       username: username !== undefined ? username : user.username,
       email: email !== undefined ? email : user.email
@@ -157,7 +142,6 @@ export async function updatePasswordHandler(request: AuthenticatedRequest, reply
       newPassword: string;
     };
     
-    // Validate input
     if (!currentPassword || !newPassword) {
       return reply.status(400).send({
         success: false,
@@ -165,7 +149,6 @@ export async function updatePasswordHandler(request: AuthenticatedRequest, reply
       });
     }
     
-    // Password strength validation
     if (newPassword.length < 8) {
       return reply.status(400).send({
         success: false,
@@ -175,9 +158,7 @@ export async function updatePasswordHandler(request: AuthenticatedRequest, reply
     
     const db = await getDb();
     
-    // Get current user data
     const user = await User.findById(db, userId);
-    
     if (!user) {
       return reply.status(404).send({ 
         success: false, 
@@ -185,7 +166,6 @@ export async function updatePasswordHandler(request: AuthenticatedRequest, reply
       });
     }
     
-    // Verify current password
     const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
     if (!isPasswordValid) {
       return reply.status(401).send({
@@ -194,14 +174,9 @@ export async function updatePasswordHandler(request: AuthenticatedRequest, reply
       });
     }
     
-    // Hash new password
     const saltRounds = 10;
-    const passwordHash = await bcrypt.hash(newPassword, saltRounds);
-    
-    // Update password
-    await User.updatePassword(db, userId, passwordHash);
-    
-    // Log the password change (for security audit)
+    const passwordHash = await bcrypt.hash(newPassword, saltRounds);    
+    await User.updatePassword(db, userId, passwordHash);    
     request.log.info(`Password changed for user ${userId}`);
     
     return {
@@ -220,56 +195,40 @@ export async function updatePasswordHandler(request: AuthenticatedRequest, reply
 
 export async function uploadAvatarHandler(request: AuthenticatedRequest, reply: FastifyReply) {
   try {
-    // Get the authenticated user's ID
     const userId = request.user.id;
     
-    // Process the uploaded file using Fastify Multipart
-    const data = await request.file();
-    
+    const data = await request.file();    
     if (!data) {
       return reply.status(400).send({ error: 'No file uploaded' });
     }
     
-    // Validate the file type
     const allowedMimeTypes = ['image/jpeg', 'image/png'];
     if (!allowedMimeTypes.includes(data.mimetype)) {
       return reply.status(400).send({ error: 'Only JPG or PNG images are allowed' });
     }
     
-    // Generate a unique filename to prevent collisions
     const fileExtension = data.filename.split('.').pop() || 'jpg';
-    //const filename = `user_${userId}_${uuidv4()}.${fileExtension}`;
-    const filename = `${uuidv4()}.${fileExtension}`; // <<<< no user id!
+    const filename = `${uuidv4()}.${fileExtension}`;
     const filePath = path.join(avatarsDir, filename);
-    
-    // Save the file to disk
     await pipeline(data.file, fs.createWriteStream(filePath));
-    
-    // Create a public URL path for the avatar
-    const avatarPath = `/uploads/avatars/${filename}`;
-    
-    // Update the user's profile in the database
+    const avatarPath = `/uploads/avatars/${filename}`;  
     const db = await getDb();
     
-    // First, check if we need to delete an old avatar file
     const existingProfile = await db.get(
       'SELECT avatar_path FROM profiles WHERE user_id = ?',
       [userId]
     );
     
     if (existingProfile && existingProfile.avatar_path) {
-      // Extract the filename from the path
       const oldFilename = existingProfile.avatar_path.split('/').pop();
       if (oldFilename) {
         const oldFilePath = path.join(avatarsDir, oldFilename);
-        // Check if file exists before attempting to delete
         if (fs.existsSync(oldFilePath)) {
-          fs.unlinkSync(oldFilePath); // Delete the old file
+          fs.unlinkSync(oldFilePath);
         }
       }
     }
     
-    // Update the profile with the new avatar path
     await db.run(
       `INSERT INTO profiles (user_id, avatar_path) 
        VALUES (?, ?) 
@@ -299,14 +258,11 @@ export async function getAvatarHandler(request: AuthenticatedRequest, reply: Fas
     filename = 'default-avatar.png';
   }
   
-  // Check if file exists
   const avatarFilePath = path.join(avatarsDir, filename);
   const fileExists = fs.existsSync(avatarFilePath);
   
   if (fileExists) {    
-    // Set Cache-Control header
     reply.header('Cache-Control', 'public, max-age=3600');
-    // Let Fastify handle the file sending
     return reply.sendFile(filename, avatarsDir);
   } else {
     return reply.code(404).send('Avatar not found');

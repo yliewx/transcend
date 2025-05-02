@@ -1,32 +1,27 @@
 #!/bin/bash
 
-# Colors for output
 RED='\033[1;31m'
 GREEN='\033[1;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[1;34m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
 CLI_DIR="./"
 
 echo -e "${YELLOW}=== Installing Pong CLI Client ===${NC}"
 
-# Check if directory exists
 if [ ! -d "$CLI_DIR" ]; then
   echo -e "${RED}Error: Directory $CLI_DIR does not exist${NC}"
   exit 1
 fi
 
-# Check if index.js exists
 if [ ! -f "$CLI_DIR/index.js" ]; then
   echo -e "${RED}Error: $CLI_DIR/index.js does not exist${NC}"
   exit 1
 fi
 
-# Navigate to CLI directory
 cd "$CLI_DIR"
 
-# Create package.json if not exists
 if [ ! -f "package.json" ]; then
   echo -e "${BLUE}Creating package.json...${NC}"
   cat > package.json << EOF
@@ -57,15 +52,12 @@ if [ ! -f "package.json" ]; then
 EOF
 fi
 
-# Install dependencies
 echo -e "${BLUE}Installing dependencies...${NC}"
 npm install
 
-# Make CLI executable
 echo -e "${BLUE}Making index.js executable...${NC}"
 chmod +x index.js
 
-# Create global symlink
 echo -e "${BLUE}Creating global symlink...${NC}"
 npm link
 

@@ -2,12 +2,10 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 
 /*------------------------------LOGOUT HANDLER------------------------------*/
 
-// Route: /api/logout
 export async function logoutHandler(request: FastifyRequest, reply: FastifyReply) {
   try {
     reply.header('Access-Control-Allow-Credentials', 'true');
     
-    // Remove stored JWT cookies
     reply.clearCookie('preAuthToken', { path: '/api/otp/' });
     reply.clearCookie('accessToken', { path: '/' });
     reply.clearCookie('refreshToken', { path: '/api/auth/refresh' });

@@ -1,5 +1,3 @@
-import { WebSocket } from 'ws';
-
 export interface GameState {
   id: string;
   status: 'waiting' | 'playing' | 'paused' | 'finished';
@@ -35,8 +33,8 @@ export class PongGame {
 
   constructor(
     gameId: string,
-    private updateCallback: () => void, // Send game state updates in GameRoom
-    private endgameCallback: (state: GameState) => void // Handle game end in GameRoom
+    private updateCallback: () => void,
+    private endgameCallback: (state: GameState) => void
   ) {
       this.state = {
         id: gameId,
@@ -67,9 +65,7 @@ export class PongGame {
       if (this.state.status === 'playing') {
         this.moveBall(); 
         this.movePaddles();
-        this.state.lastUpdateTime = Date.now();
-        
-        // Send game state updates to players
+        this.state.lastUpdateTime = Date.now();        
         this.updateCallback();
       }
     }, 16);   
@@ -81,30 +77,27 @@ export class PongGame {
     this.state.ballX += this.ballSpeedX;
     this.state.ballY += this.ballSpeedY;
     
-    // Left paddle collision
     if (
       this.state.ballX <= this.paddleWidth &&
       this.state.ballY + this.ballSize >= this.state.paddleLeftY &&
       this.state.ballY <= this.state.paddleLeftY + this.paddleHeight
     ) {
-        this.ballSpeedX = Math.abs(this.ballSpeedX); // Reflect right
+        this.ballSpeedX = Math.abs(this.ballSpeedX);
         return;
     }
-    // Right paddle collision
+
     if (
       this.state.ballX >= this.gameWidth - this.paddleWidth - this.ballSize &&
       this.state.ballY + this.ballSize >= this.state.paddleRightY &&
       this.state.ballY <= this.state.paddleRightY + this.paddleHeight
     ) {
-        this.ballSpeedX = -Math.abs(this.ballSpeedX); // Reflect left
+        this.ballSpeedX = -Math.abs(this.ballSpeedX);
         return;
     }
 
-    // Horizontal Border collision 
     if (this.state.ballY <= 0 || this.state.ballY >= this.gameHeight - this.ballSize) 
         this.ballSpeedY = -this.ballSpeedY;
 
-    // Vertical Border collision
     if (this.state.ballX <= 0 || this.state.ballX >= this.gameWidth) {
         const rightScored = this.state.ballX <= 0;
         rightScored ? this.state.scoreRight++ : this.state.scoreLeft++;
@@ -119,20 +112,6 @@ export class PongGame {
         }
     }
   }
-
-  // public updatePaddleInput(input: {
-  //   leftPaddleUp: boolean;
-  //   leftPaddleDown: boolean;
-  //   rightPaddleUp: boolean;
-  //   rightPaddleDown: boolean;
-  // }): void {
-  //   if (this.state.status !== 'playing' && this.state.status !== 'paused') return;
-    
-  //   this.leftPaddleUp = input.leftPaddleUp;
-  //   this.leftPaddleDown = input.leftPaddleDown;
-  //   this.rightPaddleUp = input.rightPaddleUp;
-  //   this.rightPaddleDown = input.rightPaddleDown;
-  // }
 
   public updatePaddleInput(side: string, input: {
     paddleUp: boolean;
@@ -150,35 +129,28 @@ export class PongGame {
   }
 
   private movePaddles(): void {
-    // Left paddle
     if (this.leftPaddleUp && !this.leftPaddleDown) {
-      this.paddleLeftSpeed = Math.max(this.paddleLeftSpeed - 1, -10); // Move up (negative speed)
+      this.paddleLeftSpeed = Math.max(this.paddleLeftSpeed - 1, -10);
     } else if (this.leftPaddleDown && !this.leftPaddleUp) {
-      this.paddleLeftSpeed = Math.min(this.paddleLeftSpeed + 1, 10); // Move down (positive speed)
+      this.paddleLeftSpeed = Math.min(this.paddleLeftSpeed + 1, 10);
     } else {
-      // Decelerate when no input
       this.paddleLeftSpeed = this.paddleLeftSpeed > 0 
         ? Math.max(this.paddleLeftSpeed - 1, 0) 
         : Math.min(this.paddleLeftSpeed + 1, 0);
     }
     
-    // Right paddle
     if (this.rightPaddleUp && !this.rightPaddleDown) {
-      this.paddleRightSpeed = Math.max(this.paddleRightSpeed - 1, -10); // Move up
+      this.paddleRightSpeed = Math.max(this.paddleRightSpeed - 1, -10);
     } else if (this.rightPaddleDown && !this.rightPaddleUp) {
-      this.paddleRightSpeed = Math.min(this.paddleRightSpeed + 1, 10); // Move down
+      this.paddleRightSpeed = Math.min(this.paddleRightSpeed + 1, 10);
     } else {
-      // Decelerate when no input
       this.paddleRightSpeed = this.paddleRightSpeed > 0 
         ? Math.max(this.paddleRightSpeed - 1, 0) 
         : Math.min(this.paddleRightSpeed + 1, 0);
     }
     
-    // Update positions
     this.state.paddleLeftY += this.paddleLeftSpeed;
     this.state.paddleRightY += this.paddleRightSpeed;
-    
-    // Constrain to game boundaries
     this.state.paddleLeftY = Math.max(0, Math.min(this.state.paddleLeftY, this.gameHeight - this.paddleHeight));
     this.state.paddleRightY = Math.max(0, Math.min(this.state.paddleRightY, this.gameHeight - this.paddleHeight));
   }
@@ -203,7 +175,6 @@ export class PongGame {
 
   /*--------------------------------END GAME--------------------------------*/
 
-  // Handle premature end (reset button)
   public resetGame(): void {
     this.state.status = 'finished';
     this.state.winner = this.state.scoreLeft > this.state.scoreRight ? 'left' : 'right';
@@ -215,8 +186,6 @@ export class PongGame {
     this.state.status = 'finished';
     this.state.winner = winner;
     this.cleanup();
-
-    // Notify GameRoom of the winner
     this.endgameCallback(this.getState());
   }
 

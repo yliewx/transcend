@@ -27,27 +27,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.body.prepend(warning);
   }
 
-  // Initialize application dependencies
   const appContainer = document.getElementById('app') as HTMLElement;
   const controlAccess = new ControlAccess(new AuthService());
-  await controlAccess.checkAuthStatus(); // wait for access/refresh token status to be updated
-  controlAccess.startAuthCheckLoop(); // monitor for access token expiry
+  await controlAccess.checkAuthStatus();
+  controlAccess.startAuthCheckLoop();
   const userService = new UserService();
   const gameStatsService = new GameStatsService(); 
   const friendService = new FriendService();
   const pongGameService = new PongGameService();
-  
-  // Create router
+
   const router = new Router(appContainer, controlAccess);
   
-  // Register routes with Page implementations
-  // Auth pages
   router.addRoute('/login', new LoginPage(router));
   router.addRoute('/register', new RegisterPage(router));
   router.addRoute('/otp/setup', new OTPSetupPage(router));
-  router.addRoute('/otp/verify', new OTPVerificationPage(router));
-  
-  // Protected pages with header
+  router.addRoute('/otp/verify', new OTPVerificationPage(router));  
   router.addRoute('/', new PageWithHeader(new HomePage(router), router));
   router.addRoute('/home', new PageWithHeader(new HomePage(router), router));
   router.addRoute('/play', new PageWithHeader(new PongGamePage(router, pongGameService), router));
@@ -56,11 +50,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   router.addRoute('/friends', new PageWithHeader(new FriendsPage(router, friendService), router));
   router.addRoute('/tournaments', new PageWithHeader(new TournamentPage(router), router));
   router.addRoute('/tournaments/:id', new PageWithHeader(new TournamentDetailPage(router), router));
-
-  // 404 route
   router.addRoute('/404', new PageWithHeader(new NotFoundPage(), router));
   
-  // Start the router (init is now async)
   router.init(controlAccess.isLoggedIn() ? '/home' : '/login').catch(error => {
     console.error('Failed to initialize router:', error);
   });

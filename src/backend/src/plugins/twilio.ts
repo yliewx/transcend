@@ -13,12 +13,10 @@ export default fp(async function setupTwilio(server: FastifyInstance) {
     process.env.TWILIO_AUTH_TOKEN
   );
 
-  // Ensure mailer decoration exists before adding the method
   if (!server.hasDecorator('mailer')) {
     server.decorate('mailer', {} as any);
   }
 
-  // Add sendSmsOtp to mailer service
   server.mailer.sendSmsOtp = async (phoneNumber: string, otpToken: string): Promise<boolean> => {
     try {
       const message = await client.messages.create({

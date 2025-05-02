@@ -16,7 +16,7 @@ export default fp(async function setupGoogleAuth(server: FastifyInstance) {
         idToken,
         audience: process.env.GOOGLE_CLIENT_ID,
       });
-      return ticket.getPayload() ?? null; // Returns user info (or null if undefined)
+      return ticket.getPayload() ?? null;
     } catch (error) {
       server.log.error('Invalid Google ID token');
       return null;

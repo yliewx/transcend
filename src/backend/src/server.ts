@@ -4,10 +4,7 @@ import fastifyCookie from '@fastify/cookie';
 import websocket from '@fastify/websocket';
 import fs from 'fs';
 import { publicDir, uploadsDir, avatarsDir } from './constants';
-
-// From ./plugins
 import setupJwt from './plugins/jwt';
-import setupCors from './plugins/cors';
 import { setupDbConnection } from './db';
 import setupRoutes from './routes';
 import setupMailer from './plugins/mailer';
@@ -18,65 +15,46 @@ import setupWebSocket from './game/routes/ws.routes'
 import { TournamentManager } from './game/tournament.manager';
 import fastifyMultipart from '@fastify/multipart';
 
-// Initialize database
+
 setupDbConnection();
 
-// Create Fastify server
 const server = fastify({
   logger: true
 });
 
-// Ensure directories exist
 fs.mkdirSync(avatarsDir, { recursive: true });
 
-// Register CORS first (often needs to be early)
-// server.register(setupCors);
-
-// Register plugins for authentication
 server.register(setupJwt);
 server.register(fastifyCookie);
-
-// Register multipart before routes that might use it
 server.register(fastifyMultipart, {
   limits: {
-    fieldNameSize: 100,     // Max field name size in bytes
-    fieldSize: 100,         // Max field value size in bytes
-    fields: 10,             // Max number of non-file fields
-    fileSize: 5000000,      // Max file size in bytes (5MB)
-    files: 1,               // Max number of file fields
-    headerPairs: 2000       // Max number of header key=>value pairs
+    fieldNameSize: 100,
+    fieldSize: 100,
+    fields: 10,
+    fileSize: 5000000,
+    files: 1,
+    headerPairs: 2000
   }
 });
-
-// Register static file serving after ensuring directories exist
 server.register(fastifyStatic, {
   root: publicDir,
   prefix: '/'
 });
-
-
-// Register other plugins
 server.register(setupMailer);
 server.register(setupTwilio);
 server.register(setupGoogleAuth);
-
-// Register websocket after authentication plugins
 server.register(websocket, {
   options: {
     clientTracking: true,
   }
 });
-
 server.addHook("onRequest", async (req, reply) => {
   server.log.info(`Received request: ${req.method} ${req.url}`);
 });
-
-// Register routes after all plugins are registered
 server.register(authRoutes);
 server.register(setupRoutes);
 server.register(setupWebSocket);
 
-// Set up periodic tournament processing
 setInterval(async () => {
   try {
     await TournamentManager.processTournaments();
@@ -85,7 +63,7 @@ setInterval(async () => {
   }
 }, 1000);
 
-// Start server
+
 const start = async () => {
   try {
     await server.listen({ port: 3000, host: '0.0.0.0' });

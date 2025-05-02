@@ -17,7 +17,6 @@ export class TournamentPage implements Page {
     this.setupMessageHandlers();
   }
 
-  // WebSocket notification handlers
   private setupMessageHandlers(): void {
     const wss = this.router.getWsManager();
     wss.onTournamentEvent('tournament-update', handleTourPageUpdate.bind(this));
@@ -30,8 +29,6 @@ export class TournamentPage implements Page {
     
     const container = document.createElement('div');
     container.className = 'max-w-7xl mx-auto py-6 sm:px-6 lg:px-8';
-    
-    // Initial empty state
     container.innerHTML = this.renderTabs() + `
       <div class="px-4 py-6 sm:px-0">
         <div class="dark:bg-gray-900 shadow-md rounded-lg p-8">
@@ -42,19 +39,15 @@ export class TournamentPage implements Page {
       </div>
     `;
     
-    this.element = container;
-    
-    // Set up event delegation for the entire container
-    this.setupEventDelegation(container);
-    
-    // Initial data load
+    this.element = container;    
+    this.setupEventDelegation(container);    
     this.loadData();
     
     return container;
   }
   
   update(): void {
-    this.activeTab = 'all'; // Reset to default tab
+    this.activeTab = 'all';
     this.loadData();
   }
   
@@ -62,10 +55,8 @@ export class TournamentPage implements Page {
    
   }
 
-  // Data Loading and UI Update Methods
   private async loadData(): Promise<void> {
     try {
-      // Only load data relevant to the current tab
       if (this.activeTab === 'all') {
         const allResponse = await this.tournamentService.getTournaments();
         if (allResponse.success && allResponse.tournaments) {
@@ -80,7 +71,6 @@ export class TournamentPage implements Page {
         }
       }
 
-      // Update UI with fresh data
       this.updateUI();
     } catch (error) {
       console.error('Error fetching tournament data:', error);
@@ -106,16 +96,13 @@ export class TournamentPage implements Page {
   private updateUI(): void {
     if (!this.element) return;
 
-    // Update tabs UI
     this.element.querySelector('nav')?.parentElement?.replaceWith(
       document.createRange().createContextualFragment(this.renderTabs())
     );
 
-    // Main content container
     const contentContainer = this.element.querySelector('.px-4.py-6');
     if (!contentContainer) return;
 
-    // Render content based on active tab
     switch (this.activeTab) {
       case 'all':
         contentContainer.innerHTML = this.renderAllTournamentsContent();
@@ -129,13 +116,10 @@ export class TournamentPage implements Page {
     }
   }
 
-  // Event Handling Methods
   private setupEventDelegation(container: HTMLElement): void {
-    // Handle all click events through delegation
     container.addEventListener('click', (e) => {
       const target = e.target as HTMLElement;
       
-      // Handle tab clicks
       if (target.closest('.tab-link')) {
         e.preventDefault();
         const tabLink = target.closest('.tab-link') as HTMLElement;
@@ -143,13 +127,11 @@ export class TournamentPage implements Page {
         
         if (tabName && tabName !== this.activeTab) {
           this.activeTab = tabName;
-          // First fetch fresh data, then update UI
           this.loadData();
         }
         return;
       }
       
-      // Handle view details button clicks
       if (target.closest('.view-details')) {
         const button = target.closest('.view-details') as HTMLElement;
         const tournamentId = button.dataset.id;
@@ -160,19 +142,16 @@ export class TournamentPage implements Page {
         return;
       }
       
-      // Handle form submission for creating tournaments
       if (target.closest('button[type="submit"]') && 
           target.closest('#create-tournament-form')) {
         const form = target.closest('#create-tournament-form') as HTMLFormElement;
         if (form) {
-          // Prevent default here, but handle the actual submission in handleFormSubmit
           e.preventDefault();
           this.handleCreateTournament(e);
         }
         return;
       }
       
-      // Handle retry button click
       if (target.closest('#retry-btn')) {
         e.preventDefault();
         this.loadData();
@@ -187,22 +166,29 @@ export class TournamentPage implements Page {
     
     const nameInput = form.querySelector('#name') as HTMLInputElement;
     const descriptionInput = form.querySelector('#description') as HTMLTextAreaElement;
+    const nameValue = nameInput?.value?.trim();
+    const descriptionValue = descriptionInput?.value?.trim() || '';
     
-    // Validate name is provided
-    if (!nameInput?.value?.trim()) {
+    if (!nameValue) {
       alert('Please provide a tournament name');
+      return;
+    }  
+    if (nameValue.length < 1 || nameValue.length > 20) {
+      alert('Tournament name must be between 1 and 20 characters');
+      return;
+    }  
+    if (descriptionValue.length > 100) {
+      alert('Tournament description cannot exceed 100 characters');
       return;
     }
     
-    // Create tournament with simplified data
     const tournamentData = {
       name: nameInput.value,
       description: descriptionInput?.value || 'No description provided',
-      max_participants: 4 // Fixed at 4 participants
+      max_participants: 4 
     };
     
     try {
-      // Show loading state
       const submitButton = form.querySelector('button[type="submit"]') as HTMLButtonElement;
       if (!submitButton) return;
       
@@ -213,17 +199,12 @@ export class TournamentPage implements Page {
       const data = await this.tournamentService.createTournament(tournamentData);
       
       if (data.success) {
-        // Reset form
         form.reset();
-        
-        // Show success message
         const successMessage = document.createElement('div');
         successMessage.className = 'bg-green-50 dark:bg-green-900 text-green-800 dark:text-green-200 p-3 rounded mt-4';
         successMessage.textContent = 'Tournament created successfully! Players can now join.';
-        
         form.appendChild(successMessage);
         
-        // Remove the message after 5 seconds
         setTimeout(() => {
           successMessage.remove();
           this.loadData();
@@ -232,14 +213,12 @@ export class TournamentPage implements Page {
         alert(data.error || 'Failed to create tournament');
       }
       
-      // Reset button state
       submitButton.textContent = originalButtonText;
       submitButton.disabled = false;
     } catch (error) {
       console.error('Error creating tournament:', error);
       alert('An error occurred while creating the tournament');
       
-      // Also reset button state on error
       const submitButton = form.querySelector('button[type="submit"]') as HTMLButtonElement;
       if (submitButton) {
         submitButton.textContent = 'Create Tournament';
@@ -248,7 +227,6 @@ export class TournamentPage implements Page {
     }
   }
 
-  // UI Rendering Methods
   private renderTabs(): string {
     return `
       <div class="px-4 sm:px-0">
@@ -399,7 +377,6 @@ export class TournamentPage implements Page {
     `;
   }
 
-  // Helper Methods
   private formatStatus(status: string): string {
     switch (status) {
       case 'pending':
