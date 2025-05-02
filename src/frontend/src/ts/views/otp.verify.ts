@@ -139,7 +139,6 @@ export class OTPVerificationPage implements Page {
     try {
       const result = await this.controlAccess.verifyOtp(otpCode);
       if (result.success) {
-        console.log("OTP verified. Login successful");
         this.router.navigateTo('/home');
       } else {
         if (errorMessage) {
@@ -158,12 +157,9 @@ export class OTPVerificationPage implements Page {
   
   private async resendOTP(): Promise<void> {
     try {
-      console.log('Generating new OTP to resend');
       const result = await this.controlAccess.getAuthService().generateOtp();
       
-      if (result.success) {
-        console.log('OTP generated successfully');
-        
+      if (result.success) {        
         if (this.element) {
           const errorMessage = this.element.querySelector('#error-message');
           if (errorMessage) {

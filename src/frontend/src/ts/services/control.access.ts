@@ -58,26 +58,21 @@ export class ControlAccess {
     await this.checkTokenStatus();
 
     if (!this.isExpiredToken('access')) {
-      console.log('[ControlAccess] Access token is valid.');
       this.setAuthenticated(true);
       return this.isAuthenticated;
     }
 
-    console.log('[ControlAccess] Access token expired or invalid.');
-
     if (!this.isExpiredToken('refresh')) {
-      console.log('[ControlAccess] Attempting token refresh...');
       const result = await this.handleTokenRefresh();
       
       if (!result.success) {
-        console.log('[ControlAccess] Failed to refresh access token.');
+        console.warn('[ControlAccess] Failed to refresh access token.');
         this.setAuthenticated(false);
       } else {
-        console.log('[ControlAccess] Successfully refreshed access token.');
         this.setAuthenticated(true);
       }
     } else {
-      console.log('[ControlAccess] Refresh token expired or invalid.');
+      console.warn('[ControlAccess] Refresh token expired or invalid.');
       this.setAuthenticated(false);
     }
     return this.isAuthenticated;
@@ -100,13 +95,12 @@ export class ControlAccess {
     }
   }  
 
-
   private async checkTokenStatus(): Promise<void> {
     try {
       const result = await this.authService.checkTokenStatus();
 
       if (!result.success) {
-        throw new Error('Failed to fetch auth token status');
+        throw new Error(result.error || 'Failed to fetch auth token status');
       }
       if (!result.status) {
         throw new Error('Token status is missing in response');
@@ -117,6 +111,7 @@ export class ControlAccess {
       this.refreshTokenExpiry = result.status.refreshTokenExpiry ? new Date(result.status.refreshTokenExpiry) : null;
     } catch (error) {
       console.error("Error checking authentication:", error);
+      this.setAuthenticated(false);
     }
   }
   
@@ -134,7 +129,7 @@ export class ControlAccess {
     return true;
   }
 
-  public async handleTokenRefresh(): Promise<{ success: boolean, message?: string }> {
+  private async handleTokenRefresh(): Promise<{ success: boolean, message?: string }> {
     if (this.isExpiredToken('refresh')) {
       this.setAuthenticated(false);
       return { success: false, message: 'Refresh token expired' };

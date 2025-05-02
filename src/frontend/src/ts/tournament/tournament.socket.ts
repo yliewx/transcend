@@ -9,16 +9,11 @@ export function handleTourPageUpdate(this: TournamentPage, data: {
   userTournaments?: Tournament[],
   message: string
 }) {
-  console.log('[Tournament Socket]', data.message);
   if (data.allTournaments) {
     this.allTournaments = data.allTournaments;
-  } else {
-    console.warn('[Tournament Socket] Tournament data missing from message.');
   }
   if (data.userTournaments) {
     this.userTournaments = data.userTournaments;
-  } else {
-    console.warn('[Tournament Socket] User tournament data missing from message.');
   }
 
   const contentContainer = this.element?.querySelector('.px-4.py-6');
@@ -36,7 +31,6 @@ export function handleParticipantJoined(this: TournamentDetailPage, data: {
     participant: TournamentParticipant,
     message: string 
   }) {
-  console.log("handleParticipantJoined called", data);
   this.update();
   this.showNotification(`${data.participant.alias} has joined the tournament!`, 'info');
 }

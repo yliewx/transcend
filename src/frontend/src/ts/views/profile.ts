@@ -202,7 +202,6 @@ export class ProfilePage implements Page {
       
       if (profileResponse.success) {
         this.userProfile = profileResponse;
-        console.log('User profile data:', this.userProfile);        
         this.updateUIWithProfileData();
       } else {
         console.error('Failed to fetch profile:', profileResponse.error);

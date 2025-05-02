@@ -66,6 +66,17 @@ export async function getTokenStatus(request: FastifyRequest, reply: FastifyRepl
   const accessDecoded = await decodeJwt(accessToken, process.env.ACCESS_TOKEN_SECRET as string, request);
   const refreshDecoded = await decodeJwt(refreshToken, process.env.REFRESH_TOKEN_SECRET as string, request);
 
+  if (accessDecoded?.id ) {
+    const db = await getDb();
+    const user = await User.findById(db, accessDecoded.id);
+    if (!user) {
+      return reply.send({
+        success: false,
+        error: 'Token user does not exist in database'
+      });
+    }
+  }
+
   return reply.send({
     success: true,
     status: {

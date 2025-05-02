@@ -3,7 +3,6 @@ import type { FriendsPage } from '../views/friends';
 import { Notifications } from '../components/notifications';
 
 export function handleFriendRequest(this: FriendsPage, data: FriendRequestMessage) {
-  console.log(`Inside handleFriendRequest. Type: ${data.requestStatus}`);
   switch (data.requestStatus) {
     case 'pending':
       this.pendingRequests.push({ ...data.request, userId: data.friend.id });

@@ -65,7 +65,6 @@ export class Router {
     const currentPage = this.routes.get(currentRoutePath);
     
     if (currentPage && typeof currentPage.destroy === 'function') {
-      console.log(`Destroying page component for route: ${this.currentPath}`);
       currentPage.destroy();
     }
 }
@@ -81,16 +80,13 @@ export class Router {
     }
 
     if (path === this.currentPath) {
-      console.log(`Already on route: ${path}, updating but not re-rendering`);
       const currentPage = this.routes.get(routePath);
       if (currentPage && typeof currentPage.update === 'function') {
         await Promise.resolve(currentPage.update());
       }
       return;
     }
-    
-    console.log(`Attempting to navigate to: ${path}, isAuthenticated: ${this.controlAccess.isLoggedIn()}`);
-    
+        
     if (this.protectedRoutes.includes(routePath)) {
       const isAuthenticated = await this.controlAccess.checkAuthStatus();
       if (!isAuthenticated) {
@@ -153,8 +149,6 @@ export class Router {
     }
   }
   
-
-
   /*-------------------------------INIT ROUTER------------------------------*/
 
   public async init(defaultPath: string = '/'): Promise<void> {
