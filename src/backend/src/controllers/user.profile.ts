@@ -10,34 +10,7 @@ import { pipeline } from 'stream/promises';
 import { v4 as uuidv4 } from 'uuid';
 import { avatarsDir } from '../constants';
 
-// export async function profileHandler(request: AuthenticatedRequest, reply: FastifyReply) {
-//     try {
-//       const userId = request.user.id;
-//       const db = await getDb();
-    
-//       const user = await User.findById(db, userId);  
-//       if (!user) {
-//         return reply.status(404).send({ error: 'User not found' });
-//       }
-      
-//       const profile = await Profile.findByUserId(db, userId);
-      
-//       return {
-//         user: {
-//           id: user.id,
-//           username: user.username,
-//           email: user.email
-//         },
-//         profile: profile ? {
-//           displayName: profile.display_name,
-//           avatarPath: profile.avatar_path
-//         } : null
-//       };
-//     } catch (error) {
-//       request.log.error(error);
-//       return reply.status(500).send({ error: 'Failed to retrieve profile' });
-//     }
-//   }
+
 export async function profileHandler(request: AuthenticatedRequest, reply: FastifyReply) {
   try {
     const userId = request.user.id;
@@ -165,63 +138,6 @@ export async function updateUserDataHandler(request: AuthenticatedRequest, reply
   }
 }
 
-// export async function updatePasswordHandler(request: AuthenticatedRequest, reply: FastifyReply) {
-//   try {
-//     const userId = request.user.id;
-//     const { currentPassword, newPassword } = request.body as { 
-//       currentPassword: string; 
-//       newPassword: string;
-//     };
-    
-//     if (!currentPassword || !newPassword) {
-//       return reply.status(400).send({
-//         success: false,
-//         error: 'Current password and new password are required'
-//       });
-//     }
-    
-//     if (newPassword.length < 8) {
-//       return reply.status(400).send({
-//         success: false,
-//         error: 'New password must be at least 8 characters long'
-//       });
-//     }
-    
-//     const db = await getDb();
-    
-//     const user = await User.findById(db, userId);
-//     if (!user) {
-//       return reply.status(404).send({ 
-//         success: false, 
-//         error: 'User not found' 
-//       });
-//     }
-    
-//     const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
-//     if (!isPasswordValid) {
-//       return reply.status(401).send({
-//         success: false,
-//         error: 'Current password is incorrect'
-//       });
-//     }
-    
-//     const saltRounds = 10;
-//     const passwordHash = await bcrypt.hash(newPassword, saltRounds);    
-//     await User.updatePassword(db, userId, passwordHash);    
-//     request.log.info(`Password changed for user ${userId}`);
-    
-//     return {
-//       success: true,
-//       message: 'Password updated successfully'
-//     };
-//   } catch (error) {
-//     request.log.error(error);
-//     return reply.status(500).send({ 
-//       success: false, 
-//       error: 'Failed to update password' 
-//     });
-//   }
-// }
 export async function updatePasswordHandler(request: AuthenticatedRequest, reply: FastifyReply) {
   try {
     const userId = request.user.id;
