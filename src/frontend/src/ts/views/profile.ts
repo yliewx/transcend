@@ -1,7 +1,6 @@
 import { Page } from '../types';
 import { Router } from '../router';
 import { UserService } from '../services/user.service';
-import { Notifications } from '../components/notifications';
 
 export class ProfilePage implements Page {
   private router: Router;
@@ -281,15 +280,13 @@ export class ProfilePage implements Page {
     
     const allowedTypes = ['image/jpeg', 'image/png'];
     if (!allowedTypes.includes(file.type)) {
-      Notifications.show('error', 'Please select a valid image file (JPG or PNG)');
-      // this.showNotification('Please select a valid image file (JPG or PNG)', 'error');
+      this.showNotification('Please select a valid image file (JPG or PNG)', 'error');
       return;
     }
     
     const maxSize = 5 * 1024 * 1024;
     if (file.size > maxSize) {
-      Notifications.show('error', 'Image size must be less than 5MB');
-      // this.showNotification('Image size must be less than 5MB', 'error');
+      this.showNotification('Image size must be less than 5MB', 'error');
       return;
     }
     
@@ -310,16 +307,13 @@ export class ProfilePage implements Page {
           avatarImg.src = `/api/profile/avatar?t=${new Date().getTime()}`;
         }
         
-        Notifications.show('success', 'Profile picture updated successfully');
-        // this.showNotification('Profile picture updated successfully', 'success');
+        this.showNotification('Profile picture updated successfully', 'success');
       } else {
-        Notifications.show('error', `Failed to upload image: ${result.error}`);
-        // this.showNotification(`Failed to upload image: ${result.error}`, 'error');
+        this.showNotification(`Failed to upload image: ${result.error}`, 'error');
       }
     } catch (error) {
       console.error('Avatar upload error:', error);
-      Notifications.show('error', 'Failed to upload profile picture');
-      // this.showNotification('Failed to upload profile picture', 'error');
+      this.showNotification('Failed to upload profile picture', 'error');
     } finally {
       const avatarContainer = this.element?.querySelector('.avatar-container');
       if (avatarContainer) {
@@ -346,41 +340,34 @@ export class ProfilePage implements Page {
     const confirmPassword = formData.get('confirmPassword') as string;
 
     if (username && (username.length < 3 || username.length > 20)) {
-      Notifications.show('error', 'Username must be between 3 and 20 characters');
-      // this.showNotification('Username must be between 3 and 20 characters', 'error');
+      this.showNotification('Username must be between 3 and 20 characters', 'error');
       return;
     }
     if (displayName && (displayName.length < 3 || displayName.length > 20)) {
-      Notifications.show('error', 'Display name must be between 3 and 20 characters');
-      // this.showNotification('Display name must be between 3 and 20 characters', 'error');
+      this.showNotification('Display name must be between 3 and 20 characters', 'error');
       return;
     }
     if (email && email.length > 40) {
-      Notifications.show('error', 'Email cannot exceed 40 characters');
-      // this.showNotification('Email cannot exceed 40 characters', 'error');
+      this.showNotification('Email cannot exceed 40 characters', 'error');
       return;
     }
     
     if (this.userProfile?.userData?.otp_option === null && (currentPassword || newPassword || confirmPassword)) {
-      Notifications.show('error', 'Password cannot be changed when signed in with google authentication');
-      // this.showNotification('Password cannot be changed when signed in with google authentication', 'error');
+      this.showNotification('Password cannot be changed when signed in with google authentication', 'error');
       return;
     }
     
     if (currentPassword || newPassword || confirmPassword) {
       if (currentPassword && (currentPassword.length < 8 || currentPassword.length > 20)) {
-        Notifications.show('error', 'Current password must be between 8 and 20 characters');
-        // this.showNotification('Current password must be between 8 and 20 characters', 'error');
+        this.showNotification('Current password must be between 8 and 20 characters', 'error');
         return;
       }
       if (newPassword && (newPassword.length < 8 || newPassword.length > 20)) {
-        Notifications.show('error', 'New password must be between 8 and 20 characters');
-        // this.showNotification('New password must be between 8 and 20 characters', 'error');
+        this.showNotification('New password must be between 8 and 20 characters', 'error');
         return;
       }    
       if (newPassword && newPassword !== confirmPassword) {
-        Notifications.show('error', 'New passwords do not match');
-        // this.showNotification('New passwords do not match', 'error');
+        this.showNotification('New passwords do not match', 'error');
         return;
       }
     }
@@ -405,8 +392,7 @@ export class ProfilePage implements Page {
       if (Object.keys(userDataUpdate).length > 0) {
         const userResult = await this.userService.updateUserData(userDataUpdate);
         if (!userResult.success) {
-          Notifications.show('error', `User data update failed: ${userResult.error}`);
-          // this.showNotification(`User data update failed: ${userResult.error}`, 'error');
+          this.showNotification(`User data update failed: ${userResult.error}`, 'error');
           hasError = true;
         }
       }
@@ -414,8 +400,7 @@ export class ProfilePage implements Page {
       if (!hasError && Object.keys(profileDataUpdate).length > 0) {
         const profileResult = await this.userService.updateProfileData(profileDataUpdate);
         if (!profileResult.success) {
-          Notifications.show('error', `Profile data update failed: ${profileResult.error}`);
-          // this.showNotification(`Profile data update failed: ${profileResult.error}`, 'error');
+          this.showNotification(`Profile data update failed: ${profileResult.error}`, 'error');
           hasError = true;
         }
       }
@@ -424,8 +409,7 @@ export class ProfilePage implements Page {
         const passwordResult = await this.userService.updatePassword(passwordData);
         if (!passwordResult.success) {
           const errorMessage = passwordResult.error || 'Password update failed';
-          Notifications.show('error', errorMessage);
-          // this.showNotification(errorMessage, 'error');
+          this.showNotification(errorMessage, 'error');
           hasError = true;
           
           const newPasswordField = this.element.querySelector('#newPassword') as HTMLInputElement;
@@ -440,62 +424,60 @@ export class ProfilePage implements Page {
       }
       
       if (!hasError) {
-        Notifications.show('success', 'Profile updated successfully');
-        // this.showNotification('Profile updated successfully', 'success');        
+        this.showNotification('Profile updated successfully', 'success');        
         await this.fetchProfileData();
         this.updateUIWithProfileData();
       }
     } catch (error) {
       console.error('Failed to update profile:', error);
-      Notifications.show('error', 'Failed to update profile');
-      // this.showNotification('Failed to update profile', 'error');
+      this.showNotification('Failed to update profile', 'error');
     }
   }
   
-  // private showNotification(message: string, type: 'success' | 'error'): void {
-  //   if (!this.element) return;
+  private showNotification(message: string, type: 'success' | 'error'): void {
+    if (!this.element) return;
     
-  //   const notification = this.element.querySelector('#notification');
-  //   const notificationMessage = this.element.querySelector('#notification-message');
+    const notification = this.element.querySelector('#notification');
+    const notificationMessage = this.element.querySelector('#notification-message');
     
-  //   if (notification && notificationMessage) {
-  //     notificationMessage.textContent = message;
+    if (notification && notificationMessage) {
+      notificationMessage.textContent = message;
       
-  //     if (type === 'error') {
-  //       notification.classList.remove('bg-green-50');
-  //       notification.classList.add('bg-red-50');
-  //       notificationMessage.classList.remove('text-green-800');
-  //       notificationMessage.classList.add('text-red-800');
+      if (type === 'error') {
+        notification.classList.remove('bg-green-50');
+        notification.classList.add('bg-red-50');
+        notificationMessage.classList.remove('text-green-800');
+        notificationMessage.classList.add('text-red-800');
         
-  //       const iconContainer = notification.querySelector('.flex-shrink-0');
-  //       if (iconContainer) {
-  //         iconContainer.innerHTML = `
-  //           <svg class="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-  //             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
-  //           </svg>
-  //         `;
-  //       }
-  //     } else {
-  //       notification.classList.remove('bg-red-50');
-  //       notification.classList.add('bg-green-50');
-  //       notificationMessage.classList.remove('text-red-800');
-  //       notificationMessage.classList.add('text-green-800');
+        const iconContainer = notification.querySelector('.flex-shrink-0');
+        if (iconContainer) {
+          iconContainer.innerHTML = `
+            <svg class="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+            </svg>
+          `;
+        }
+      } else {
+        notification.classList.remove('bg-red-50');
+        notification.classList.add('bg-green-50');
+        notificationMessage.classList.remove('text-red-800');
+        notificationMessage.classList.add('text-green-800');
         
-  //       const iconContainer = notification.querySelector('.flex-shrink-0');
-  //       if (iconContainer) {
-  //         iconContainer.innerHTML = `
-  //           <svg class="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-  //             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-  //           </svg>
-  //         `;
-  //       }
-  //     }
+        const iconContainer = notification.querySelector('.flex-shrink-0');
+        if (iconContainer) {
+          iconContainer.innerHTML = `
+            <svg class="h-5 w-5 text-green-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+            </svg>
+          `;
+        }
+      }
       
-  //     notification.classList.remove('hidden');
+      notification.classList.remove('hidden');
       
-  //     setTimeout(() => {
-  //       notification.classList.add('hidden');
-  //     }, type === 'error' ? 8000 : 5000);
-  //   }
-  // }
+      setTimeout(() => {
+        notification.classList.add('hidden');
+      }, type === 'error' ? 8000 : 5000);
+    }
+  }
 }
