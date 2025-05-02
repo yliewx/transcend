@@ -135,14 +135,6 @@ export class LoginPage implements Page {
           logo_alignment: "center",
           width: 300
         });
-  
-        requestIdleCallback(() => {
-          try {
-            window.google.accounts.id.prompt();
-          } catch (err) {
-            console.warn('GSI prompt error:', err);
-          }
-        });
       };
     }
   }  
@@ -228,7 +220,8 @@ export class LoginPage implements Page {
           }
           else {
             console.error('Failed to generate OTP:', res.message);
-            alert(`Failed to generate OTP: ${res.message || 'Unknown error'}`);
+            alert(`Failed to generate OTP. Please set up your 2FA method again.`);
+            this.router.navigateTo('/otp/setup');
           }
         }
         else {
