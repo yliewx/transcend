@@ -12,7 +12,7 @@ RUN npm install
 
 RUN mkdir -p /usr/src/app/public/uploads/avatars
 
-COPY ./assets/default-avatar.png /usr/src/app/public/uploads/avatars/
+COPY ./assets/default-avatar.jpg /usr/src/app/public/uploads/avatars/
 
 COPY . .
 

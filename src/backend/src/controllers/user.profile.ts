@@ -255,7 +255,7 @@ export async function getAvatarHandler(request: AuthenticatedRequest, reply: Fas
   if (profile && profile.avatar_path) {
     filename = profile.avatar_path.split('/').pop();
   } else {
-    filename = 'default-avatar.png';
+    filename = 'default-avatar.jpg';
   }
   
   const avatarFilePath = path.join(avatarsDir, filename);

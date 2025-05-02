@@ -21,9 +21,8 @@ export class HomePage implements Page {
     inner.className = 'px-4 py-6 sm:px-0';
 
     const cardWrapper = document.createElement('div');
-    cardWrapper.className = 'dark:bg-gray-900 shadow-md rounded-lg p-8';
+    cardWrapper.className = 'bg-transparent shadow-md rounded-lg p-8';
 
-    // Banner
     const banner = document.createElement('div');
     banner.className = `
       relative w-full h-72 bg-contain bg-no-repeat bg-center rounded-lg 
@@ -32,7 +31,6 @@ export class HomePage implements Page {
     banner.style.backgroundImage = `url('/assets/banner.png')`;
     banner.style.animationDelay = '0s';
 
-    // Banner Text at Top
     const bannerText = document.createElement('h1');
     bannerText.className = `
       absolute top-4 left-1/2 transform -translate-x-1/2 
@@ -40,12 +38,8 @@ export class HomePage implements Page {
       bg-black bg-opacity-40 px-4 py-2 rounded-lg
     `;
     bannerText.textContent = 'Welcome to Parsley Pong!';
-
     banner.appendChild(bannerText);
 
-    banner.appendChild(bannerText);
-
-    // Image cards
     const grid = document.createElement('div');
     grid.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 mt-10';
 
@@ -53,7 +47,7 @@ export class HomePage implements Page {
       new ImageCardComponent('Play', '/assets/play.jpg', '/play', '0.1s'),
       new ImageCardComponent('Tournaments', '/assets/tournament.jpg', '/tournaments', '0.2s'),
       new ImageCardComponent('Profile', '/assets/profile.jpg', '/profile', '0.3s'),
-      new ImageCardComponent('Stats', '/assets/paws.jpg', '/stats', '0.4s'),
+      new ImageCardComponent('Stats', '/assets/stats.jpg', '/stats', '0.4s'),
     ];
 
     imageCards.forEach(card => grid.appendChild(card.render()));
