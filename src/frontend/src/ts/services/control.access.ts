@@ -10,18 +10,15 @@ export class ControlAccess {
   
   constructor(private authService: AuthService) {}
 
-
   public startAuthCheckLoop(): void {
     if (this.authCheckTimeoutId !== null) {
       return;
     }
-    console.log('[ControlAccess] Starting auth check loop...');
     this.scheduleNextAuthCheck();
   }
 
   public stopAuthCheckLoop(): void {
     if (this.authCheckTimeoutId !== null) {
-      console.log('[ControlAccess] Stopping auth check loop...');
       clearTimeout(this.authCheckTimeoutId);
       this.authCheckTimeoutId = null;
     }
@@ -38,7 +35,6 @@ export class ControlAccess {
 
     if (this.accessTokenExpiry) {
       const timeUntilExpiry = this.accessTokenExpiry.getTime() - now.getTime();
-      console.log(`[ControlAccess] Time until access token expiry: ${timeUntilExpiry / 1000}s`);
 
       if (timeUntilExpiry > 0) {
         delayMs = Math.max(Math.floor(timeUntilExpiry / 2), 5_000);
@@ -59,7 +55,6 @@ export class ControlAccess {
   }
 
   public async checkAuthStatus(): Promise<boolean> {
-    console.log('[ControlAccess] Checking authentication status...', this.accessTokenExpiry, this.refreshTokenExpiry);
     await this.checkTokenStatus();
 
     if (!this.isExpiredToken('access')) {
@@ -75,7 +70,7 @@ export class ControlAccess {
       const result = await this.handleTokenRefresh();
       
       if (!result.success) {
-        console.log('[ControlAccess] Failed to refresh access token.', result.message);
+        console.log('[ControlAccess] Failed to refresh access token.');
         this.setAuthenticated(false);
       } else {
         console.log('[ControlAccess] Successfully refreshed access token.');
@@ -94,7 +89,6 @@ export class ControlAccess {
   
   public setAuthenticated(status: boolean): void {
     if (this.isAuthenticated !== status) {
-      console.log(`[ControlAccess] Setting authentication status to: ${status}`);
       this.isAuthenticated = status;
       this.notifyListeners();
   
@@ -132,10 +126,8 @@ export class ControlAccess {
     
     if (expiry) {
       if (expiry < now) {
-        console.log(`Token: ${token_type} has expired.`);
         return true;
       } else {
-        console.log(`Token: ${token_type} is valid. Expires at: ${expiry}`);
         return false;
       }
     }
