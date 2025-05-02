@@ -260,6 +260,46 @@ export class FriendsPage implements Page {
 
   /*-------------------------------UPDATE UI--------------------------------*/
 
+  // private updateUI(): void {
+  //   if (!this.element) return;
+    
+  //   this.element.querySelector('#error-container')?.classList.toggle('hidden', !this.hasError);
+    
+  //   const tabs = {
+  //     'friends': {
+  //       container: '#friends-container',
+  //       render: () => this.renderFriendsList()
+  //     },
+  //     'pending': {
+  //       container: '#pending-container', 
+  //       render: () => this.renderPendingRequests()
+  //     },
+  //     'search': {
+  //       container: '#search-container',
+  //       render: () => this.renderSearchResults()
+  //     }
+  //   };
+    
+  //   Object.entries(tabs).forEach(([tabName, config]) => {
+  //     const isActive = this.currentTab === tabName && !this.hasError;
+      
+  //     const container = this.element?.querySelector(config.container);
+  //     container?.classList.toggle('hidden', !isActive);
+  //     if (isActive && container) config.render();
+      
+  //     const button = this.element?.querySelector(`#tab-${tabName}`);
+  //     if (button) {
+  //       button.classList.toggle('text-pink-600', isActive);
+  //       button.classList.toggle('border-b-2', isActive);
+  //       button.classList.toggle('border-pink-600', isActive);
+  //       button.classList.toggle('text-gray-500', !isActive);
+  //       button.classList.toggle('hover:text-gray-700', !isActive);
+  //     }
+  //   });
+    
+  //   this.updatePendingBadge();
+  // }
+
   private updateUI(): void {
     if (!this.element) return;
     
@@ -289,11 +329,24 @@ export class FriendsPage implements Page {
       
       const button = this.element?.querySelector(`#tab-${tabName}`);
       if (button) {
-        button.classList.toggle('text-pink-600', isActive);
-        button.classList.toggle('border-b-2', isActive);
-        button.classList.toggle('border-pink-600', isActive);
-        button.classList.toggle('text-gray-500', !isActive);
-        button.classList.toggle('hover:text-gray-700', !isActive);
+        button.classList.remove(
+          'text-pink-600', 'dark:text-pink-400', 
+          'text-gray-500', 'dark:text-gray-400',
+          'border-b-2', 'border-pink-600', 'dark:border-pink-400',
+          'hover:text-gray-700', 'dark:hover:text-gray-300'
+        );
+        
+        if (isActive) {
+          button.classList.add(
+            'text-pink-600', 'dark:text-pink-400',
+            'border-b-2', 'border-pink-600', 'dark:border-pink-400'
+          );
+        } else {
+          button.classList.add(
+            'text-gray-500', 'dark:text-gray-400',
+            'hover:text-gray-700', 'dark:hover:text-gray-300'
+          );
+        }
       }
     });
     
