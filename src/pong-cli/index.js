@@ -75,9 +75,9 @@ function showHelp() {
   console.log('\nControls:');
   console.log('  UP arrow    - Move paddle up');
   console.log('  DOWN arrow  - Move paddle down');
-  console.log('  S           - Start game');
+  console.log('  Enter       - Start game');
   console.log('  P           - Pause / Resume game');
-  console.log('  Q           - Quit');
+  console.log('  Esc         - Quit');
 }
 
 function saveConfig(token, gameId) {
