@@ -31,7 +31,6 @@ export interface TournamentMatch {
 export interface TournamentParticipant {
   id: number;
   username: string;
-  elo: number;
   alias?: string;
   status?: string;
 }
