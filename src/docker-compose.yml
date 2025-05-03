@@ -56,16 +56,17 @@ services:
 
   cloudflared:
     container_name: cloudflared
-    image: cloudflare/cloudflared:latest
-    command: tunnel --config /etc/cloudflared/config.yml run
+    build:
+      context: ./cloudflared
+      dockerfile: Dockerfile
     networks:
       - ft_transcendence
     volumes:
-      - ~/.cloudflared:/etc/cloudflared
+      - cloudflared_data:/etc/cloudflared
     depends_on:
       - nginx
     restart: unless-stopped
-    
+
 #-------------------------------PONG-CLI---------------------------------
 
   pong-cli:
@@ -82,10 +83,16 @@ services:
 
 volumes:
   sqlite_data:
+    name: sqlite_data
     driver: local
   frontend_data:
+    name: frontend_data
     driver: local
   avatar_data:
+    name: avatar_data
+    driver: local
+  cloudflared_data:
+    name: cloudflared_data
     driver: local
 
 #--------------------------------NETWORKS--------------------------------
@@ -93,5 +100,3 @@ volumes:
 networks:
   ft_transcendence:
     name: ft_transcendence
-
-#--------------------------------SECRETS---------------------------------
