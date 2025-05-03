@@ -278,7 +278,6 @@ export class TournamentDetailPage implements Page {
             id: userId,
             username: userName,
             alias: alias,
-            elo: 1200,
             status: 'active'
           };
           
@@ -699,9 +698,6 @@ public renderParticipants(): string {
                     </span>` : ''}
                   <div class="flex items-center space-x-2">
                     <span class="text-sm text-gray-500 dark:text-gray-400">Rank #${index + 1}</span>
-                    <div class="bg-pink-100 text-pink-800 text-sm font-medium px-3 py-1 rounded-full">
-                      ELO: ${participant.elo || 'N/A'}
-                    </div>
                   </div>
                 </div>
               </div>
