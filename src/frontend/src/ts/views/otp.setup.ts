@@ -37,7 +37,7 @@ export class OTPSetupPage implements Page {
           <div class="space-y-4">
             <h2 class="card-title">Select your preferred verification method:</h2>
             
-            <!-- Method selection radio buttons -->
+            <!-- OTP Method -->
             <div class="space-y-3">
               <label class="flex items-center p-3 border rounded-lg hover:bg-pink-50 dark:hover:bg-gray-800 cursor-pointer">
                 <input type="radio" name="2fa-method" id="tfa-sms" class="h-4 w-4 text-pink-600 dark:text-pink-400" />
@@ -65,7 +65,7 @@ export class OTPSetupPage implements Page {
             </div>
           </div>
           
-          <!-- SMS Setup Section (initially hidden) -->
+          <!-- SMS Setup Section -->
           <div id="sms-setup" class="mt-6 hidden">
             <div class="card">
               <h3 class="card-title">Set up SMS verification</h3>
@@ -84,7 +84,7 @@ export class OTPSetupPage implements Page {
             </div>
           </div>
           
-          <!-- Email Setup Section (initially hidden) -->
+          <!-- Email Setup Section -->
           <div id="email-setup" class="mt-6 hidden">
             <div class="card">
               <h3 class="card-title">Set up Email verification</h3>
@@ -103,7 +103,7 @@ export class OTPSetupPage implements Page {
             </div>
           </div>
           
-          <!-- App Setup Section (initially hidden) -->
+          <!-- App Setup Section -->
           <div id="app-setup" class="mt-6 hidden">
             <div class="card">
               <h3 class="card-title">Set up Authenticator App</h3>
@@ -132,7 +132,7 @@ export class OTPSetupPage implements Page {
             </div>
           </div>
           
-          <!-- Success Section (initially hidden) -->
+          <!-- Success Section -->
           <div id="success-section" class="mt-6 hidden">
             <div class="card bg-green-50 dark:bg-green-900">
               <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 dark:bg-green-700 mb-4">

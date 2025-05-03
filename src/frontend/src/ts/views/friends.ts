@@ -83,7 +83,7 @@ export class FriendsPage implements Page {
           <!-- Friends Tab Content -->
           <div id="friends-container" class="${this.currentTab === 'friends' ? '' : 'hidden'}">
             <div id="friends-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <!-- Friends will be dynamically inserted here -->
+              <!-- Friends-->
             </div>
             <div id="no-friends" class="text-center py-8 hidden">
               <p class="text-gray-600 dark:text-gray-400">You don't have any friends yet.</p>
@@ -96,7 +96,7 @@ export class FriendsPage implements Page {
           <!-- Pending Requests Tab Content -->
           <div id="pending-container" class="${this.currentTab === 'pending' ? '' : 'hidden'}">
             <div id="pending-requests-list" class="space-y-4">
-              <!-- Pending requests will be dynamically inserted here -->
+              <!-- Pending requests-->
             </div>
             <div id="no-pending" class="text-center py-8 hidden">
               <p class="text-gray-600 dark:text-gray-400">No pending friend requests.</p>
@@ -125,7 +125,7 @@ export class FriendsPage implements Page {
             </div>
             
             <div id="search-results" class="mt-4 space-y-4">
-              <!-- Search results will be dynamically inserted here -->
+              <!-- Search results-->
             </div>
             <div id="no-results" class="text-center py-8 hidden">
               <p class="text-gray-600 dark:text-gray-400">No users found. Try a different search term.</p>
