@@ -1,8 +1,6 @@
 #!/usr/bin/env node
 
 const WebSocket = require('ws');
-const https = require('https');
-const readline = require('readline');
 const commandLineArgs = require('command-line-args');
 const chalk = require('chalk');
 const fs = require('fs');
