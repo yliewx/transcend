@@ -346,7 +346,7 @@ export class TournamentDetailPage implements Page {
     
     container.innerHTML = `
       <div class="bg-white dark:bg-gray-800 shadow-xl rounded-2xl overflow-hidden">
-        <!-- Tournament header with background pattern -->
+        <!-- Tournament header -->
         <div class="bg-gradient-to-r from-pink-600 to-pink-400 text-white p-8 relative overflow-hidden">
           <div class="absolute inset-0 overflow-hidden opacity-10">
             <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
@@ -408,7 +408,7 @@ export class TournamentDetailPage implements Page {
         </div>
       </div>
       
-      <!-- Tournament rules section -->
+      <!-- Tournament rules -->
       <div id="tournament-rules" class="mt-8 bg-white dark:bg-gray-800 shadow-lg rounded-2xl overflow-hidden">
         <div class="p-6">
           <div class="flex items-center mb-6">

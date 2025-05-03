@@ -47,7 +47,7 @@ export class StatsPage implements Page {
             <h1 class="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-pink-500 via-pink-400 to-indigo-600 dark:from-pink-400 dark:via-pink-300 dark:to-indigo-500">View Your Performance</h1>
           </div>
     
-          <!-- Tab navigation with pill design -->
+          <!-- Tabs -->
           <div class="flex justify-center mb-8">
             <div class="bg-gray-100 dark:bg-gray-800 rounded-full p-1 flex">
               <button id="stats-tab" class="px-6 py-2 text-sm font-medium rounded-full bg-pink-500 text-white shadow-md transition-all duration-300">
@@ -64,9 +64,9 @@ export class StatsPage implements Page {
             <p class="mt-4 text-lg text-gray-600 dark:text-gray-400">Loading your statistics...</p>
           </div>
     
-          <!-- Stats content tab -->
+          <!-- My stats -->
           <div id="stats-content" class="hidden">
-            <!-- Player stats with improved design -->
+            <!-- Player stats -->
             <div id="stats-summary" class="mb-8 p-4 bg-gradient-to-r from-pink-50 to-indigo-50 dark:from-gray-800 dark:to-gray-900 rounded-xl shadow-sm">
               <h2 class="text-xl font-bold text-center mb-6 text-gray-800 dark:text-gray-200">Player Performance</h2>
               
@@ -128,7 +128,7 @@ export class StatsPage implements Page {
               </div>
             </div>
 
-            <!-- Add this after the stats summary section in your render() method -->
+            <!-- Stats Summary -->
             <div id="elo-chart-container" class="mb-8">
               <h2 class="text-xl font-bold mb-4 text-gray-800 dark:text-gray-200">ELO Rating History</h2>
               <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-md">
@@ -158,7 +158,6 @@ export class StatsPage implements Page {
               </div>
             </div>
     
-            <!-- Match history section with improved design -->
             <div id="match-history-container" class="mb-8">
               <h2 class="text-xl font-bold mb-4 text-gray-800 dark:text-gray-200">Match History</h2>
               <div class="overflow-hidden rounded-xl shadow-md bg-white dark:bg-gray-800">
@@ -173,7 +172,7 @@ export class StatsPage implements Page {
                       </tr>
                     </thead>
                     <tbody id="match-history-table-body" class="divide-y divide-gray-200 dark:divide-gray-700">
-                      <!-- Match rows here -->
+                      <!-- Match rows -->
                     </tbody>
                   </table>
                 </div>
@@ -195,7 +194,7 @@ export class StatsPage implements Page {
             </div>
           </div>
     
-          <!-- Leaderboard content tab with improved design -->
+          <!-- Leaderboard -->
           <div id="leaderboard-content" class="hidden">
             <div class="mb-6 p-6 bg-gradient-to-r from-pink-50 to-indigo-50 dark:from-gray-800 dark:to-gray-900 rounded-xl shadow-sm">
               <h2 class="text-xl font-bold text-center text-gray-800 dark:text-gray-200">Global Leaderboard</h2>
@@ -215,7 +214,7 @@ export class StatsPage implements Page {
                     </tr>
                   </thead>
                   <tbody id="leaderboard-table-body" class="divide-y divide-gray-200 dark:divide-gray-700">
-                    <!-- Leaderboard rows here -->
+                    <!-- Leaderboard rows -->
                   </tbody>
                 </table>
               </div>
