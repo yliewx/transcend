@@ -536,16 +536,16 @@ export class PongGamePage implements Page {
       this.ctx.textAlign = 'center';
 
       if (this.state.status === 'waiting') { 
-        this.ctx.font = '32px Arial';
+        this.ctx.font = '32px Raleway, Arial, sans-serif';
         this.ctx.fillText('Press Start to begin', this.gameWidth / 2, this.gameHeight / 2);
       } else if (this.state.status === 'paused') {
-        this.ctx.font = '48px Arial';
+        this.ctx.font = '48px Raleway, Arial, sans-serif';
         this.ctx.fillText('PAUSED', this.gameWidth / 2, this.gameHeight / 2);
       } else {
         this.ctx.fillText(`${this.state.winner} player wins!`, this.gameWidth / 2, this.gameHeight / 2 - 30);
-        this.ctx.font = '32px Arial';
+        this.ctx.font = '32px Raleway, Arial, sans-serif';
         this.ctx.fillText(`Final Score: ${Math.max(this.state.scoreLeft, this.state.scoreRight)}-${Math.min(this.state.scoreLeft, this.state.scoreRight)}`, this.gameWidth / 2, this.gameHeight / 2 + 30);
-        this.ctx.font = '24px Arial';
+        this.ctx.font = '24px Raleway, Arial, sans-serif';
         this.ctx.fillText('Click "Create New Game" to play again', this.gameWidth / 2, this.gameHeight / 2 + 90);
       }
       return;
@@ -585,14 +585,14 @@ export class PongGamePage implements Page {
   
   private drawScores(): void {
     if (!this.ctx || !this.state) return;
-    this.ctx.font = '32px Arial';
+    this.ctx.font = '32px Raleway, Arial, sans-serif';
     this.ctx.textAlign = 'center';
     this.ctx.fillStyle = '#FFFFFF';
     this.ctx.fillText(this.state.scoreLeft.toString(), this.gameWidth / 4, 50);
     this.ctx.fillText(this.state.scoreRight.toString(), (this.gameWidth / 4) * 3, 50);
     const leftPlayerName = this.leftUserName || 'Guest';
     const rightPlayerName = this.rightUserName || 'Guest';
-    this.ctx.font = '16px Arial';
+    this.ctx.font = '16px Raleway, Arial, sans-serif';
     this.ctx.fillText(leftPlayerName, this.gameWidth / 4, 80);
     this.ctx.fillText(rightPlayerName, (this.gameWidth / 4) * 3, 80);
   }

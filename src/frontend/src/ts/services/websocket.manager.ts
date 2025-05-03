@@ -95,7 +95,6 @@ export class WebSocketManager {
             resolve(true);
             break;
           default:
-            console.warn('[Game Socket] No handler registered for event type:', type);
             break
         }
       };

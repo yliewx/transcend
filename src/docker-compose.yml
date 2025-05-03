@@ -44,8 +44,6 @@ services:
     build:
       context: ./nginx
       dockerfile: Dockerfile
-    ports:
-      - "8080:443"
     networks:
       - ft_transcendence
     volumes:
