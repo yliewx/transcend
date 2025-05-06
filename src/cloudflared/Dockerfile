@@ -4,5 +4,6 @@ FROM cloudflare/cloudflared:latest
 
 COPY ./conf/* /etc/cloudflared/
 
-# CMD ["cloudflared", "tunnel", "run", "transcend"]
+USER root
+
 CMD ["tunnel", "--config", "/etc/cloudflared/config.yml", "run"]
