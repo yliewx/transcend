@@ -117,7 +117,7 @@ export async function getFriends(request: AuthenticatedRequest, reply: FastifyRe
     });
   } catch (error) {
     request.log.error(error);
-    return reply.status(500).send({
+    return reply.status(400).send({
       success: false,
       error: 'Failed to retrieve friends list'
     });
@@ -156,7 +156,7 @@ export async function getPendingRequests(request: AuthenticatedRequest, reply: F
     });
   } catch (error) {
     request.log.error(error);
-    return reply.status(500).send({
+    return reply.status(400).send({
       success: false,
       error: 'Failed to retrieve pending requests'
     });
@@ -188,7 +188,7 @@ export async function searchUsers(request: AuthenticatedRequest, reply: FastifyR
     });
   } catch (error) {
     request.log.error(error);
-    return reply.status(500).send({
+    return reply.status(400).send({
       success: false,
       error: 'Search failed'
     });
@@ -285,7 +285,7 @@ export async function sendFriendRequest(request: AuthenticatedRequest, reply: Fa
     }
   } catch (error) {
     request.log.error(error);
-    return reply.status(500).send({
+    return reply.status(400).send({
       success: false,
       error: 'Failed to send friend request'
     });
@@ -368,7 +368,7 @@ export async function acceptFriendRequest(request: AuthenticatedRequest, reply: 
     }
   } catch (error) {
     request.log.error(error);
-    return reply.status(500).send({
+    return reply.status(400).send({
       success: false,
       error: 'Failed to accept friend request'
     });
@@ -423,7 +423,7 @@ export async function declineFriendRequest(request: AuthenticatedRequest, reply:
     });
   } catch (error) {
     request.log.error(error);
-    return reply.status(500).send({
+    return reply.status(400).send({
       success: false,
       error: 'Failed to decline friend request'
     });
@@ -478,7 +478,7 @@ export async function cancelFriendRequest(request: AuthenticatedRequest, reply: 
     });
   } catch (error) {
     request.log.error(error);
-    return reply.status(500).send({
+    return reply.status(400).send({
       success: false,
       error: 'Failed to cancel friend request'
     });
@@ -527,7 +527,7 @@ export async function removeFriend(request: AuthenticatedRequest, reply: Fastify
     }
   } catch (error) {
     request.log.error(error);
-    return reply.status(500).send({
+    return reply.status(400).send({
       success: false,
       error: 'Failed to remove friend'
     });

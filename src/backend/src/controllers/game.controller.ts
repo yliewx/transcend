@@ -41,7 +41,7 @@ export async function getGameStats(request: FastifyRequest, reply: FastifyReply)
     return reply.send({ success: true, stats });
   } catch (error) {
     console.error('Error fetching game stats:', error);
-    return reply.status(500).send({ success: false, message: 'Failed to fetch game statistics' });
+    return reply.status(400).send({ success: false, message: 'Failed to fetch game statistics' });
   }
 }
 
@@ -52,7 +52,7 @@ export async function getLeaderboard(request: FastifyRequest, reply: FastifyRepl
       return reply.send({ success: true, leaderboard });
   } catch (error) {
       console.error('Error fetching leaderboard:', error);
-      return reply.status(500).send({ success: false, message: 'Failed to fetch leaderboard' });
+      return reply.status(400).send({ success: false, message: 'Failed to fetch leaderboard' });
   }
 }
 
@@ -64,7 +64,7 @@ export async function getMatchHistory(request: FastifyRequest, reply: FastifyRep
     return reply.send({ success: true, matchHistory });
   } catch (error) {
     console.error('Error fetching match history:', error);
-    return reply.status(500).send({ success: false, message: 'Failed to fetch match history' });
+    return reply.status(400).send({ success: false, message: 'Failed to fetch match history' });
   }
 }
 
@@ -76,6 +76,6 @@ export async function getUserEloHistory(request: FastifyRequest, reply: FastifyR
     return reply.send({ success: true, eloHistory });
   } catch (error) {
     console.error('Error fetching Elo history:', error);
-    return reply.status(500).send({ success: false, message: 'Failed to fetch Elo history' });
+    return reply.status(400).send({ success: false, message: 'Failed to fetch Elo history' });
   }
 }

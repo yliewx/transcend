@@ -29,7 +29,7 @@ export async function generateCLIToken(request: FastifyRequest, reply: FastifyRe
       });
     }
     catch (error) {
-      return reply.status(500).send({
+      return reply.status(400).send({
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error' 
       });

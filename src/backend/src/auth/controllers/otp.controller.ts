@@ -199,7 +199,7 @@ export async function verifyOtp(request: FastifyRequest, reply: FastifyReply) {
     });
   }
   catch (error) {
-    return reply.status(500).send({
+    return reply.status(400).send({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error' 
     });

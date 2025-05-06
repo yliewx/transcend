@@ -73,7 +73,7 @@ export async function registerUser(request: FastifyRequest<{ Body: RegistrationR
 				error: error.message
 			});
 		}
-		return reply.status(500).send({
+		return reply.status(400).send({
 			success: false,
 			error: 'Registration failed. Please try again later.'
 		});

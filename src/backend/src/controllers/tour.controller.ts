@@ -99,7 +99,7 @@ export async function getTournaments(request: AuthenticatedRequest, reply: Fasti
     return reply.send({ success: true, tournaments });
   } catch (error) {
     console.error('Error fetching tournaments:', error);
-    return reply.status(500).send({ success: false, error: 'Failed to fetch tournaments' });
+    return reply.status(400).send({ success: false, error: 'Failed to fetch tournaments' });
   }
 }
 
@@ -132,7 +132,7 @@ export async function getTournamentDetails(request: AuthenticatedRequest, reply:
     });
   } catch (error) {
     console.error('Error fetching tournament details:', error);
-    return reply.status(500).send({ success: false, error: 'Failed to fetch tournament details' });
+    return reply.status(400).send({ success: false, error: 'Failed to fetch tournament details' });
   }
 }
 
@@ -252,7 +252,7 @@ export async function registerForTournament(request: AuthenticatedRequest, reply
   } catch (error) {
     await db.run('ROLLBACK');
     console.error('Error registering for tournament:', error);
-    return reply.status(500).send({ 
+    return reply.status(400).send({ 
       success: false, 
       error: 'Failed to register for tournament' 
     });
@@ -267,7 +267,7 @@ export async function getUserTournaments(request: AuthenticatedRequest, reply: F
     return reply.send({ success: true, tournaments });
   } catch (error) {
     console.error('Error fetching user tournaments:', error);
-    return reply.status(500).send({ 
+    return reply.status(400).send({ 
       success: false, 
       error: 'Failed to fetch your tournaments' 
     });
@@ -308,7 +308,7 @@ export async function joinTournamentMatch(request: AuthenticatedRequest, reply: 
     return reply.send({ success: true, gameId });
   } catch (error) {
     console.error('Error joining tournament match:', error);
-    return reply.status(500).send({ 
+    return reply.status(400).send({ 
       success: false, 
       error: 'Failed to join match' 
     });
@@ -335,7 +335,7 @@ export async function createTournament(request: AuthenticatedRequest, reply: Fas
     });
   } catch (error) {
     console.error('Error creating tournament:', error);
-    return reply.status(500).send({ 
+    return reply.status(400).send({ 
       success: false, 
       error: 'Failed to create tournament' 
     });
@@ -412,7 +412,7 @@ export async function startTournament(request: AuthenticatedRequest, reply: Fast
   } catch (error) {
     await db.run('ROLLBACK');
     console.error('Error starting tournament:', error);
-    return reply.status(500).send({ 
+    return reply.status(400).send({ 
       success: false, 
       error: 'Failed to start tournament' 
     });
