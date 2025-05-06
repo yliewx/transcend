@@ -22,4 +22,6 @@ EXPOSE 3000
 
 ENV FORCE_COLOR=1
 
+USER root
+
 CMD [ "npm", "run", "start" ]
