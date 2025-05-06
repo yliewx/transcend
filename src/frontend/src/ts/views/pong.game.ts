@@ -545,8 +545,6 @@ export class PongGamePage implements Page {
         this.ctx.fillText(`${this.state.winner} player wins!`, this.gameWidth / 2, this.gameHeight / 2 - 30);
         this.ctx.font = '32px Raleway, Arial, sans-serif';
         this.ctx.fillText(`Final Score: ${Math.max(this.state.scoreLeft, this.state.scoreRight)}-${Math.min(this.state.scoreLeft, this.state.scoreRight)}`, this.gameWidth / 2, this.gameHeight / 2 + 30);
-        this.ctx.font = '24px Raleway, Arial, sans-serif';
-        this.ctx.fillText('Click "Create New Game" to play again', this.gameWidth / 2, this.gameHeight / 2 + 90);
       }
       return;
     }
