@@ -14,6 +14,8 @@ export async function setupDbConnection(): Promise<Database> {
     filename: dbPath,
     driver: sqlite3.Database
   });
+
+  await db.exec('PRAGMA foreign_keys = ON;');
  
   const schemaPath = join(__dirname, '..', 'src', 'schema.sql');
   const schema = readFileSync(schemaPath, 'utf8');
