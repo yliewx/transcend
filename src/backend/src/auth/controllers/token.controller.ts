@@ -32,7 +32,7 @@ export async function refreshAccessHandler(request: FastifyRequest, reply: Fasti
     });
   }
   catch (error) {
-    return reply.status(500).send({
+    return reply.status(400).send({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error' 
     });

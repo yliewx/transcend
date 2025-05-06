@@ -13,7 +13,7 @@ export async function logoutHandler(request: FastifyRequest, reply: FastifyReply
     return reply.send({ message: 'Logged out' });
   } catch (error) {
     console.error('Logout error:', error);
-    return reply.status(500).send({ 
+    return reply.status(400).send({ 
       message: 'Logout failed', 
       error: error instanceof Error ? error.message : 'Unknown error' 
     });

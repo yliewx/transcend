@@ -38,7 +38,7 @@ export async function profileHandler(request: AuthenticatedRequest, reply: Fasti
     };
   } catch (error) {
     request.log.error(error);
-    return reply.status(500).send({ 
+    return reply.status(400).send({ 
       success: false,
       error: 'Failed to retrieve profile' 
     });
@@ -73,7 +73,7 @@ export async function updateProfileDataHandler(request: AuthenticatedRequest, re
     };
   } catch (error) {
     request.log.error(error);
-    return reply.status(500).send({ 
+    return reply.status(400).send({ 
       success: false, 
       error: 'Failed to update profile' 
     });
@@ -131,7 +131,7 @@ export async function updateUserDataHandler(request: AuthenticatedRequest, reply
     };
   } catch (error) {
     request.log.error(error);
-    return reply.status(500).send({ 
+    return reply.status(400).send({ 
       success: false, 
       error: 'Failed to update user data' 
     });
@@ -195,7 +195,7 @@ export async function updatePasswordHandler(request: AuthenticatedRequest, reply
     };
   } catch (error) {
     request.log.error(error);
-    return reply.status(500).send({ 
+    return reply.status(400).send({ 
       success: false, 
       error: 'Failed to update password' 
     });
@@ -249,7 +249,7 @@ export async function uploadAvatarHandler(request: AuthenticatedRequest, reply: 
     return reply.status(200).send({ success: true });
   } catch (error) {
     console.error('Avatar upload error:', error);
-    return reply.status(500).send({ 
+    return reply.status(400).send({ 
       error: 'Failed to process avatar upload'
     });
   }
