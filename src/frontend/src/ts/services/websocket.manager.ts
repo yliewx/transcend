@@ -7,9 +7,16 @@ export class WebSocketManager {
   private gameEventCallbacks: Map<string, (data: any) => void> = new Map();
   private onUserEventCallbacks: Map<string, (data: any) => void> = new Map();
   private onTournamentEventCallbacks: Map<string, (data: any) => void> = new Map();
-  private retryCount: number = 0;
-  private maxRetryCount: number = 5;
-  private isReconnecting: boolean = false;
+  private retryState = {
+    game: { isReconnecting: false, retryCount: 0, maxRetry: 5 },
+    online: { isReconnecting: false, retryCount: 0, maxRetry: 5 },
+  };
+  // private gameStatus = { isReconnecting: false, retryCount: 0, maxRetry: 5 };
+  // private onlineStatus = { isReconnecting: false, retryCount: 0, maxRetry: 5 };
+  // private retryCount: number = 0;
+  // private maxRetry: number = 5;
+  // private isReconnecting: boolean = false;
+  private heartbeat: ReturnType<typeof setInterval> | null = null;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
@@ -35,7 +42,6 @@ export class WebSocketManager {
     }
     this.gameId = gameId;
     this.playerId = userId;
-    this.retryCount = 0;
   
     try {
       this.gameSocket = new WebSocket(`${this.baseUrl}/pong/${gameId}`);
@@ -47,6 +53,7 @@ export class WebSocketManager {
         throw new Error('Failed to join game');
       }
   
+      this.retryState.game.retryCount = 0;
       this.setupGameSocketHandlers();
       return true;
     } catch (err) {
@@ -124,7 +131,7 @@ export class WebSocketManager {
   
     this.gameSocket.onclose = () => {
       console.warn('[Game Socket] Connection closed.');
-      this.reconnectGame();
+      this.reconnectGameSocket;
     };
   
     this.gameSocket.onerror = (err) => {
@@ -142,49 +149,51 @@ export class WebSocketManager {
     }
     
     this.gameId = null;
-    this.retryCount = 0;
-    this.isReconnecting = false;
+    const state = this.retryState.game;
+    state.retryCount = 0;
+    state.isReconnecting = false;
   }
 
-  private async reconnectGame(): Promise<boolean> {
-    if (this.isReconnecting) return false;
-    this.isReconnecting = true;
+  /*----------------------------RECONNECT TO GAME---------------------------*/
+
+  // private async reconnectGameSocket: Promise<boolean> {
+  //   if (this.gameStatus.isReconnecting) return false;
+  //   this.gameStatus.isReconnecting = true;
   
-    if (!this.gameId || !this.playerId) {
-      console.error("[Game Socket] Missing gameId or playerId.");
-      this.isReconnecting = false;
-      return false;
-    }
+  //   if (!this.gameId || !this.playerId) {
+  //     console.error("[Game Socket] Missing gameId or playerId.");
+  //     this.gameStatus.isReconnecting = false;
+  //     return false;
+  //   }
   
-    while (this.retryCount < this.maxRetryCount) {
-      this.retryCount++;
-      const delay = 1000 * Math.pow(2, this.retryCount);
+  //   while (this.gameStatus.retryCount < this.gameStatus.maxRetry) {
+  //     this.gameStatus.retryCount++;
+  //     const delay = 1000 * Math.pow(2, this.gameStatus.retryCount);
   
-      console.log(`[Game Socket] Reconnecting attempt ${this.retryCount} in ${delay}ms...`);
+  //     console.log(`[Game Socket] Reconnecting attempt ${this.gameStatus.retryCount} in ${delay}ms...`);
   
-      await new Promise(res => setTimeout(res, delay));
+  //     await new Promise(res => setTimeout(res, delay));
   
-      try {
-        const success = await this.connectGame(this.gameId, this.playerId);
-        if (success) {
-          console.log("[Game Socket] Reconnected successfully!");
-          this.isReconnecting = false;
-          return true;
-        }
-      } catch (err: any) {
-        if (err?.message === 'Failed to join game' || err?.message === 'Game not found') {
-          console.error("[Game Socket] Cannot rejoin: Game not found.");
-          this.isReconnecting = false;
-          return false; 
-        }
-      }
-    }
+  //     try {
+  //       const success = await this.connectGame(this.gameId, this.playerId);
+  //       if (success) {
+  //         console.log("[Game Socket] Reconnected successfully!");
+  //         this.gameStatus.isReconnecting = false;
+  //         return true;
+  //       }
+  //     } catch (err: any) {
+  //       if (err?.message === 'Failed to join game' || err?.message === 'Game not found') {
+  //         console.error("[Game Socket] Cannot rejoin: Game not found.");
+  //         this.gameStatus.isReconnecting = false;
+  //         return false; 
+  //       }
+  //     }
+  //   }
   
-    console.error("[Game Socket] Max retries reached. Giving up.");
-    this.isReconnecting = false;
-    return false;
-  }  
-   
+  //   console.error("[Game Socket] Max retries reached. Giving up.");
+  //   this.gameStatus.isReconnecting = false;
+  //   return false;
+  // }
 
   /*--------------------------GAME MESSAGE HANDLERS-------------------------*/
 
@@ -193,7 +202,7 @@ export class WebSocketManager {
       console.error('[Game Socket] Error from server:', JSON.stringify(data, null, 2));
       if (typeof data === 'object' && data !== null && 'message' in data) {
         if (data.message === 'Game not found') {
-          this.isReconnecting = false;
+          this.retryState.game.isReconnecting = false;
           this.gameSocket?.close();
         }
       }
@@ -229,12 +238,31 @@ export class WebSocketManager {
 
   /*-----------------------------ONLINE SOCKET------------------------------*/
 
-  public connect(): void {
-    this.onlineSocket = new WebSocket(this.baseUrl);
+  public async connect(): Promise<boolean> {
+    if (this.onlineSocket) {
+      this.onlineSocket.close();
+    }
+    const state = this.retryState.online;
+  
+    try {
+      this.onlineSocket = new WebSocket(this.baseUrl);
+      await this.waitForSocketOpen(this.onlineSocket);
+      this.setupOnlineSocketHandlers();
+      this.startHeartbeat();
+  
+      console.log("[Online Socket] Successfully connected to server!");
+      state.retryCount = 0;
+      state.isReconnecting = false;
+      return true;
+    } catch (err) {
+      console.error("[Online Socket] Connection error:", err);
+      this.onlineSocket?.close();
+      return false;
+    }
+  }
 
-    this.onlineSocket.onopen = () => {
-      console.log("WebSocket connection established.");
-    };
+  private setupOnlineSocketHandlers(): void {
+    if (!this.onlineSocket) return;
 
     this.onlineSocket.onmessage = (event) => {
       let message;
@@ -244,16 +272,39 @@ export class WebSocketManager {
         return;
       }
       const { type, data } = message;
+      if (type === 'pong') {
+        console.log('[Online Socket] Pong received from server.');
+        return;
+      }
       this.handleMessages(type, data);
     };
 
     this.onlineSocket.onclose = () => {
-      console.log("WebSocket connection closed.");
+      console.warn("WebSocket connection closed.");
+      this.endHeartbeat();
+      this.reconnectOnlineSocket();
     };
 
     this.onlineSocket.onerror = (error) => {
       console.error("WebSocket error:", error);
+      this.endHeartbeat();
+      this.reconnectOnlineSocket();
     };
+  }
+
+  private startHeartbeat(): void {
+    this.heartbeat = setInterval(() => {
+      if (this.onlineSocket?.readyState === WebSocket.OPEN) {
+        this.onlineSocket.send(JSON.stringify({ type: 'ping' }));
+      }
+    }, 30000);
+  }
+
+  private endHeartbeat(): void {
+    if (this.heartbeat !== null) {
+      clearInterval(this.heartbeat);
+      this.heartbeat = null;
+    }
   }
 
   /*----------------------------MESSAGE HANDLERS----------------------------*/
@@ -278,6 +329,81 @@ export class WebSocketManager {
 
     console.warn(`Unhandled online message type: ${type}`);
   }
+
+  /*-------------------------RECONNECT ONLINE SOCKET------------------------*/
+
+  private async reconnectSocket(
+    socketType: 'game' | 'online',
+    connectFn: () => Promise<boolean>
+  ): Promise<boolean> {
+    const state = this.retryState[socketType];
+  
+    if (state.isReconnecting) return false;
+    state.isReconnecting = true;
+  
+    while (state.retryCount < state.maxRetry) {
+      state.retryCount++;
+      const interval = 1000 * Math.pow(2, state.retryCount);
+  
+      console.log(`[${socketType} socket] Reconnect attempt ${state.retryCount} in ${interval}ms...`);
+      await this.delay(interval);
+  
+      try {
+        const success = await connectFn();
+        if (success) {
+          console.log(`[${socketType} socket] Reconnected successfully!`);
+          state.retryCount = 0;
+          state.isReconnecting = false;
+          return true;
+        }
+      } catch (err: any) {
+        if (err?.message === 'Failed to join game' || err?.message === 'Game not found') {
+          console.error(`[${socketType} socket] Cannot rejoin: ${err.message}`);
+          state.isReconnecting = false;
+          return false;
+        }
+      }
+    }
+  
+    console.error(`[${socketType} socket] Max retries reached. Giving up.`);
+    if (socketType === 'online') {
+      this.passiveReconnect();
+    }
+    state.isReconnecting = false;
+    return false;
+  }
+
+  private reconnectGameSocket(): Promise<boolean> {
+    return this.reconnectSocket('game', async () => {
+      return await this.connectGame(this.gameId!, this.playerId!);
+    });
+  }
+
+  private reconnectOnlineSocket(): Promise<boolean> {
+    return this.reconnectSocket('online', async () => {
+      return await this.connect();
+    });
+  }
+
+  private async passiveReconnect(interval: number = 30000): Promise<void> {
+    console.log("[online socket] Passive reconnecting every 30s...");
+  
+    while (!this.onlineSocket || this.onlineSocket.readyState === WebSocket.CLOSED) {
+      await this.delay(interval);
+  
+      console.log("[online socket] Passive reconnect attempt...");
+
+      const success = await this.connect();
+      if (success) {
+        console.log("[online socket] Passive reconnect successful!");
+        break;
+      }
+    }
+  }
+
+  private delay(ms: number): Promise<void> {
+    return new Promise((res) => setTimeout(res, ms));
+  }  
 
   /*----------------------------CLOSE CONNECTION----------------------------*/
 
