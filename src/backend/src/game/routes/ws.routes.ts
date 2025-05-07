@@ -59,6 +59,11 @@ async function websocketRoutes(server: FastifyInstance) {
     
     connection.on('message', (msg: string) => {
       const message = JSON.parse(msg);
+      if (message.type === 'ping') {
+        console.log(chalk.green.bold('\n[ws.routes] Ping received from client'));
+        connection.send(JSON.stringify({ type: 'pong' }));
+        return;
+      }
       console.log(`Received: ${message}`);
       connection.send(`Echo: ${message}`);
     });
