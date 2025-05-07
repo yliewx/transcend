@@ -11,11 +11,6 @@ export class WebSocketManager {
     game: { isReconnecting: false, retryCount: 0, maxRetry: 5 },
     online: { isReconnecting: false, retryCount: 0, maxRetry: 5 },
   };
-  // private gameStatus = { isReconnecting: false, retryCount: 0, maxRetry: 5 };
-  // private onlineStatus = { isReconnecting: false, retryCount: 0, maxRetry: 5 };
-  // private retryCount: number = 0;
-  // private maxRetry: number = 5;
-  // private isReconnecting: boolean = false;
   private heartbeat: ReturnType<typeof setInterval> | null = null;
 
   constructor(baseUrl: string) {
@@ -273,7 +268,7 @@ export class WebSocketManager {
       }
       const { type, data } = message;
       if (type === 'pong') {
-        console.log('[Online Socket] Pong received from server.');
+        // console.log('[Online Socket] Pong received from server.');
         return;
       }
       this.handleMessages(type, data);
@@ -403,7 +398,7 @@ export class WebSocketManager {
 
   private delay(ms: number): Promise<void> {
     return new Promise((res) => setTimeout(res, ms));
-  }  
+  }
 
   /*----------------------------CLOSE CONNECTION----------------------------*/
 

@@ -35,6 +35,17 @@ export class Router {
         this.navigateTo('/login');
       }
     });
+
+    this.setupVisibilityListener();
+  }
+
+  private setupVisibilityListener(): void {
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) {
+        console.log('[WebSocket Manager] Resyncing with server...');
+        this.updateCurrentPage();
+      }
+    });
   }
 
   /*---------------------------NAVIGATION HANDLER---------------------------*/
@@ -61,13 +72,18 @@ export class Router {
   private destroyCurrentPage(): void {
     if (!this.currentPath) return;
     
-    const { routePath: currentRoutePath } = this.getRoutePath(this.currentPath);
-    const currentPage = this.routes.get(currentRoutePath);
-    
+    const currentPage = this.getCurrentPage();
     if (currentPage && typeof currentPage.destroy === 'function') {
       currentPage.destroy();
     }
-}
+  }
+
+  private async updateCurrentPage(): Promise<void> {
+    const currentPage = this.getCurrentPage();
+    if (currentPage && typeof currentPage.update === 'function') {
+      await Promise.resolve(currentPage.update());
+    }
+  }
 
   async navigateTo(path: string, pushState: boolean = true): Promise<void> {
     if (path === '/')
@@ -86,7 +102,7 @@ export class Router {
       }
       return;
     }
-        
+
     if (this.protectedRoutes.includes(routePath)) {
       const isAuthenticated = await this.controlAccess.checkAuthStatus();
       if (!isAuthenticated) {
@@ -180,6 +196,11 @@ export class Router {
   public getCurrentPath(): string {
     return this.currentPath;
   }
+
+  public getCurrentPage(): Page | null {
+    const { routePath } = this.getRoutePath(this.currentPath);
+    return this.routes.get(routePath) || null;
+  }  
   
   public getControlAccess(): ControlAccess {
     return this.controlAccess;
