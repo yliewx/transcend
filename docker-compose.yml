@@ -1,0 +1,104 @@
+services:
+
+#---------------------------------BACKEND--------------------------------
+  backend:
+    container_name: backend
+    build:
+      context: ./src/backend
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    networks:
+      - ft_transcendence
+    volumes:
+      - sqlite_data:/db
+      - avatar_data:/usr/src/app/public/uploads/avatars 
+    restart: always
+
+#--------------------------------FRONTEND--------------------------------
+
+  frontend:
+    container_name: frontend
+    build:
+      context: ./src/frontend
+      dockerfile: Dockerfile
+      args:
+        - BASE_API_URL=${BASE_API_URL}
+        - BASE_WSS_URL=${BASE_WSS_URL}
+        - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+    env_file:
+      - .env
+    networks:
+      - ft_transcendence
+    volumes:
+      - frontend_data:/usr/src/app/public
+    depends_on:
+      - backend
+
+#---------------------------------NGINX----------------------------------
+
+  nginx:
+    container_name: nginx
+    build:
+      context: ./src/nginx
+      dockerfile: Dockerfile
+    networks:
+      ft_transcendence:
+        ipv4_address: 172.18.0.50
+    volumes:
+      - frontend_data:/usr/share/nginx/html
+    depends_on:
+      - frontend
+    restart: always
+
+#------------------------------CLOUDFLARED-------------------------------
+
+  cloudflared:
+    container_name: cloudflared
+    build:
+      context: ./src/cloudflared
+      dockerfile: Dockerfile
+    networks:
+      - ft_transcendence
+    volumes:
+      - cloudflared_data:/etc/cloudflared
+    depends_on:
+      - nginx
+    restart: unless-stopped
+
+#-------------------------------PONG-CLI---------------------------------
+
+  pong-cli:
+    container_name: pong-cli
+    build:
+      context: ./src/pong-cli
+      dockerfile: Dockerfile
+    networks:
+      - ft_transcendence
+    depends_on:
+      - backend
+
+#--------------------------------VOLUMES---------------------------------
+
+volumes:
+  sqlite_data:
+    name: sqlite_data
+    driver: local
+  frontend_data:
+    name: frontend_data
+    driver: local
+  avatar_data:
+    name: avatar_data
+    driver: local
+  cloudflared_data:
+    name: cloudflared_data
+    driver: local
+
+#--------------------------------NETWORKS--------------------------------
+
+networks:
+  ft_transcendence:
+    name: ft_transcendence
+    ipam:
+      config:
+        - subnet: 172.18.0.0/16
