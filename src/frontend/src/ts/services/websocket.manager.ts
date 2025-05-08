@@ -235,7 +235,7 @@ export class WebSocketManager {
 
   public async connect(): Promise<boolean> {
     if (this.onlineSocket) {
-      this.onlineSocket.close();
+      this.disconnectOnline();
     }
     const state = this.retryState.online;
   
@@ -300,6 +300,20 @@ export class WebSocketManager {
       clearInterval(this.heartbeat);
       this.heartbeat = null;
     }
+  }
+
+  private disconnectOnline(): void {
+    if (this.onlineSocket) {
+      this.onlineSocket.onclose = () => {
+        console.log('[Online Socket] Connection closed.');
+      };      
+      this.onlineSocket.close();
+      this.onlineSocket = null;
+    }
+    
+    const state = this.retryState.online;
+    state.retryCount = 0;
+    state.isReconnecting = false;
   }
 
   /*----------------------------MESSAGE HANDLERS----------------------------*/
@@ -381,16 +395,16 @@ export class WebSocketManager {
   }
 
   private async passiveReconnect(interval: number = 30000): Promise<void> {
-    console.log("[online socket] Passive reconnecting every 30s...");
+    console.log("[Online Socket] Passive reconnecting every 30s...");
   
     while (!this.onlineSocket || this.onlineSocket.readyState === WebSocket.CLOSED) {
       await this.delay(interval);
   
-      console.log("[online socket] Passive reconnect attempt...");
+      console.log("[Online Socket] Passive reconnect attempt...");
 
       const success = await this.connect();
       if (success) {
-        console.log("[online socket] Passive reconnect successful!");
+        console.log("[Online Socket] Passive reconnect successful!");
         break;
       }
     }

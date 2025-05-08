@@ -56,18 +56,18 @@ services:
 
 #------------------------------CLOUDFLARED-------------------------------
 
-  cloudflared:
-    container_name: cloudflared
-    build:
-      context: ./cloudflared
-      dockerfile: Dockerfile
-    networks:
-      - ft_transcendence
-    volumes:
-      - cloudflared_data:/etc/cloudflared
-    depends_on:
-      - nginx
-    restart: unless-stopped
+  # cloudflared:
+  #   container_name: cloudflared
+  #   build:
+  #     context: ./cloudflared
+  #     dockerfile: Dockerfile
+  #   networks:
+  #     - ft_transcendence
+  #   volumes:
+  #     - cloudflared_data:/etc/cloudflared
+  #   depends_on:
+  #     - nginx
+  #   restart: unless-stopped
 
 #-------------------------------PONG-CLI---------------------------------
 
@@ -93,9 +93,9 @@ volumes:
   avatar_data:
     name: avatar_data
     driver: local
-  cloudflared_data:
-    name: cloudflared_data
-    driver: local
+  # cloudflared_data:
+  #   name: cloudflared_data
+  #   driver: local
 
 #--------------------------------NETWORKS--------------------------------
 
