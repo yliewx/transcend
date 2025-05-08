@@ -417,8 +417,12 @@ export class WebSocketManager {
   /*----------------------------CLOSE CONNECTION----------------------------*/
 
   close(): void {
-    this.onlineSocket?.close();
-    this.gameSocket?.close();
+    this.disconnectOnline();
+    this.disconnectGame();
     console.log('WebSocket connections closed.');
+  }
+
+  isConnected(): boolean {
+    return this.onlineSocket?.readyState === WebSocket.OPEN;
   }
 }

@@ -31,10 +31,13 @@ export class Router {
     
     this.controlAccess.addAuthStateChangeListener((isAuthenticated: boolean) => {
       if (isAuthenticated) {
-        this.wss.connect();
+        if (!this.wss.isConnected()) {
+          this.wss.connect();
+        }
         this.navigateTo('/home');
       } else {
-        this.navigateTo('/login');
+        this.wss.close();
+        this.redirectToLogin();
       }
     });
 
