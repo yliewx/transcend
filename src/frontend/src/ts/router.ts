@@ -16,8 +16,10 @@ export class Router {
     this.routes = new Map();
     this.container = container;    
     this.wss = new WebSocketManager(process.env.BASE_WSS_URL as string);
-    this.wss.connect();
-
+    if (this.controlAccess.isLoggedIn()) {
+      this.wss.connect();
+    }
+    
     window.addEventListener('popstate', (event) => {
       this.isHandlingPopState = true;
       const newPath = window.location.pathname;
@@ -42,7 +44,7 @@ export class Router {
   private setupVisibilityListener(): void {
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) {
-        console.log('[WebSocket Manager] Resyncing with server...');
+        console.log('[Router] Resyncing with server...');
         this.updateCurrentPage();
       }
     });
