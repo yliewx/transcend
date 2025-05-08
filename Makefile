@@ -1,7 +1,10 @@
 # define makefile variables
 
 COMPOSE = docker compose
-COMPOSE_FILE = ./src/docker-compose.yml
+COMPOSE_FILE = -f ./docker-compose.yml
+COMPOSE_FILE_DEV = -f ./docker-compose.override.yml
+ENV_FILE = --env-file ./.env
+ENV_FILE_DEV = --env-file ./.env.dev
 
 #------------------------------------------------------------------------
 
@@ -18,13 +21,13 @@ END = \033[0m
 
 all: down up
 
-# ensure docker is installed and all required files/directories exist
-# create and start all containers in the docker compose file
-# --build: build images before starting
-# -d: run detached in background
 up:
-	@echo "$(GREEN)[ Starting containers... ]$(END)"
-	@$(COMPOSE) -f $(COMPOSE_FILE) up --build --force-recreate -d
+	@echo "$(GREEN)[ Starting containers in production mode... ]$(END)"
+	@$(COMPOSE) $(COMPOSE_FILE) $(ENV_FILE) up --build --force-recreate -d
+
+dev: down
+	@echo "$(GREEN)[ Starting containers in development mode... ]$(END)"
+	@$(COMPOSE) $(COMPOSE_FILE_DEV) $(ENV_FILE_DEV) up --build --force-recreate -d
 
 cli:
 	@echo "$(GREEN)[ Running Pong-CLI... ]$(END)"
@@ -32,8 +35,9 @@ cli:
 
 down:
 	@echo "$(BROWN)[ Stopping and removing containers... ]$(END)"
-	@$(COMPOSE) -f $(COMPOSE_FILE) down
-	@docker volume rm -f frontend_data
+	@$(COMPOSE) $(COMPOSE_FILE) down || true
+	@$(COMPOSE) $(COMPOSE_FILE_DEV) down || true
+	@docker volume rm -f frontend_data || true
 
 clean: down
 	@echo "$(BROWN)[ Removing build cache... ]$(END)"
@@ -43,10 +47,10 @@ clean: down
 fclean: clean
 	@echo "$(BROWN)[ Removing volumes... ]$(END)"
 	@docker system prune --volumes -af
-	@docker volume rm -f sqlite_data avatar_data cloudflared_data
+	@docker volume rm -f sqlite_data avatar_data cloudflared_data || true
 
 re: down up
 
 #------------------------------------------------------------------------
 
-.PHONY: all up down clean fclean re
+.PHONY: all up down clean fclean re dev cli

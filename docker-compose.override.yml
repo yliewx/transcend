@@ -4,10 +4,10 @@ services:
   backend:
     container_name: backend
     build:
-      context: ./backend
+      context: ./src/backend
       dockerfile: Dockerfile
     env_file:
-      - .env
+      - .env.dev
     networks:
       - ft_transcendence
     volumes:
@@ -20,16 +20,14 @@ services:
   frontend:
     container_name: frontend
     build:
-      context: ./frontend
+      context: ./src/frontend
       dockerfile: Dockerfile
       args:
         - BASE_API_URL=${BASE_API_URL}
         - BASE_WSS_URL=${BASE_WSS_URL}
         - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
-    # environment:
-    #   - NODE_ENV=development
     env_file:
-      - .env
+      - .env.dev
     networks:
       - ft_transcendence
     volumes:
@@ -42,40 +40,24 @@ services:
   nginx:
     container_name: nginx
     build:
-      context: ./nginx
+      context: ./src/nginx
       dockerfile: Dockerfile
     ports:
       - "8080:443"
     networks:
-      ft_transcendence:
-        ipv4_address: 172.18.0.50
+      - ft_transcendence
     volumes:
       - frontend_data:/usr/share/nginx/html
     depends_on:
       - frontend
     restart: always
 
-#------------------------------CLOUDFLARED-------------------------------
-
-  cloudflared:
-    container_name: cloudflared
-    build:
-      context: ./cloudflared
-      dockerfile: Dockerfile
-    networks:
-      - ft_transcendence
-    volumes:
-      - cloudflared_data:/etc/cloudflared
-    depends_on:
-      - nginx
-    restart: unless-stopped
-
 #-------------------------------PONG-CLI---------------------------------
 
   pong-cli:
     container_name: pong-cli
     build:
-      context: ./pong-cli
+      context: ./src/pong-cli
       dockerfile: Dockerfile
     networks:
       - ft_transcendence
@@ -94,15 +76,10 @@ volumes:
   avatar_data:
     name: avatar_data
     driver: local
-  cloudflared_data:
-    name: cloudflared_data
-    driver: local
 
 #--------------------------------NETWORKS--------------------------------
 
 networks:
   ft_transcendence:
     name: ft_transcendence
-    ipam:
-      config:
-        - subnet: 172.18.0.0/16
+
