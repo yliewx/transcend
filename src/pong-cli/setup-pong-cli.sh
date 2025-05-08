@@ -40,9 +40,6 @@ if [ ! -f "package.json" ]; then
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "axios": "^1.6.2",
-    "blessed": "^0.1.81",
-    "blessed-contrib": "^4.11.0",
     "chalk": "^4.1.2",
     "command-line-args": "^5.2.1",
     "prompt": "^1.3.0",

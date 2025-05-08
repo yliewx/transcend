@@ -39,7 +39,7 @@ export class WebSocketManager {
     this.playerId = userId;
   
     try {
-      this.gameSocket = new WebSocket(`${this.baseUrl}/pong/${gameId}`);
+      this.gameSocket = new WebSocket(`${this.baseUrl}pong/${gameId}`);
       await this.waitForSocketOpen(this.gameSocket);
     
       const joinSuccess = await this.waitForJoin(this.gameSocket);

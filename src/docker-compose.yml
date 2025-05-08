@@ -26,8 +26,8 @@ services:
         - BASE_API_URL=${BASE_API_URL}
         - BASE_WSS_URL=${BASE_WSS_URL}
         - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
-    environment:
-      - NODE_ENV=development
+    # environment:
+    #   - NODE_ENV=development
     env_file:
       - .env
     networks:
@@ -47,7 +47,8 @@ services:
     ports:
       - "8080:443"
     networks:
-      - ft_transcendence
+      ft_transcendence:
+        ipv4_address: 172.18.0.50
     volumes:
       - frontend_data:/usr/share/nginx/html
     depends_on:
@@ -56,18 +57,18 @@ services:
 
 #------------------------------CLOUDFLARED-------------------------------
 
-  # cloudflared:
-  #   container_name: cloudflared
-  #   build:
-  #     context: ./cloudflared
-  #     dockerfile: Dockerfile
-  #   networks:
-  #     - ft_transcendence
-  #   volumes:
-  #     - cloudflared_data:/etc/cloudflared
-  #   depends_on:
-  #     - nginx
-  #   restart: unless-stopped
+  cloudflared:
+    container_name: cloudflared
+    build:
+      context: ./cloudflared
+      dockerfile: Dockerfile
+    networks:
+      - ft_transcendence
+    volumes:
+      - cloudflared_data:/etc/cloudflared
+    depends_on:
+      - nginx
+    restart: unless-stopped
 
 #-------------------------------PONG-CLI---------------------------------
 
@@ -93,12 +94,15 @@ volumes:
   avatar_data:
     name: avatar_data
     driver: local
-  # cloudflared_data:
-  #   name: cloudflared_data
-  #   driver: local
+  cloudflared_data:
+    name: cloudflared_data
+    driver: local
 
 #--------------------------------NETWORKS--------------------------------
 
 networks:
   ft_transcendence:
     name: ft_transcendence
+    ipam:
+      config:
+        - subnet: 172.18.0.0/16
