@@ -123,7 +123,10 @@ export class LoginPage implements Page {
         window.google.accounts.id.initialize({
           client_id: this.googleClientId,
           context: "signin",
-          callback: this.handleGoogleCredentialResponse.bind(this)
+          callback: this.handleGoogleCredentialResponse.bind(this),
+          use_fedcm_for_prompt: false,
+          use_fedcm_for_button: true,
+          cancel_on_tap_outside: false
         });
   
         window.google.accounts.id.renderButton(signInDiv, {
@@ -135,6 +138,8 @@ export class LoginPage implements Page {
           logo_alignment: "center",
           width: 300
         });
+
+        window.google.accounts.id.prompt();
       };
     }
   }  
