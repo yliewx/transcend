@@ -10,7 +10,7 @@ export function onFriendRequestSent(this: FriendsPage, event: CustomEvent) {
   });
 
   this.updatePendingBadge();
-  
+
   if (this.currentTab === 'search') {
     this.updateSearchUserCard(userId, 'pending');
   }

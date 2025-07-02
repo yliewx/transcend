@@ -31,12 +31,12 @@ export class WebSocketManager {
 
   /*------------------------------GAME SOCKET-------------------------------*/
 
-  public async connectGame(gameId: string, userId: number): Promise<boolean> {
+  public async connectGame(gameId: string, participantId: number): Promise<boolean> {
     if (this.gameSocket) {
       this.disconnectGame();
     }
     this.gameId = gameId;
-    this.playerId = userId;
+    this.playerId = participantId;
   
     try {
       this.gameSocket = new WebSocket(`${this.baseUrl}/pong/${gameId}`);
@@ -275,7 +275,7 @@ export class WebSocketManager {
     };
 
     this.onlineSocket.onclose = () => {
-      console.warn("WebSocket connection closed.");
+      //console.warn("WebSocket connection closed.");
       this.endHeartbeat();
       this.reconnectOnlineSocket();
     };
@@ -340,13 +340,13 @@ export class WebSocketManager {
       state.retryCount++;
       const interval = 1000 * Math.pow(2, state.retryCount);
   
-      console.log(`[${socketType} socket] Reconnect attempt ${state.retryCount} in ${interval}ms...`);
+      //console.log(`[${socketType} socket] Reconnect attempt ${state.retryCount} in ${interval}ms...`);
       await this.delay(interval);
   
       try {
         const success = await connectFn();
         if (success) {
-          console.log(`[${socketType} socket] Reconnected successfully!`);
+          //console.log(`[${socketType} socket] Reconnected successfully!`);
           state.retryCount = 0;
           state.isReconnecting = false;
           return true;
