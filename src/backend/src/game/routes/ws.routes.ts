@@ -44,8 +44,8 @@ async function websocketRoutes(server: FastifyInstance) {
       connection.close();
       return;
     }
-    console.log(chalk.green.bold('\n[ws.routes] New online socket connection'));
-    printAuthTokenPayload(user);
+    // console.log(chalk.green.bold('\n[ws.routes] New online socket connection'));
+    // printAuthTokenPayload(user);
     connection.send('Connected to server');
 
     onlineUsers.set(user.id, connection);

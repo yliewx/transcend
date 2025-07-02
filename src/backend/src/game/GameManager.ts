@@ -23,7 +23,7 @@ export class GameManager {
     console.log(chalk.cyan.bold('\n[GameManager] Fetching game...'));
     console.log(chalk.cyan(`→ Game ID: ${chalk.whiteBright(gameId)}`));
     this.printSessions();
-
+    console.log(this.sessions.get(gameId) ? chalk.green('→ Game found!') : chalk.red('→ Game not found!'));
     return this.sessions.get(gameId);
   }
 
@@ -33,6 +33,7 @@ export class GameManager {
     this.printActivePlayers();
     
     const room = this.activePlayers.get(playerId);
+    console.log(room ? chalk.green('→ Player session found!') : chalk.red('→ Player session not found!'));
     if (room) {
       return {
         gameId: room.getGameId(),
@@ -47,10 +48,10 @@ export class GameManager {
 
   /*------------------------------CREATE GAME-------------------------------*/
 
-  public createGame(mode: 'local' | 'remote', isTour: boolean): string {
+  public createGame(mode: 'local' | 'remote', tournamentId: string | null): string {
     const gameId = uuidv4();
     console.log(chalk.cyan.bold('\n[GameManager] Creating game with ID: ') + chalk.cyan(gameId));
-    const room = new GameRoom(gameId, mode, this.deleteGame.bind(this), isTour);
+    const room = new GameRoom(gameId, mode, this.deleteGame.bind(this), tournamentId);
     this.sessions.set(gameId, room);
     return gameId;
   }

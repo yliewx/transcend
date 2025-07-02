@@ -1,9 +1,9 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import bcrypt from 'bcrypt';
 import User from '../models/user';
 import Profile from '../models/profile';
 import { Database } from 'sqlite';
 import { getDb } from '../db.js';
+import { v4 as uuidv4 } from 'uuid';
 
 interface RegistrationRequest {
   username: string;
