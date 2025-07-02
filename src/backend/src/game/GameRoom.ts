@@ -476,7 +476,7 @@ export class GameRoom {
     // If this block is entered, we guarantee the necessary IDs are non-null.
     let essentialIdsMissing: boolean = false;
     if (this.mode === 'local') {
-        if (leftPlayerId === null || winnerGameId === null) {
+        if (leftPlayerId === null) {
             essentialIdsMissing = true;
         }
     } else { // remote mode (which tournament games are)
@@ -506,6 +506,8 @@ export class GameRoom {
         console.log(`Recording results for tournament ID: ${tournamentId}`);
         const leftParticipantIdForTour = await Tournament.getParticipantIdByUserIdAndTournamentId(db, tournamentId, leftPlayerId!);
         const rightParticipantIdForTour = await Tournament.getParticipantIdByUserIdAndTournamentId(db, tournamentId, rightPlayerId!);
+        console.log('leftParticipantIdForTour:', leftParticipantIdForTour);
+        console.log('rightParticipantIdForTour:', rightParticipantIdForTour);
 
         if (leftParticipantIdForTour === null || rightParticipantIdForTour === null) {
             console.error(`Could not map one or both user IDs (${leftPlayerId}, ${rightPlayerId}) to participant IDs for tournament ${tournamentId}. Cannot record tournament results.`);
@@ -514,6 +516,7 @@ export class GameRoom {
 
         // Determine the winner's participant ID for THIS tournament
         const winnerParticipantIdForTour: number = state.winner === 'left' ? leftParticipantIdForTour : rightParticipantIdForTour;
+        console.log('winnerParticipantIdForTour:', winnerParticipantIdForTour);
 
         await updateTournamentMatchResult(
             this.id,
