@@ -124,11 +124,11 @@ export class GameRoom {
         WHERE tournament_id = ? AND user_id = ? AND is_guest = 0`,
       [this.tournamentId, playerId]
     );
-
+    
     const guestParticipantId = await db.get(
       `SELECT id FROM tournament_participants
         WHERE tournament_id = ? AND host_id = ? AND is_guest = 1`,
-      [this.tournamentId, hostParticipantId]
+      [this.tournamentId, hostParticipantId?.id]
     );
 
     console.log('hostParticipantId:', hostParticipantId);
@@ -138,18 +138,18 @@ export class GameRoom {
       if (this.tournamentId !== null) { // Handle Tournament Games
         const tmpPlayerName = await db.get(
             `SELECT alias FROM tournament_participants WHERE id = ? and tournament_id = ?`,
-            [hostParticipantId, this.tournamentId] // Assuming playerId is the participant ID in this context
+            [hostParticipantId?.id, this.tournamentId] // Assuming playerId is the participant ID in this context
         );
         console.log('tmpPlayerName:', tmpPlayerName);
-        playerName = tmpPlayerName != null ? tmpPlayerName : null;
+        playerName = tmpPlayerName != null ? tmpPlayerName.alias : null;
         console.log('playerName:', playerName);
         if (this.mode === 'local') {
           const guestName = await db.get(
               `SELECT alias FROM tournament_participants WHERE host_id = ? and tournament_id = ?`,
-              [guestParticipantId, this.tournamentId] // Assuming playerId is the participant ID in this context
+              [hostParticipantId?.id, this.tournamentId] // Assuming playerId is the participant ID in this context
           );
           console.log('guestName:', guestName);
-          guestPlayerName = guestName != null ? guestName : null;
+          guestPlayerName = guestName != null ? guestName.alias : null;
           console.log('guestPlayerName:', guestPlayerName);
         }
         if (!playerName) {
