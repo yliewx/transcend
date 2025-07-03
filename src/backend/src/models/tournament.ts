@@ -78,7 +78,8 @@ class Tournament {
                 CASE WHEN tp.is_guest = 1 THEN 1200 ELSE ps.elo_rating END as elo,
                 tp.alias,
                 tp.status, 
-                tp.id as participant_id
+                tp.id as participant_id,
+                tp.host_id
             FROM tournament_participants tp
             LEFT JOIN player_stats ps ON tp.user_id = ps.user_id
             WHERE tp.tournament_id = ?

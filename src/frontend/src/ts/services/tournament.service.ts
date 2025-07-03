@@ -47,6 +47,7 @@ export interface TournamentMatch {
 
 export interface TournamentParticipant {
   user_id: number;
+  host_id: number | null; // This is the ID of the user who created the guest participant
   participant_id: number;
   username: string | null;
   alias: string;
