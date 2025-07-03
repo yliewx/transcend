@@ -19,7 +19,7 @@ import fastifyMultipart from '@fastify/multipart';
 setupDbConnection();
 
 const server = fastify({
-  logger: true
+  // logger: true
 });
 
 fs.mkdirSync(avatarsDir, { recursive: true });
