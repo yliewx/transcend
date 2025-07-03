@@ -383,8 +383,8 @@ export class TournamentPage implements Page {
               ${isUserTournament && tournament.participant_status ? 
                 `<div><span class="font-medium">Your Status:</span> ${this.formatParticipantStatus(tournament.participant_status)}</div>` 
                 : ''}
-              <div><span class="font-medium">Participants:</span> ${tournament.mode}</div>
-              <div><span class="font-medium">Mode:</span> ${tournament.current_participants || 0} / 4</div>
+              <div><span class="font-medium">Participants:</span> ${tournament.current_participants || 0} / 4</div>
+              <div><span class="font-medium">Mode:</span> ${tournament.mode}</div>
             </div>
           </div>
           
