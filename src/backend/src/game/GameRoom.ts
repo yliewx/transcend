@@ -138,27 +138,95 @@ export class GameRoom {
     let participantId = null, guestParticipantId = null, alias = null, guestAlias = null;
     
     try {
-      if (this.tournamentId !== null) {
-        // get host participant id & alias
-        const host = await db.get<{ id: number; alias: string }>(
-          `SELECT id, alias FROM tournament_participants WHERE tournament_id = ? AND user_id = ? AND is_guest = 0`,
-          [this.tournamentId, player.id]
-        );
-        participantId = host?.id ?? null;
-        alias = host?.alias ?? 'Player';
-        console.log(`host: ${JSON.stringify(host, null, 2)} | participantId: ${participantId} | hostAlias: ${alias}`);
+      if (this.tournamentId !== null && this.id !== null) {
+        const match = await db.get<{
+          player1_participant_id: number | null;
+          player2_participant_id: number | null;
+        }>(`SELECT player1_participant_id, player2_participant_id FROM tournament_matches WHERE game_id = ?`, [this.id]);
 
-        // local tournament: get guest participant id & alias
-        if (this.mode === 'local') {
-          const guest = await db.get<{ id: number; alias: string }>(
-            `SELECT id, alias FROM tournament_participants WHERE tournament_id = ? AND host_id = ? AND is_guest = 1`,
-            [this.tournamentId, participantId]
-          );
-          guestParticipantId = guest?.id ?? null;
-          guestAlias = guest?.alias ?? null;
-          console.log(`guest: ${JSON.stringify(guest, null, 2)} | guestParticipantId: ${guestParticipantId} | guestAlias: ${guestAlias}`);
+        if (!match) {
+          throw new Error(`No match found for game_id=${this.id}`);
         }
-      } else { //non-tournament -> get username as alias
+        console.log('player1_participant_id:', match.player1_participant_id);
+        console.log('player2_participant_id:', match.player2_participant_id);
+
+        const rawParticipants = await db.all(
+          `SELECT tp.id, tp.alias, tp.is_guest, tp.user_id
+          FROM tournament_participants tp
+          WHERE tp.id IN (?, ?)`,
+          [match.player1_participant_id, match.player2_participant_id]
+        ) as unknown;
+
+        const participants = rawParticipants as {
+          id: number;
+          alias: string;
+          is_guest: number;
+          user_id: number | null;
+        }[];
+
+        const leftId = side === 'left' ? match.player1_participant_id : match.player2_participant_id;
+
+        for (const p of participants) {
+          if (p.id === leftId) {
+            participantId = p.id;
+            alias = p.alias;
+          } else if (this.mode === 'local') {
+            guestParticipantId = p.id;
+            guestAlias = p.alias;
+          }
+        }
+
+        console.log('participants:', participants);
+      }
+
+      // if (this.tournamentId !== null && this.id !== null) {
+      //   const participants = await db.all(`
+      //     SELECT tp.id, tp.alias, tp.is_guest, tp.user_id
+      //     FROM tournament_matches tm
+      //     JOIN tournament_participants tp 
+      //       ON tp.id IN (tm.player1_participant_id, tm.player2_participant_id)
+      //     WHERE tm.game_id = ?
+      //   `, [this.id]) as {
+      //     id: number;
+      //     alias: string;
+      //     is_guest: number;
+      //     user_id: number | null;
+      //   }[];
+
+      //   for (const p of participants) {
+      //     if (p.user_id === player.id) {
+      //       participantId = p.id ?? null;
+      //       alias = p.alias ?? 'Player';
+      //     } else if (this.mode === 'local') {
+      //       guestParticipantId = p.id ?? null;
+      //       guestAlias = p.alias ?? null;
+      //     }
+      //   }
+      //   console.log('participants:', participants);
+      // }
+
+      // if (this.tournamentId !== null) {
+      //   // get host participant id & alias
+      //   const host = await db.get<{ id: number; alias: string }>(
+      //     `SELECT id, alias FROM tournament_participants WHERE tournament_id = ? AND user_id = ? AND is_guest = 0`,
+      //     [this.tournamentId, player.id]
+      //   );
+      //   participantId = host?.id ?? null;
+      //   alias = host?.alias ?? 'Player';
+      //   console.log(`host: ${JSON.stringify(host, null, 2)} | participantId: ${participantId} | hostAlias: ${alias}`);
+
+      //   // local tournament: get guest participant id & alias
+      //   if (this.mode === 'local') {
+      //     const guest = await db.get<{ id: number; alias: string }>(
+      //       `SELECT id, alias FROM tournament_participants WHERE tournament_id = ? AND host_id = ? AND is_guest = 1`,
+      //       [this.tournamentId, participantId]
+      //     );
+      //     guestParticipantId = guest?.id ?? null;
+      //     guestAlias = guest?.alias ?? null;
+      //     console.log(`guest: ${JSON.stringify(guest, null, 2)} | guestParticipantId: ${guestParticipantId} | guestAlias: ${guestAlias}`);
+      //   }
+      // }
+      else { //non-tournament -> get username as alias
         const user = await User.findById(db, Number(player.id)); // Here, playerId is expected to be user_id
         alias = user?.username ?? 'Player';
       }
@@ -166,6 +234,9 @@ export class GameRoom {
       console.error("Error in setPlayerDetails:", error);
       alias = 'Error Player';
     }
+
+    console.log(`participantId: ${participantId} | hostAlias: ${alias}`);
+    console.log(`guestParticipantId: ${guestParticipantId} | guestAlias: ${guestAlias}`);
     
     this.players[side] = {
       id: player.id,
