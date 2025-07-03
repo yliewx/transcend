@@ -58,7 +58,7 @@ export class GameManager {
 
   /*-------------------------------JOIN GAME--------------------------------*/
 
-  public joinRoom(data: { gameId: string, playerId: number }, connection: WebSocket): boolean {
+  public async joinRoom(data: { gameId: string, playerId: number }, connection: WebSocket): Promise<boolean> {
     const existingGame = this.activePlayers.get(data.playerId);
     if (existingGame && existingGame.getGameId() !== data.gameId) {
       console.error('Player is already in a game');
@@ -66,7 +66,8 @@ export class GameManager {
       return false;
     }
     const room = this.getRoom(data.gameId);
-    if (room && room.handleJoin(data, connection)) {
+    const joinSuccess = await room?.handleJoin(data, connection);
+    if (room && joinSuccess) {
       this.activePlayers.set(data.playerId, room);
       return true;
     }
