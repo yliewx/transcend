@@ -9,8 +9,10 @@ import { updateTournamentMatchResult } from '../controllers/tour.controller';
 import Tournament from '../models/tournament';
 
 export interface Player {
-  id: number;
+  id: number | null;
   socket: WebSocket | null;
+  participantId: number | null;
+  alias: string | null;
 }
 
 export class GameRoom {
@@ -22,8 +24,8 @@ export class GameRoom {
     left: Player | null;
     right: Player | null;
   } = { left: null, right: null };
-  private leftUserName: string | null = null;
-  private rightUserName: string | null = null;
+  // private leftUserName: string | null = null;
+  // private rightUserName: string | null = null;
   
   /*------------------------------CONSTRUCTOR-------------------------------*/
 
@@ -119,37 +121,37 @@ export class GameRoom {
     let playerName: string | null = null; // Default to null, will be set based on player data
     let guestPlayerName: string | null = null; // For local mode, if needed
 
-    const hostParticipantId =  await db.get(
+    const hostParticipant =  await db.get(
       `SELECT id FROM tournament_participants
         WHERE tournament_id = ? AND user_id = ? AND is_guest = 0`,
       [this.tournamentId, playerId]
     );
     
-    const guestParticipantId = await db.get(
+    const guestParticipant = await db.get(
       `SELECT id FROM tournament_participants
         WHERE tournament_id = ? AND host_id = ? AND is_guest = 1`,
-      [this.tournamentId, hostParticipantId?.id]
+      [this.tournamentId, hostParticipant?.id]
     );
 
-    console.log('hostParticipantId:', hostParticipantId);
-    console.log('guestParticipantId:', guestParticipantId);
+    console.log('hostParticipant:', hostParticipant);
+    console.log('guestParticipant:', guestParticipant);
 
     try {
       if (this.tournamentId !== null) { // Handle Tournament Games
         const tmpPlayerName = await db.get(
             `SELECT alias FROM tournament_participants WHERE id = ? and tournament_id = ?`,
-            [hostParticipantId?.id, this.tournamentId] // Assuming playerId is the participant ID in this context
+            [hostParticipant?.id, this.tournamentId] // Assuming playerId is the participant ID in this context
         );
         console.log('tmpPlayerName:', tmpPlayerName);
-        playerName = tmpPlayerName != null ? tmpPlayerName.alias : null;
+        playerName = tmpPlayerName?.alias ?? null;
         console.log('playerName:', playerName);
         if (this.mode === 'local') {
           const guestName = await db.get(
               `SELECT alias FROM tournament_participants WHERE host_id = ? and tournament_id = ?`,
-              [hostParticipantId?.id, this.tournamentId] // Assuming playerId is the participant ID in this context
+              [hostParticipant?.id, this.tournamentId] // Assuming playerId is the participant ID in this context
           );
           console.log('guestName:', guestName);
-          guestPlayerName = guestName != null ? guestName.alias : null;
+          guestPlayerName = guestName?.alias ?? null;
           console.log('guestPlayerName:', guestPlayerName);
         }
         if (!playerName) {
@@ -188,9 +190,58 @@ export class GameRoom {
     }));
   }
 
+  private async setPlayerDetails(
+    side: 'left' | 'right',
+    player: Partial<Player> & { id: number; socket: WebSocket }
+  ) {
+    const db = await getDb();
+    let participantId = null, guestParticipantId = null, alias = null, guestAlias = null;
+    
+    if (this.tournamentId !== null) {
+      // get host participant id & alias
+      const host = await db.get<{ id: number; alias: string }>(
+        `SELECT id, alias FROM tournament_participants WHERE tournament_id = ? AND user_id = ? AND is_guest = 0`,
+        [this.tournamentId, player.id]
+      );
+      participantId = host?.id ?? null;
+      alias = host?.alias ?? 'Player';
+      console.log(`host: ${host} | participantId: ${participantId} | hostAlias: ${alias}`);
+
+      // local tournament: get guest participant id & alias
+      if (this.mode === 'local') {
+        const guest = await db.get<{ id: number; alias: string }>(
+          `SELECT id, alias FROM tournament_participants WHERE tournament_id = ? AND host_id = ? AND is_guest = 1`,
+          [this.tournamentId, participantId]
+        );
+        guestParticipantId = guest?.id ?? null;
+        guestAlias = guest?.alias ?? null;
+        console.log(`guest: ${guest} | guestParticipantId: ${guestParticipantId} | guestAlias: ${guestAlias}`);
+      }
+    } else { //non-tournament -> get username as alias
+      const user = await User.findById(db, Number(player.id)); // Here, playerId is expected to be user_id
+      alias = user?.username ?? 'Player';
+    }
+    
+    this.players[side] = {
+      id: player.id,
+      socket: player.socket,
+      participantId: participantId ?? null,
+      alias: alias ?? null,
+    } as Player;
+
+    if (this.tournamentId !== null && this.mode === 'local') {
+      this.players['right'] = {
+        id: null,
+        socket: player.socket,
+        participantId: guestParticipantId ?? null,
+        alias: guestAlias ?? null,
+      } as Player;
+    }
+  }
+
   /*-------------------------------JOIN GAME--------------------------------*/
 
-  private addNewPlayer(data: { gameId: string; playerId: number }, socket: WebSocket): boolean {
+  private async addNewPlayer(data: { gameId: string; playerId: number }, socket: WebSocket): boolean {
     console.log('Adding new player');
     if (this.mode === 'local') {
       if (this.localSocket) {
@@ -217,7 +268,7 @@ export class GameRoom {
     return true;
   }
  
-  public handleJoin(data: { gameId: string; playerId: number }, socket: WebSocket): boolean {
+  public async handleJoin(data: { gameId: string; playerId: number }, socket: WebSocket): boolean {
     const { playerId } = data;
 
     const side = this.getPlayerSide(playerId);

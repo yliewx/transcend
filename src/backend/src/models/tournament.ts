@@ -399,6 +399,7 @@ class Tournament {
     let params: (number | null)[];
 
     if (userId === null) {
+        console.log('inside getParticipantIdByUserIdAndTournamentId userId === null');
         sql = `
             SELECT id FROM tournament_participants
             WHERE tournament_id = ? AND user_id IS NULL
