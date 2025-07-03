@@ -15,7 +15,8 @@ export class TournamentDetailPage implements Page {
   public tournamentId: string | null = null;
   private isRegistered: boolean = false;
   private boundEventHandlers: {[key: string]: EventListener} = {};
-  private currParticipantId: number | undefined; 
+  private currParticipantId: number | null = null; // Current user's participant ID in this tournament
+  private guestParticipantId: number | null = null; // For local mode tournaments
 
   constructor(router: Router) {
     this.router = router;
@@ -66,13 +67,17 @@ export class TournamentDetailPage implements Page {
 
         // Correctly find the current user's participant ID for this tournament
         const currParticipant = this.participants.find(p => p.user_id === userId);
-        
-        this.currParticipantId = currParticipant ? currParticipant.participant_id : undefined;
+        this.currParticipantId = currParticipant ? currParticipant.participant_id : null;
+
+        const guestParticipant = this.participants.find(p => p.host_id === this.currParticipantId);
+        this.guestParticipantId = guestParticipant ? guestParticipant.participant_id : null;
+
         this.isRegistered = currParticipant !== undefined; // User is registered if a participant is found
         
         // Log for debugging:
         console.log('Current User ID:', userId);
-        console.log('Current User Participant ID:', this.currParticipantId);
+        console.log('currentParticipant:', currParticipant);
+        console.log('CurrentParticipant ID:', this.currParticipantId);
         console.log('Is Registered:', this.isRegistered);
         return { success: true };
       } else {
@@ -743,14 +748,14 @@ export class TournamentDetailPage implements Page {
   }
   
 private renderMatchContent(match: TournamentMatch): string {
-   console.log(`--- Rendering Match ${match.id} ---`);
+  console.log(`--- Rendering Match ${match.id} ---`);
   console.log('Match Object:', match);
-  console.log('Match Status:', match.status);
-  console.log('Match Winner ID:', match.winner_participant_id);
-  console.log('Player 1 ID:', match.player1_participant_id, 'Player 2 ID:', match.player2_participant_id);
-  console.log('Is Player 1 Winner?', match.winner_participant_id === match.player1_participant_id);
-  console.log('Is Player 2 Winner?', match.winner_participant_id === match.player2_participant_id);
-  console.log('-----------------------------');
+  // console.log('Match Status:', match.status);
+  // console.log('Match Winner ID:', match.winner_participant_id);
+  // console.log('Player 1 ID:', match.player1_participant_id, 'Player 2 ID:', match.player2_participant_id);
+  // console.log('Is Player 1 Winner?', match.winner_participant_id === match.player1_participant_id);
+  // console.log('Is Player 2 Winner?', match.winner_participant_id === match.player2_participant_id);
+  // console.log('-----------------------------');
   const player1Name = match.player1_alias || 'TBD';
   const player2Name = match.player2_alias || 'TBD';
   
@@ -759,10 +764,17 @@ private renderMatchContent(match: TournamentMatch): string {
   
   // const userId = parseInt(sessionStorage.getItem('userId') || '0');
   //const userInMatch = match.player1_participant_id === userId || match.player2_participant_id === userId;
-   const userInMatch = (this.currParticipantId !== undefined &&
-                      (match.player1_participant_id === this.currParticipantId || 
-                       match.player2_participant_id === this.currParticipantId));
+  // const userInMatch = (this.currParticipantId !== undefined &&
+  //                     (match.player1_participant_id === this.currParticipantId || 
+  //                      match.player2_participant_id === this.currParticipantId)) ||
+  //                     (this.guestParticipantId !== undefined &&
+  //                     (match.player1_participant_id === this.guestParticipantId || 
+  //                      match.player2_participant_id === this.guestParticipantId));
+  const userInMatch = [match.player1_participant_id, match.player2_participant_id].includes(this.currParticipantId) ||
+    [match.player1_participant_id, match.player2_participant_id].includes(this.guestParticipantId)
   const matchIsPlayable = userInMatch && (match.status === 'scheduled' || match.status === 'in_progress');
+  console.log('User in Match:', userInMatch);
+  console.log('Match is Playable:', matchIsPlayable); 
 
   const statusColors = {
     scheduled: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
