@@ -762,17 +762,20 @@ private renderMatchContent(match: TournamentMatch): string {
   const player1Class = match.winner_participant_id === match.player1_participant_id ? 'bg-green-50 dark:bg-green-900/20 border-green-500 text-green-700 dark:text-green-300' : '';
   const player2Class = match.winner_participant_id === match.player2_participant_id ? 'bg-green-50 dark:bg-green-900/20 border-green-500 text-green-700 dark:text-green-300' : '';
   
-  // const userId = parseInt(sessionStorage.getItem('userId') || '0');
-  //const userInMatch = match.player1_participant_id === userId || match.player2_participant_id === userId;
-  // const userInMatch = (this.currParticipantId !== undefined &&
-  //                     (match.player1_participant_id === this.currParticipantId || 
-  //                      match.player2_participant_id === this.currParticipantId)) ||
-  //                     (this.guestParticipantId !== undefined &&
-  //                     (match.player1_participant_id === this.guestParticipantId || 
-  //                      match.player2_participant_id === this.guestParticipantId));
   const userInMatch = [match.player1_participant_id, match.player2_participant_id].includes(this.currParticipantId) ||
-    [match.player1_participant_id, match.player2_participant_id].includes(this.guestParticipantId)
-  const matchIsPlayable = userInMatch && (match.status === 'scheduled' || match.status === 'in_progress');
+      [match.player1_participant_id, match.player2_participant_id].includes(this.guestParticipantId);
+      
+  const usersReady = match.player1_participant_id !== null && match.player2_participant_id !== null;
+
+  const userNotInFinalLocalMatch = (match.mode === 'local' && match.round === 2 &&
+      (this.matches[0].player1_participant_id !== this.currParticipantId && this.matches[0].player2_participant_id !== this.currParticipantId));
+
+  const matchNotCompleted = (match.status === 'scheduled' || match.status === 'in_progress');
+
+  let matchIsPlayable = userInMatch && usersReady && matchNotCompleted;
+  if (userNotInFinalLocalMatch) {
+    matchIsPlayable = false;
+  }
   console.log('User in Match:', userInMatch);
   console.log('Match is Playable:', matchIsPlayable); 
 
