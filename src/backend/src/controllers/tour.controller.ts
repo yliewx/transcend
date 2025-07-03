@@ -628,6 +628,10 @@ export async function updateTournamentMatchResult(
 
     await notifyMatchUpdate(db, match.tournament_id, match.id);
 
+    console.log('[updateTournamentMatchResult] gameId:', gameId);
+    console.log('matchId:', match.id);
+    console.log(`winner: ${winnerParticipantId} | loser: ${loserParticipantId}`);
+
     // Conditional logic for Elo/Stats/Match History updates for remote (ranked) tournament games
     if (match.mode === 'remote') {
         const winnerUserId = await Tournament.getUserIdByParticipantId(db, winnerParticipantId);
