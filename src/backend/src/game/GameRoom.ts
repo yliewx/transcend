@@ -24,8 +24,6 @@ export class GameRoom {
     left: Player | null;
     right: Player | null;
   } = { left: null, right: null };
-  // private leftUserName: string | null = null;
-  // private rightUserName: string | null = null;
   
   /*------------------------------CONSTRUCTOR-------------------------------*/
 
@@ -148,7 +146,7 @@ export class GameRoom {
         );
         participantId = host?.id ?? null;
         alias = host?.alias ?? 'Player';
-        console.log(`host: ${host} | participantId: ${participantId} | hostAlias: ${alias}`);
+        console.log(`host: ${JSON.stringify(host, null, 2)} | participantId: ${participantId} | hostAlias: ${alias}`);
 
         // local tournament: get guest participant id & alias
         if (this.mode === 'local') {
@@ -158,7 +156,7 @@ export class GameRoom {
           );
           guestParticipantId = guest?.id ?? null;
           guestAlias = guest?.alias ?? null;
-          console.log(`guest: ${guest} | guestParticipantId: ${guestParticipantId} | guestAlias: ${guestAlias}`);
+          console.log(`guest: ${JSON.stringify(guest, null, 2)} | guestParticipantId: ${guestParticipantId} | guestAlias: ${guestAlias}`);
         }
       } else { //non-tournament -> get username as alias
         const user = await User.findById(db, Number(player.id)); // Here, playerId is expected to be user_id
@@ -294,7 +292,7 @@ export class GameRoom {
   }
 
   public handleInput(data: InputMessage, socket: WebSocket) {
-    console.log('[GameRoom handleInput] Full data:', JSON.stringify(data, null, 2));
+    // console.log('[GameRoom handleInput] Full data:', JSON.stringify(data, null, 2));
     let side;
     if (this.mode === 'local') {
       if (!data.side || (data.side !== 'left' && data.side !== 'right')) {
@@ -477,7 +475,7 @@ export class GameRoom {
         if (leftPlayerId === null) {
             essentialIdsMissing = true;
         }
-    } else { // remote mode (which tournament games are)
+    } else {
         if (leftPlayerId === null || rightPlayerId === null || winnerGameId === null) {
             essentialIdsMissing = true;
         }
@@ -488,44 +486,23 @@ export class GameRoom {
         return;
     }
 
-    // At this point, for the relevant mode, the necessary IDs are guaranteed to be 'number'.
-    // We can use non-null assertions (!) to tell TypeScript this.
-
     if (this.tournamentId !== null) {
-        //  // First, fetch the match details to get the tournament_id
-        // const matchDetails = await Tournament.findMatchByGameId(db, this.id);
-
-        // if (!matchDetails || matchDetails.tournament_id === null) {
-        //     console.error(`Tournament match or its tournament ID not found in DB for game_id: ${this.id}. Cannot record tournament results.`);
-        //     return;
-        // }
-
-        // const tournamentId = matchDetails.tournament_id;
-        // console.log(`Recording results for tournament ID: ${tournamentId}`);
-        // const leftParticipantIdForTour = await Tournament.getParticipantIdByUserIdAndTournamentId(db, tournamentId, leftPlayerId!);
-        // const rightParticipantIdForTour = await Tournament.getParticipantIdByUserIdAndTournamentId(db, tournamentId, rightPlayerId!);
-        // console.log('leftParticipantIdForTour:', leftParticipantIdForTour);
-        // console.log('rightParticipantIdForTour:', rightParticipantIdForTour);
-
-        const leftParticipantIdForTour = this.players.left?.participantId ?? null;
-        const rightParticipantIdForTour = this.players.right?.participantId ?? null;
-        console.log('leftParticipantIdForTour:', leftParticipantIdForTour);
-        console.log('rightParticipantIdForTour:', rightParticipantIdForTour);
-        if (leftParticipantIdForTour === null || rightParticipantIdForTour === null) {
+        const leftParticipantId = this.players.left?.participantId ?? null;
+        const rightParticipantId = this.players.right?.participantId ?? null;
+        if (leftParticipantId === null || rightParticipantId === null) {
             console.error(`Could not map one or both user IDs (${leftPlayerId}, ${rightPlayerId}) to participant IDs for tournament ${this.tournamentId}. Cannot record tournament results.`);
             return;
         }
 
-        // Determine the winner's participant ID for THIS tournament
-        const winnerParticipantIdForTour: number = state.winner === 'left' ? leftParticipantIdForTour : rightParticipantIdForTour;
-        console.log('winnerParticipantIdForTour:', winnerParticipantIdForTour);
+        const winnerParticipantId: number = state.winner === 'left' ? leftParticipantId : rightParticipantId;
+        console.log('winnerParticipantId:', winnerParticipantId);
 
         await updateTournamentMatchResult(
             this.id,
-            winnerParticipantIdForTour!,
+            winnerParticipantId!,
             state,
-            leftParticipantIdForTour,
-            rightParticipantIdForTour
+            leftParticipantId,
+            rightParticipantId
         );
     } else {
         // This is a regular (non-tournament) game

@@ -512,31 +512,65 @@ export async function joinTournamentMatch(request: AuthenticatedRequest, reply: 
 }
 
 
+// async function processUserGameResults(
+//     db: Database,
+//     userId: number,
+//     opponentUserId: number,
+//     winnerUserId: number,
+//     gameId: string, // Unique game identifier for match history (this is the gameRoom.id)
+// ) {
+//     let transactionStarted = true;
+//     try {
+//         await db.run('BEGIN TRANSACTION');
+
+//         const result: 'win' | 'loss' = winnerUserId === userId ? 'win' : 'loss';
+//         await GameStats.updateMatches(db, userId, result);
+//         await GameStats.updatePlayerElo(db, userId, opponentUserId, winnerUserId === userId ? 1 : 0);
+//         await GameStats.updateWinStreak(db, userId, winnerUserId === userId);
+
+//         await db.run('COMMIT');
+//     } catch (error) {
+//         if (transactionStarted) {
+//             await db.run('ROLLBACK');
+//         }
+//         console.error(`Error processing user game results for user ${userId} in game ${gameId}:`, error);
+//         throw error;
+//     }
+// }
+
+        
+
 async function processUserGameResults(
     db: Database,
     userId: number,
     opponentUserId: number,
     winnerUserId: number,
-    gameId: string, // Unique game identifier for match history (this is the gameRoom.id)
-) {
-    let transactionStarted = true;
+    gameId: string,
+    withinTransaction: boolean = false // prevent nested transactions
+  ) {
+    let transactionStarted = false;
     try {
+      if (!withinTransaction) {
         await db.run('BEGIN TRANSACTION');
+        transactionStarted = true;
+      }
 
-        const result: 'win' | 'loss' = winnerUserId === userId ? 'win' : 'loss';
-        await GameStats.updateMatches(db, userId, result);
-        await GameStats.updatePlayerElo(db, userId, opponentUserId, winnerUserId === userId ? 1 : 0);
-        await GameStats.updateWinStreak(db, userId, winnerUserId === userId);
+      const result: 'win' | 'loss' = winnerUserId === userId ? 'win' : 'loss';
+      await GameStats.updateMatches(db, userId, result);
+      await GameStats.updatePlayerElo(db, userId, opponentUserId, winnerUserId === userId ? 1 : 0);
+      await GameStats.updateWinStreak(db, userId, winnerUserId === userId);
 
-        await db.run('COMMIT');
+      if (transactionStarted) {
+          await db.run('COMMIT');
+      }
     } catch (error) {
-        if (transactionStarted) {
-            await db.run('ROLLBACK');
-        }
-        console.error(`Error processing user game results for user ${userId} in game ${gameId}:`, error);
-        throw error;
+      if (transactionStarted) {
+          await db.run('ROLLBACK');
+      }
+      console.error(`Error processing user game results for user ${userId} in game ${gameId}:`, error);
+      throw error;
     }
-}
+  }
 
 // export async function updateTournamentMatchResult(gameId: string, winnerId: number): Promise<void> {
 //   const db = await getDb();
@@ -679,6 +713,7 @@ export async function updateTournamentMatchResult(
             loserUserId,
             winnerUserId,
             gameId, // Pass gameId to helper
+            true // within transaction
         );
 
         // Process loser's stats
@@ -688,6 +723,7 @@ export async function updateTournamentMatchResult(
             winnerUserId,
             winnerUserId, // winner_id for this context is still the overall winner's user ID
             gameId, // Pass gameId to helper
+            true // within transaction
         );
 
     } else { // match.mode === 'local'
