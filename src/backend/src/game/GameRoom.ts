@@ -117,66 +117,6 @@ export class GameRoom {
   //   }));
   // }
   private async announceJoin(playerId: number, side: 'left' | 'right') {
-    const db = await getDb();
-    let playerName: string | null = null; // Default to null, will be set based on player data
-    let guestPlayerName: string | null = null; // For local mode, if needed
-
-    const hostParticipant =  await db.get(
-      `SELECT id FROM tournament_participants
-        WHERE tournament_id = ? AND user_id = ? AND is_guest = 0`,
-      [this.tournamentId, playerId]
-    );
-    
-    const guestParticipant = await db.get(
-      `SELECT id FROM tournament_participants
-        WHERE tournament_id = ? AND host_id = ? AND is_guest = 1`,
-      [this.tournamentId, hostParticipant?.id]
-    );
-
-    console.log('hostParticipant:', hostParticipant);
-    console.log('guestParticipant:', guestParticipant);
-
-    try {
-      if (this.tournamentId !== null) { // Handle Tournament Games
-        const tmpPlayerName = await db.get(
-            `SELECT alias FROM tournament_participants WHERE id = ? and tournament_id = ?`,
-            [hostParticipant?.id, this.tournamentId] // Assuming playerId is the participant ID in this context
-        );
-        console.log('tmpPlayerName:', tmpPlayerName);
-        playerName = tmpPlayerName?.alias ?? null;
-        console.log('playerName:', playerName);
-        if (this.mode === 'local') {
-          const guestName = await db.get(
-              `SELECT alias FROM tournament_participants WHERE host_id = ? and tournament_id = ?`,
-              [hostParticipant?.id, this.tournamentId] // Assuming playerId is the participant ID in this context
-          );
-          console.log('guestName:', guestName);
-          guestPlayerName = guestName?.alias ?? null;
-          console.log('guestPlayerName:', guestPlayerName);
-        }
-        if (!playerName) {
-            console.warn(`Tournament Participant with ID ${playerId} not found. Using default player name.`);
-        }
-      } else { // Handle Non-Tournament (Regular) Games
-        // In non-tournament games, playerId is typically the user_id directly
-        const user = await User.findById(db, Number(playerId)); // Here, playerId is expected to be user_id
-
-        if (user && user.username) {
-          playerName = user.username;
-        } else {
-          console.warn(`User with ID ${playerId} not found or no username for non-tournament game. Using default player name.`);
-          playerName = 'Player'; // Default for regular games
-        }
-      }
-    } catch (error) {
-        console.error("Error in announceJoin:", error);
-        playerName = 'Error Player'; // Indicate an error occurred
-    }
-
-    if (side === 'left') this.leftUserName = playerName;
-    if (side === 'right') this.rightUserName = playerName;
-    if (this.tournamentId !== null && this.mode === 'local') this.rightUserName = guestPlayerName;
-
     this.broadcast(JSON.stringify({
         type: 'player-joined',
         data: {
@@ -184,11 +124,13 @@ export class GameRoom {
           side: side,
           ready: this.roomIsFull(),
           state: this.game.getState(),
-          leftUserName: this.leftUserName,
-          rightUserName: this.rightUserName
+          leftUserName: this.players.left?.alias ?? null,
+          rightUserName: this.players.right?.alias ?? null
         }
     }));
   }
+
+  /*---------------------------SET PLAYER DETAILS---------------------------*/
 
   private async setPlayerDetails(
     side: 'left' | 'right',
@@ -197,29 +139,34 @@ export class GameRoom {
     const db = await getDb();
     let participantId = null, guestParticipantId = null, alias = null, guestAlias = null;
     
-    if (this.tournamentId !== null) {
-      // get host participant id & alias
-      const host = await db.get<{ id: number; alias: string }>(
-        `SELECT id, alias FROM tournament_participants WHERE tournament_id = ? AND user_id = ? AND is_guest = 0`,
-        [this.tournamentId, player.id]
-      );
-      participantId = host?.id ?? null;
-      alias = host?.alias ?? 'Player';
-      console.log(`host: ${host} | participantId: ${participantId} | hostAlias: ${alias}`);
-
-      // local tournament: get guest participant id & alias
-      if (this.mode === 'local') {
-        const guest = await db.get<{ id: number; alias: string }>(
-          `SELECT id, alias FROM tournament_participants WHERE tournament_id = ? AND host_id = ? AND is_guest = 1`,
-          [this.tournamentId, participantId]
+    try {
+      if (this.tournamentId !== null) {
+        // get host participant id & alias
+        const host = await db.get<{ id: number; alias: string }>(
+          `SELECT id, alias FROM tournament_participants WHERE tournament_id = ? AND user_id = ? AND is_guest = 0`,
+          [this.tournamentId, player.id]
         );
-        guestParticipantId = guest?.id ?? null;
-        guestAlias = guest?.alias ?? null;
-        console.log(`guest: ${guest} | guestParticipantId: ${guestParticipantId} | guestAlias: ${guestAlias}`);
+        participantId = host?.id ?? null;
+        alias = host?.alias ?? 'Player';
+        console.log(`host: ${host} | participantId: ${participantId} | hostAlias: ${alias}`);
+
+        // local tournament: get guest participant id & alias
+        if (this.mode === 'local') {
+          const guest = await db.get<{ id: number; alias: string }>(
+            `SELECT id, alias FROM tournament_participants WHERE tournament_id = ? AND host_id = ? AND is_guest = 1`,
+            [this.tournamentId, participantId]
+          );
+          guestParticipantId = guest?.id ?? null;
+          guestAlias = guest?.alias ?? null;
+          console.log(`guest: ${guest} | guestParticipantId: ${guestParticipantId} | guestAlias: ${guestAlias}`);
+        }
+      } else { //non-tournament -> get username as alias
+        const user = await User.findById(db, Number(player.id)); // Here, playerId is expected to be user_id
+        alias = user?.username ?? 'Player';
       }
-    } else { //non-tournament -> get username as alias
-      const user = await User.findById(db, Number(player.id)); // Here, playerId is expected to be user_id
-      alias = user?.username ?? 'Player';
+    } catch (error) {
+      console.error("Error in setPlayerDetails:", error);
+      alias = 'Error Player';
     }
     
     this.players[side] = {
@@ -241,7 +188,7 @@ export class GameRoom {
 
   /*-------------------------------JOIN GAME--------------------------------*/
 
-  private async addNewPlayer(data: { gameId: string; playerId: number }, socket: WebSocket): boolean {
+  private async addNewPlayer(data: { gameId: string; playerId: number }, socket: WebSocket): Promise<boolean> {
     console.log('Adding new player');
     if (this.mode === 'local') {
       if (this.localSocket) {
@@ -250,14 +197,14 @@ export class GameRoom {
         return false;
       }
       this.localSocket = socket;
-      this.players.left = { id: data.playerId, socket };
+      await this.setPlayerDetails('left', { id: data.playerId, socket });
       this.announceJoin(data.playerId, 'left');
     } else {
       if (!this.players.left) {
-        this.players.left = { id: data.playerId, socket };
+        await this.setPlayerDetails('left', { id: data.playerId, socket });
         this.announceJoin(data.playerId, 'left');
       } else if (!this.players.right) {
-        this.players.right = { id: data.playerId, socket };
+        await this.setPlayerDetails('right', { id: data.playerId, socket });
         this.announceJoin(data.playerId, 'right');
       } else {
         sendError(socket, 'Game is full');
@@ -268,7 +215,7 @@ export class GameRoom {
     return true;
   }
  
-  public async handleJoin(data: { gameId: string; playerId: number }, socket: WebSocket): boolean {
+  public async handleJoin(data: { gameId: string; playerId: number }, socket: WebSocket): Promise<boolean> {
     const { playerId } = data;
 
     const side = this.getPlayerSide(playerId);
@@ -279,7 +226,7 @@ export class GameRoom {
         this.players.left.socket = socket;
         this.announceJoin(playerId, 'left');
       } else {
-        const success = this.addNewPlayer(data, socket);
+        const success = await this.addNewPlayer(data, socket);
         if (!success) return false;
       }
     } else {
@@ -292,7 +239,7 @@ export class GameRoom {
         this.players.right.socket = socket;
         this.announceJoin(playerId, 'right');
       } else {
-        const success = this.addNewPlayer(data, socket);
+        const success = await this.addNewPlayer(data, socket);
         if (!success) return false;
       }
     }
@@ -545,23 +492,27 @@ export class GameRoom {
     // We can use non-null assertions (!) to tell TypeScript this.
 
     if (this.tournamentId !== null) {
-         // First, fetch the match details to get the tournament_id
-        const matchDetails = await Tournament.findMatchByGameId(db, this.id);
+        //  // First, fetch the match details to get the tournament_id
+        // const matchDetails = await Tournament.findMatchByGameId(db, this.id);
 
-        if (!matchDetails || matchDetails.tournament_id === null) {
-            console.error(`Tournament match or its tournament ID not found in DB for game_id: ${this.id}. Cannot record tournament results.`);
-            return;
-        }
+        // if (!matchDetails || matchDetails.tournament_id === null) {
+        //     console.error(`Tournament match or its tournament ID not found in DB for game_id: ${this.id}. Cannot record tournament results.`);
+        //     return;
+        // }
 
-        const tournamentId = matchDetails.tournament_id;
-        console.log(`Recording results for tournament ID: ${tournamentId}`);
-        const leftParticipantIdForTour = await Tournament.getParticipantIdByUserIdAndTournamentId(db, tournamentId, leftPlayerId!);
-        const rightParticipantIdForTour = await Tournament.getParticipantIdByUserIdAndTournamentId(db, tournamentId, rightPlayerId!);
+        // const tournamentId = matchDetails.tournament_id;
+        // console.log(`Recording results for tournament ID: ${tournamentId}`);
+        // const leftParticipantIdForTour = await Tournament.getParticipantIdByUserIdAndTournamentId(db, tournamentId, leftPlayerId!);
+        // const rightParticipantIdForTour = await Tournament.getParticipantIdByUserIdAndTournamentId(db, tournamentId, rightPlayerId!);
+        // console.log('leftParticipantIdForTour:', leftParticipantIdForTour);
+        // console.log('rightParticipantIdForTour:', rightParticipantIdForTour);
+
+        const leftParticipantIdForTour = this.players.left?.participantId ?? null;
+        const rightParticipantIdForTour = this.players.right?.participantId ?? null;
         console.log('leftParticipantIdForTour:', leftParticipantIdForTour);
         console.log('rightParticipantIdForTour:', rightParticipantIdForTour);
-
         if (leftParticipantIdForTour === null || rightParticipantIdForTour === null) {
-            console.error(`Could not map one or both user IDs (${leftPlayerId}, ${rightPlayerId}) to participant IDs for tournament ${tournamentId}. Cannot record tournament results.`);
+            console.error(`Could not map one or both user IDs (${leftPlayerId}, ${rightPlayerId}) to participant IDs for tournament ${this.tournamentId}. Cannot record tournament results.`);
             return;
         }
 
@@ -571,10 +522,10 @@ export class GameRoom {
 
         await updateTournamentMatchResult(
             this.id,
-            winnerParticipantIdForTour!, // winnerGameId is guaranteed non-null by essentialIdsMissing check
+            winnerParticipantIdForTour!,
             state,
-            leftParticipantIdForTour, // Use the fetched player1_participant_id
-            rightParticipantIdForTour  // Use the fetched player2_participant_id
+            leftParticipantIdForTour,
+            rightParticipantIdForTour
         );
     } else {
         // This is a regular (non-tournament) game
@@ -603,8 +554,8 @@ export class GameRoom {
   public getPlayerIds(): number[] {
     const ids: number[] = [];
   
-    if (this.players.left) ids.push(this.players.left.id);
-    if (this.players.right) ids.push(this.players.right.id);
+    if (this.players.left?.id != null) ids.push(this.players.left.id);
+    if (this.players.right?.id != null) ids.push(this.players.right.id);
   
     return ids;
   }
