@@ -149,42 +149,47 @@ CREATE TABLE IF NOT EXISTS tournaments (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
   description TEXT,
+  mode TEXT NOT NULL CHECK(mode IN ('local', 'remote')) DEFAULT 'local',
   status TEXT NOT NULL CHECK(status IN ('pending', 'active', 'completed', 'cancelled')) DEFAULT 'pending',
   max_participants INTEGER NOT NULL DEFAULT 4,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Updated tournament_participants table with host relationship
 CREATE TABLE IF NOT EXISTS tournament_participants (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   tournament_id INTEGER NOT NULL,
-  user_id INTEGER NOT NULL,
+  user_id INTEGER,  -- Nullable to allow local/guest players
   alias TEXT NOT NULL,
-  seed INTEGER,
+  is_guest BOOLEAN NOT NULL DEFAULT 0,  -- Flag to identify guest/local players
+  host_id INTEGER,  -- Reference to the registered player hosting this guest (if applicable)
   status TEXT CHECK(status IN ('registered', 'active', 'eliminated', 'winner')) DEFAULT 'registered',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (tournament_id) REFERENCES tournaments(id) ON DELETE CASCADE,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-  UNIQUE(tournament_id, user_id)
+  FOREIGN KEY (host_id) REFERENCES tournament_participants(id) ON DELETE CASCADE,
+  UNIQUE(tournament_id, user_id) -- Will only apply when user_id is not NULL
 );
 
+-- Simplified tournament_matches table using only participant references
 CREATE TABLE IF NOT EXISTS tournament_matches (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   tournament_id INTEGER NOT NULL,
+  mode TEXT NOT NULL CHECK(mode IN ('local', 'remote')),
   round INTEGER NOT NULL,
   match_number INTEGER NOT NULL,
-  player1_id INTEGER,
-  player2_id INTEGER,
-  winner_id INTEGER,
+  player1_participant_id INTEGER, -- Reference to tournament_participants
+  player2_participant_id INTEGER, -- Reference to tournament_participants
+  winner_participant_id INTEGER,  -- Reference to tournament_participants
   game_id TEXT,
   status TEXT CHECK(status IN ('scheduled', 'in_progress', 'completed', 'cancelled')) DEFAULT 'scheduled',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (tournament_id) REFERENCES tournaments(id) ON DELETE CASCADE,
-  FOREIGN KEY (player1_id) REFERENCES users(id) ON DELETE SET NULL,
-  FOREIGN KEY (player2_id) REFERENCES users(id) ON DELETE SET NULL,
-  FOREIGN KEY (winner_id) REFERENCES users(id) ON DELETE SET NULL,
+  FOREIGN KEY (player1_participant_id) REFERENCES tournament_participants(id) ON DELETE SET NULL,
+  FOREIGN KEY (player2_participant_id) REFERENCES tournament_participants(id) ON DELETE SET NULL,
+  FOREIGN KEY (winner_participant_id) REFERENCES tournament_participants(id) ON DELETE SET NULL,
   UNIQUE(tournament_id, round, match_number)
 );
-
 
 CREATE TABLE IF NOT EXISTS elo_history (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

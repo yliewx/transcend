@@ -44,8 +44,8 @@ async function websocketRoutes(server: FastifyInstance) {
       connection.close();
       return;
     }
-    console.log(chalk.green.bold('\n[ws.routes] New online socket connection'));
-    printAuthTokenPayload(user);
+    // console.log(chalk.green.bold('\n[ws.routes] New online socket connection'));
+    // printAuthTokenPayload(user);
     connection.send('Connected to server');
 
     onlineUsers.set(user.id, connection);
@@ -105,12 +105,12 @@ async function websocketRoutes(server: FastifyInstance) {
     console.log(chalk.green.bold('\n[/pong/:gameId] New connection to game: ' + chalk.green(gameId)));
     printAuthTokenPayload(user);
 
-    connection.on('message', function onFirstMessage (msg: any) {
+    connection.on('message', async function onFirstMessage (msg: any) {
       const message = JSON.parse(msg.toString());
       console.log('[ws.routes] Full message:', message.type, JSON.stringify(message.data, null, 2));
 
       if (message.type === 'join') {
-        const joinSuccess = gameManager.joinRoom(message.data, connection);
+        const joinSuccess = await gameManager.joinRoom(message.data, connection);
           if (joinSuccess) {
             connection.off('message', onFirstMessage);
           }

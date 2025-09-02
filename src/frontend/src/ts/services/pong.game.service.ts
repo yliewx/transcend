@@ -8,6 +8,7 @@ interface ExistingGameResponse {
   state?: GameState,
   isCreator?: boolean,
   isTourMatch?: boolean,
+  participantId?: number,
   message?: string
 }
 
