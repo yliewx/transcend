@@ -6,11 +6,13 @@ import User from '../models/user';
 import GameStats from '../models/game.stats';
 import { Database } from 'sqlite';
 import { updateTournamentMatchResult } from '../controllers/tour.controller';
-
+import Tournament from '../models/tournament';
 
 export interface Player {
-  id: number;
+  id: number | null;
   socket: WebSocket | null;
+  participantId: number | null;
+  alias: string | null;
 }
 
 export class GameRoom {
@@ -22,20 +24,17 @@ export class GameRoom {
     left: Player | null;
     right: Player | null;
   } = { left: null, right: null };
-  private leftUserName: string | null = null;
-  private rightUserName: string | null = null;
-  private isTour: boolean = false; 
+  
   /*------------------------------CONSTRUCTOR-------------------------------*/
 
   constructor(
     id: string,
     mode: 'local' | 'remote',
     private onCleanup: (gameId: string) => void,
-    isTour: boolean
+    private tournamentId: string | null
   ) {
     this.id = id;
     this.mode = mode;
-    this.isTour = isTour;
     this.game = new PongGame(
       id,
       () => this.broadcastGameState('update'),
@@ -71,54 +70,194 @@ export class GameRoom {
   }
 
   /*------------------------------ANNOUNCE JOIN-----------------------------*/
-  private async announceJoin(playerId: number, side: 'left' | 'right') {
-    const db = await getDb();
-    const user = await User.findById(db, Number(playerId));
+  // private async announceJoin(playerId: number, side: 'left' | 'right') {
+  //   const db = await getDb();
+  //   const user = await User.findById(db, Number(playerId));
     
-    let playerName = user.username;
+  //   let playerName = user.username;
     
-    if (this.isTour) {
-      try {
-        const match = await db.get(
-          `SELECT tournament_id FROM tournament_matches WHERE game_id = ?`,
-          [this.id]
-        );
+  //   if (this.tournamentId !== null) {
+  //     try {
+  //       const match = await db.get(
+  //         `SELECT tournament_id FROM tournament_matches WHERE game_id = ?`,
+  //         [this.id]
+  //       );
         
-        if (match) {
-          const participant = await db.get(
-            `SELECT alias FROM tournament_participants 
-            WHERE tournament_id = ? AND user_id = ?`,
-            [match.tournament_id, playerId]
-          );
+  //       if (match) {
+  //         const participant = await db.get(
+  //           `SELECT alias FROM tournament_participants 
+  //           WHERE tournament_id = ? AND user_id = ?`,
+  //           [match.tournament_id, playerId]
+  //         );
           
-          if (participant && participant.alias) {
-            playerName = participant.alias;
+  //         if (participant && participant.alias) {
+  //           playerName = participant.alias;
+  //         }
+  //       }
+  //     } catch (error) {
+  //       console.error("Error fetching tournament alias:", error);
+  //     }
+  //   }
+    
+  //   if (side === 'left') this.leftUserName = playerName;
+  //   if (side === 'right') this.rightUserName = playerName;
+    
+  //   this.broadcast(JSON.stringify({
+  //     type: 'player-joined',
+  //     data: {
+  //       message: `Player joined side: ${side}!`,
+  //       side: side,
+  //       ready: this.roomIsFull(),
+  //       state: this.game.getState(),
+  //       leftUserName: this.leftUserName,
+  //       rightUserName: this.rightUserName
+  //     }
+  //   }));
+  // }
+  private async announceJoin(playerId: number, side: 'left' | 'right') {
+    this.broadcast(JSON.stringify({
+        type: 'player-joined',
+        data: {
+          message: `Player joined side: ${side}!`,
+          side: side,
+          ready: this.roomIsFull(),
+          state: this.game.getState(),
+          leftUserName: this.players.left?.alias ?? null,
+          rightUserName: this.players.right?.alias ?? null
+        }
+    }));
+  }
+
+  /*---------------------------SET PLAYER DETAILS---------------------------*/
+
+  private async setPlayerDetails(
+    side: 'left' | 'right',
+    player: Partial<Player> & { id: number; socket: WebSocket }
+  ) {
+    const db = await getDb();
+    let participantId = null, guestParticipantId = null, alias = null, guestAlias = null;
+    
+    try {
+      if (this.tournamentId !== null && this.id !== null) {
+        const match = await db.get<{
+          player1_participant_id: number | null;
+          player2_participant_id: number | null;
+        }>(`SELECT player1_participant_id, player2_participant_id FROM tournament_matches WHERE game_id = ?`, [this.id]);
+
+        if (!match) {
+          throw new Error(`No match found for game_id=${this.id}`);
+        }
+        console.log('player1_participant_id:', match.player1_participant_id);
+        console.log('player2_participant_id:', match.player2_participant_id);
+
+        const rawParticipants = await db.all(
+          `SELECT tp.id, tp.alias, tp.is_guest, tp.user_id
+          FROM tournament_participants tp
+          WHERE tp.id IN (?, ?)`,
+          [match.player1_participant_id, match.player2_participant_id]
+        ) as unknown;
+
+        const participants = rawParticipants as {
+          id: number;
+          alias: string;
+          is_guest: number;
+          user_id: number | null;
+        }[];
+
+        const leftId = side === 'left' ? match.player1_participant_id : match.player2_participant_id;
+
+        for (const p of participants) {
+          if (p.id === leftId) {
+            participantId = p.id;
+            alias = p.alias;
+          } else if (this.mode === 'local') {
+            guestParticipantId = p.id;
+            guestAlias = p.alias;
           }
         }
-      } catch (error) {
-        console.error("Error fetching tournament alias:", error);
+
+        console.log('participants:', participants);
       }
+
+      // if (this.tournamentId !== null && this.id !== null) {
+      //   const participants = await db.all(`
+      //     SELECT tp.id, tp.alias, tp.is_guest, tp.user_id
+      //     FROM tournament_matches tm
+      //     JOIN tournament_participants tp 
+      //       ON tp.id IN (tm.player1_participant_id, tm.player2_participant_id)
+      //     WHERE tm.game_id = ?
+      //   `, [this.id]) as {
+      //     id: number;
+      //     alias: string;
+      //     is_guest: number;
+      //     user_id: number | null;
+      //   }[];
+
+      //   for (const p of participants) {
+      //     if (p.user_id === player.id) {
+      //       participantId = p.id ?? null;
+      //       alias = p.alias ?? 'Player';
+      //     } else if (this.mode === 'local') {
+      //       guestParticipantId = p.id ?? null;
+      //       guestAlias = p.alias ?? null;
+      //     }
+      //   }
+      //   console.log('participants:', participants);
+      // }
+
+      // if (this.tournamentId !== null) {
+      //   // get host participant id & alias
+      //   const host = await db.get<{ id: number; alias: string }>(
+      //     `SELECT id, alias FROM tournament_participants WHERE tournament_id = ? AND user_id = ? AND is_guest = 0`,
+      //     [this.tournamentId, player.id]
+      //   );
+      //   participantId = host?.id ?? null;
+      //   alias = host?.alias ?? 'Player';
+      //   console.log(`host: ${JSON.stringify(host, null, 2)} | participantId: ${participantId} | hostAlias: ${alias}`);
+
+      //   // local tournament: get guest participant id & alias
+      //   if (this.mode === 'local') {
+      //     const guest = await db.get<{ id: number; alias: string }>(
+      //       `SELECT id, alias FROM tournament_participants WHERE tournament_id = ? AND host_id = ? AND is_guest = 1`,
+      //       [this.tournamentId, participantId]
+      //     );
+      //     guestParticipantId = guest?.id ?? null;
+      //     guestAlias = guest?.alias ?? null;
+      //     console.log(`guest: ${JSON.stringify(guest, null, 2)} | guestParticipantId: ${guestParticipantId} | guestAlias: ${guestAlias}`);
+      //   }
+      // }
+      else { //non-tournament -> get username as alias
+        const user = await User.findById(db, Number(player.id)); // Here, playerId is expected to be user_id
+        alias = user?.username ?? 'Player';
+      }
+    } catch (error) {
+      console.error("Error in setPlayerDetails:", error);
+      alias = 'Error Player';
     }
+
+    console.log(`participantId: ${participantId} | hostAlias: ${alias}`);
+    console.log(`guestParticipantId: ${guestParticipantId} | guestAlias: ${guestAlias}`);
     
-    if (side === 'left') this.leftUserName = playerName;
-    if (side === 'right') this.rightUserName = playerName;
-    
-    this.broadcast(JSON.stringify({
-      type: 'player-joined',
-      data: {
-        message: `Player joined side: ${side}!`,
-        side: side,
-        ready: this.roomIsFull(),
-        state: this.game.getState(),
-        leftUserName: this.leftUserName,
-        rightUserName: this.rightUserName
-      }
-    }));
+    this.players[side] = {
+      id: player.id,
+      socket: player.socket,
+      participantId: participantId ?? null,
+      alias: alias ?? null,
+    } as Player;
+
+    if (this.tournamentId !== null && this.mode === 'local') {
+      this.players['right'] = {
+        id: null,
+        socket: player.socket,
+        participantId: guestParticipantId ?? null,
+        alias: guestAlias ?? null,
+      } as Player;
+    }
   }
 
   /*-------------------------------JOIN GAME--------------------------------*/
 
-  private addNewPlayer(data: { gameId: string; playerId: number }, socket: WebSocket): boolean {
+  private async addNewPlayer(data: { gameId: string; playerId: number }, socket: WebSocket): Promise<boolean> {
     console.log('Adding new player');
     if (this.mode === 'local') {
       if (this.localSocket) {
@@ -127,14 +266,14 @@ export class GameRoom {
         return false;
       }
       this.localSocket = socket;
-      this.players.left = { id: data.playerId, socket };
+      await this.setPlayerDetails('left', { id: data.playerId, socket });
       this.announceJoin(data.playerId, 'left');
     } else {
       if (!this.players.left) {
-        this.players.left = { id: data.playerId, socket };
+        await this.setPlayerDetails('left', { id: data.playerId, socket });
         this.announceJoin(data.playerId, 'left');
       } else if (!this.players.right) {
-        this.players.right = { id: data.playerId, socket };
+        await this.setPlayerDetails('right', { id: data.playerId, socket });
         this.announceJoin(data.playerId, 'right');
       } else {
         sendError(socket, 'Game is full');
@@ -145,7 +284,7 @@ export class GameRoom {
     return true;
   }
  
-  public handleJoin(data: { gameId: string; playerId: number }, socket: WebSocket): boolean {
+  public async handleJoin(data: { gameId: string; playerId: number }, socket: WebSocket): Promise<boolean> {
     const { playerId } = data;
 
     const side = this.getPlayerSide(playerId);
@@ -156,7 +295,7 @@ export class GameRoom {
         this.players.left.socket = socket;
         this.announceJoin(playerId, 'left');
       } else {
-        const success = this.addNewPlayer(data, socket);
+        const success = await this.addNewPlayer(data, socket);
         if (!success) return false;
       }
     } else {
@@ -169,7 +308,7 @@ export class GameRoom {
         this.players.right.socket = socket;
         this.announceJoin(playerId, 'right');
       } else {
-        const success = this.addNewPlayer(data, socket);
+        const success = await this.addNewPlayer(data, socket);
         if (!success) return false;
       }
     }
@@ -224,7 +363,7 @@ export class GameRoom {
   }
 
   public handleInput(data: InputMessage, socket: WebSocket) {
-    console.log('[GameRoom handleInput] Full data:', JSON.stringify(data, null, 2));
+    // console.log('[GameRoom handleInput] Full data:', JSON.stringify(data, null, 2));
     let side;
     if (this.mode === 'local') {
       if (!data.side || (data.side !== 'left' && data.side !== 'right')) {
@@ -330,6 +469,64 @@ export class GameRoom {
     }
   }
 
+  // async recordResults(state: GameState) {
+  //   const winScore = state.winner === 'left' ? state.scoreLeft : state.scoreRight;
+  //   if (winScore !== 5) {
+  //     console.log("Game ended before reaching a score of 5. Match result not recorded.");
+  //     return;
+  //   }
+
+  //   const db = await getDb();
+  //   const leftPlayerId = this.players.left?.id ?? null;
+  //   const rightPlayerId = this.players.right?.id ?? null;
+  //   const winnerId: number | null = state.winner === 'left' ? leftPlayerId : rightPlayerId;
+  
+  //   if ((leftPlayerId && rightPlayerId && winnerId) || (leftPlayerId && this.mode === 'local'))  {
+  //     await this.recordMatch(db, leftPlayerId, rightPlayerId, winnerId, state);
+  //     await this.recordPlayerResults(db, leftPlayerId, rightPlayerId, winnerId);
+  //     await this.recordPlayerResults(db, rightPlayerId, leftPlayerId, winnerId);
+  //     await updateTournamentMatchResult(this.id, winnerId!);
+  //   }
+  // }
+
+  // async recordResults(state: GameState) {
+  //   const winScore = state.winner === 'left' ? state.scoreLeft : state.scoreRight;
+  //   if (winScore !== 5) {
+  //     console.log("Game ended before reaching a score of 5. Match result not recorded.");
+  //     return;
+  //   }
+
+  //   const db = await getDb();
+  //   const leftPlayerId = this.players.left?.id ?? null;  
+  //   const rightPlayerId = this.players.right?.id ?? null; 
+  //   const winnerId: number | null = state.winner === 'left' ? leftPlayerId : rightPlayerId;
+  
+  //   // Ensure both players are present and a winner is determined for remote games (including tournament)
+  //   // For local games, only leftPlayerId is needed as it's single player.
+  //   if (!leftPlayerId || (this.mode === 'remote' && !rightPlayerId) || winnerId === null) {
+  //       console.error("Game ended, but player IDs or winner ID could not be determined. Results not recorded.", this.id);
+  //       return;
+  //   }
+
+  //   // Determine the type of game and delegate responsibility
+  //   if (this.tournamentId !== null) {
+  //       await updateTournamentMatchResult(this.id, winnerId, state, leftPlayerId, rightPlayerId);
+  //   } else {
+  //       // This is a regular (non-tournament) game
+  //       if (this.mode === 'remote') {
+  //           // For regular remote games, Player.id IS the user_id.
+  //           // So, pass leftPlayerId, rightPlayerId, winnerId directly to GameStats functions.
+  //           // We've already checked if both are present above.
+  //           await this.recordMatch(db, leftPlayerId, rightPlayerId!, winnerId, state);
+  //           await this.recordPlayerResults(db, leftPlayerId, rightPlayerId!, winnerId);
+  //           await this.recordPlayerResults(db, rightPlayerId!, leftPlayerId, winnerId);
+  //       } else if (this.mode === 'local') {
+  //           // For local non-tournament games, we explicitly do NOT update Elo or record match history.
+  //           console.log(`Local non-tournament game ${this.id} completed. Elo/Match History not updated.`);
+  //       }
+  //   }
+  // }
+
   async recordResults(state: GameState) {
     const winScore = state.winner === 'left' ? state.scoreLeft : state.scoreRight;
     if (winScore !== 5) {
@@ -338,15 +535,57 @@ export class GameRoom {
     }
 
     const db = await getDb();
-    const leftPlayerId = this.players.left?.id ?? null;
-    const rightPlayerId = this.players.right?.id ?? null;
-    const winnerId: number | null = state.winner === 'left' ? leftPlayerId : rightPlayerId;
-  
-    if ((leftPlayerId && rightPlayerId && winnerId) || (leftPlayerId && this.mode === 'local'))  {
-      await this.recordMatch(db, leftPlayerId, rightPlayerId, winnerId, state);
-      await this.recordPlayerResults(db, leftPlayerId, rightPlayerId, winnerId);
-      await this.recordPlayerResults(db, rightPlayerId, leftPlayerId, winnerId);
-      await updateTournamentMatchResult(this.id, winnerId!);
+    const leftPlayerId = this.players.left?.id ?? null;  // Type: number | null
+    const rightPlayerId = this.players.right?.id ?? null; // Type: number | null
+    const winnerGameId: number | null = state.winner === 'left' ? leftPlayerId : rightPlayerId; // Type: number | null
+
+    // Consolidate the check for required IDs based on game mode.
+    // If this block is entered, we guarantee the necessary IDs are non-null.
+    let essentialIdsMissing: boolean = false;
+    if (this.mode === 'local') {
+        if (leftPlayerId === null) {
+            essentialIdsMissing = true;
+        }
+    } else {
+        if (leftPlayerId === null || rightPlayerId === null || winnerGameId === null) {
+            essentialIdsMissing = true;
+        }
+    }
+
+    if (essentialIdsMissing) {
+        console.error("Game ended, but essential player IDs or winner ID could not be determined. Results not recorded.", this.id);
+        return;
+    }
+
+    if (this.tournamentId !== null) {
+        const leftParticipantId = this.players.left?.participantId ?? null;
+        const rightParticipantId = this.players.right?.participantId ?? null;
+        if (leftParticipantId === null || rightParticipantId === null) {
+            console.error(`Could not map one or both user IDs (${leftPlayerId}, ${rightPlayerId}) to participant IDs for tournament ${this.tournamentId}. Cannot record tournament results.`);
+            return;
+        }
+
+        const winnerParticipantId: number = state.winner === 'left' ? leftParticipantId : rightParticipantId;
+        console.log('winnerParticipantId:', winnerParticipantId);
+
+        await updateTournamentMatchResult(
+            this.id,
+            winnerParticipantId!,
+            state,
+            leftParticipantId,
+            rightParticipantId
+        );
+    } else {
+        // This is a regular (non-tournament) game
+        if (this.mode === 'remote') {
+            // For remote non-tournament games, leftPlayerId, rightPlayerId, and winnerGameId are guaranteed non-null.
+            await this.recordMatch(db, leftPlayerId!, rightPlayerId!, winnerGameId!, state);
+            await this.recordPlayerResults(db, leftPlayerId!, rightPlayerId!, winnerGameId!);
+            await this.recordPlayerResults(db, rightPlayerId!, leftPlayerId!, winnerGameId!);
+        } else if (this.mode === 'local') {
+            // For local non-tournament games, we explicitly do NOT update Elo or record match history.
+            console.log(`Local non-tournament game ${this.id} completed. Elo/Match History not updated.`);
+        }
     }
   }
 
@@ -363,8 +602,8 @@ export class GameRoom {
   public getPlayerIds(): number[] {
     const ids: number[] = [];
   
-    if (this.players.left) ids.push(this.players.left.id);
-    if (this.players.right) ids.push(this.players.right.id);
+    if (this.players.left?.id != null) ids.push(this.players.left.id);
+    if (this.players.right?.id != null) ids.push(this.players.right.id);
   
     return ids;
   }
@@ -377,6 +616,6 @@ export class GameRoom {
   }
 
   public isTourMatch(): boolean {
-    return this.isTour;
+    return this.tournamentId !== null;
   }
 }

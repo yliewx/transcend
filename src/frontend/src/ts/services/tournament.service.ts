@@ -4,41 +4,60 @@ export interface Tournament {
   id: string;
   name: string;
   description: string;
+  mode: 'local' | 'remote';
   status: 'pending' | 'active' | 'completed' | 'cancelled';
-  current_participants?: number;
+  current_participants: number;
   created_at: string;
-  participant_status: string;
+  participant_status?: string;
   alias?: string;
 }
 
+// export interface TournamentMatch {
+//   id: string;
+//   tournament_id: string;
+//   round: number;
+//   match_number: number;
+//   player1_id: number | null;
+//   player2_id: number | null;
+//   player1_username?: string;
+//   player2_username?: string;
+//   player1_alias?: string;
+//   player2_alias?: string;
+//   winner_id: number | null;
+//   match_date: string | null;
+//   game_id: string | null;
+//   status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
+// }
+
 export interface TournamentMatch {
+  game_id: string | null; // <-- Ensure this is here
   id: string;
   tournament_id: string;
+  mode: 'local' | 'remote';
   round: number;
   match_number: number;
-  player1_id: number | null;
-  player2_id: number | null;
-  player1_username?: string;
-  player2_username?: string;
-  player1_alias?: string;
-  player2_alias?: string;
-  winner_id: number | null;
-  match_date: string | null;
-  game_id: string | null;
+  player1_participant_id: number | null; // <-- Ensure this is here
+  player2_participant_id: number | null; // <-- Ensure this is here
+  player1_alias: string; // Assuming aliases are also part of the match object
+  player2_alias: string;
+  winner_participant_id: number | null;
   status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
 }
 
+
 export interface TournamentParticipant {
-  id: number;
-  username: string;
-  alias?: string;
+  user_id: number;
+  host_id: number | null; // This is the ID of the user who created the guest participant
+  participant_id: number;
+  username: string | null;
+  alias: string;
   status?: string;
 }
 
 export interface CreateTournamentData {
   name: string;
   description: string;
-  max_participants: number;
+  mode: 'local' | 'remote';
 }
 
 export class TournamentService extends BaseApiService {
@@ -79,7 +98,7 @@ export class TournamentService extends BaseApiService {
     );
   }
 
-  public async registerForTournament(tournamentId: string | null, alias: string): Promise<{ 
+  public async registerForTournament(tournamentId: string, userAlias: string, opponentAlias?: string): Promise<{ 
     success: boolean, 
     message?: string, 
     error?: string, 
@@ -88,13 +107,13 @@ export class TournamentService extends BaseApiService {
     return this.request<{ message: string, tournament_started?: boolean }>(
       `/tournaments/${tournamentId}/register`,
       'POST',
-      { alias },
+      { ua: userAlias, oa: opponentAlias },
       true
     );
   }
 
-  public async joinTournamentMatch(matchId: number): Promise<{ success: boolean, gameId?: string, error?: string }> {
-    return this.request<{ gameId: string }>(
+  public async joinTournamentMatch(matchId: number): Promise<{ success: boolean, gameId?: string, participantId: number, error?: string }> {
+    return this.request<{ gameId: string, participantId: number }>(
       `/tournaments/matches/${matchId}/join`,
       'POST',
       undefined,

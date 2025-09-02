@@ -19,7 +19,7 @@ import fastifyMultipart from '@fastify/multipart';
 setupDbConnection();
 
 const server = fastify({
-  logger: true
+  // logger: true
 });
 
 fs.mkdirSync(avatarsDir, { recursive: true });
@@ -48,9 +48,9 @@ server.register(websocket, {
     clientTracking: true,
   }
 });
-server.addHook("onRequest", async (req, reply) => {
-  server.log.info(`Received request: ${req.method} ${req.url}`);
-});
+// server.addHook("onRequest", async (req, reply) => {
+//   server.log.info(`Received request: ${req.method} ${req.url}`);
+// });
 server.register(authRoutes);
 server.register(setupRoutes);
 server.register(setupWebSocket);
