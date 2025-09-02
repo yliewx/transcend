@@ -249,11 +249,6 @@ private async restoreGameSession(): Promise<boolean> {
     if (data.state) this.state = data.state;
     if (data.leftUserName !== null) this.leftUserName = data.leftUserName;
     if (data.rightUserName !== null) this.rightUserName = data.rightUserName;
-    console.log('HANDLE JOINED GAME:', JSON.stringify(data));
-    console.log('this.leftUserName', this.leftUserName);
-    console.log('data.leftUserName', data.leftUserName);
-    console.log('this.rightUserName', this.rightUserName);
-    console.log('data.rightUserName', data.rightUserName);
 
     this.setupGameUI();
     if (this.state?.status === 'playing') {
