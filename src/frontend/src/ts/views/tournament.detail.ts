@@ -58,7 +58,7 @@ export class TournamentDetailPage implements Page {
   private async loadData(): Promise<{ success: boolean; error?: string }> {
     try {
       const response = await this.tournamentService.getTournamentDetails(this.tournamentId);
-      console.log('Tournament details response:', response);
+      // console.log('Tournament details response:', response);
       if (response.success) {
         this.tournament = response.tournament || null;
         this.matches = response.matches || [];
@@ -75,10 +75,10 @@ export class TournamentDetailPage implements Page {
         this.isRegistered = currParticipant !== undefined; // User is registered if a participant is found
         
         // Log for debugging:
-        console.log('Current User ID:', userId);
-        console.log('currentParticipant:', currParticipant);
-        console.log('CurrentParticipant ID:', this.currParticipantId);
-        console.log('Is Registered:', this.isRegistered);
+        // console.log('Current User ID:', userId);
+        // console.log('currentParticipant:', currParticipant);
+        // console.log('CurrentParticipant ID:', this.currParticipantId);
+        // console.log('Is Registered:', this.isRegistered);
         return { success: true };
       } else {
         return { success: false, error: response.error || 'Failed to load tournament details' };
@@ -748,8 +748,8 @@ export class TournamentDetailPage implements Page {
   }
   
 private renderMatchContent(match: TournamentMatch): string {
-  console.log(`--- Rendering Match ${match.id} ---`);
-  console.log('Match Object:', match);
+  // console.log(`--- Rendering Match ${match.id} ---`);
+  // console.log('Match Object:', match);
   // console.log('Match Status:', match.status);
   // console.log('Match Winner ID:', match.winner_participant_id);
   // console.log('Player 1 ID:', match.player1_participant_id, 'Player 2 ID:', match.player2_participant_id);
@@ -776,8 +776,8 @@ private renderMatchContent(match: TournamentMatch): string {
   if (userNotInFinalLocalMatch) {
     matchIsPlayable = false;
   }
-  console.log('User in Match:', userInMatch);
-  console.log('Match is Playable:', matchIsPlayable); 
+  // console.log('User in Match:', userInMatch);
+  // console.log('Match is Playable:', matchIsPlayable); 
 
   const statusColors = {
     scheduled: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',

@@ -35,19 +35,24 @@ async function notifyTournamentParticipants(
 ): Promise<void> {
   try {
     const participants = await Tournament.getTournamentParticipants(db, tournamentId);
+    // console.log('participants:', participants);
     
     for (const participant of participants) {
-      if (excludeUserId && participant.id === excludeUserId) {
+      if (excludeUserId && participant.user_id === excludeUserId) {
         continue;
       }
       
-      const participantSocket = onlineUsers.get(participant.id);
-      const userTournaments = await Tournament.findTournamentsByUserId(db, participant.id);
+      // console.log(`[tour.controller.ts] notifyTourParticipant: ${participant.user_id}`);
+      const participantSocket = onlineUsers.get(participant.user_id);
+      const userTournaments = await Tournament.findTournamentsByUserId(db, participant.user_id);
       if (participantSocket && participantSocket.readyState === WebSocket.OPEN) {
+        // console.log('notifying:', participant.user_id);
         participantSocket.send(JSON.stringify({
           type: eventType,
           data: { ...eventData, userTournaments }
         }));
+      } else {
+        console.log('unable to notify:', participant.user_id);
       }
     }
   } catch (error) {
@@ -223,35 +228,17 @@ export async function registerForTournament(request: AuthenticatedRequest, reply
       await startTournamentInternal(db, tournamentId, tournament.mode);
       tournamentStarted = true;
     }
-  //   const userData = await db.get(
-  //     `SELECT u.id, u.username, p.display_name
-  //      FROM users u
-  //      LEFT JOIN profiles p ON u.id = p.user_id
-  //      WHERE u.id = ?`,
-  //     userId
-  //   );
-    
-  //   const newParticipant = {
-  //     id: userId,
-  //     username: userData.username,
-  //     alias: alias,
-  //     elo: 1000,
-  //     status: 'active'
-  //   };
-    
-  //   await notifyTournamentParticipants(
-  //     db,
-  //     tournamentId,
-  //     'participant-joined',
-  //     {
-  //       tournamentId,
-  //       participant: newParticipant,
-  //       message: `${alias} has joined the tournament!`
-  //     },
-  //     userId 
-  //   );
-    
-    
+
+    await notifyTournamentParticipants(
+      db,
+      tournamentId,
+      'participant-joined',
+      {
+        tournamentId,
+        message: tournament.mode == 'local' ? `${ua} and ${oa} have joined the tournament!` : `${ua} has joined the tournament!`
+      },
+      userId 
+    );
     
     await db.run('COMMIT');
       

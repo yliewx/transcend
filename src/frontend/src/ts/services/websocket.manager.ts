@@ -324,6 +324,8 @@ export class WebSocketManager {
       return;
     }
 
+    console.log(`New message [${type}]:`, JSON.stringify(data, null, 2));
+
     const userCallback = this.onUserEventCallbacks.get(type);
     if (userCallback) {
       userCallback(data);
