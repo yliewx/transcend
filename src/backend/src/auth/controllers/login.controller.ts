@@ -76,7 +76,6 @@ export async function googleAuthCallbackHandler(request: FastifyRequest<{ Body: 
   }
 
   const userData = await request.server.verifyGoogleToken(idToken);
-  request.server.log.info("Google Token Payload:", userData);
   if (!userData) {
       return reply.status(401).send({ success: false, error: 'Invalid token' });
   }

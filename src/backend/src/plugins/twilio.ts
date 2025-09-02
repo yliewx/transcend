@@ -28,7 +28,7 @@ export default fp(async function setupTwilio(server: FastifyInstance) {
       server.log.info(`SMS OTP sent to ${phoneNumber}, SID: ${message.sid}`);
       return true;
     } catch (error) {
-      server.log.error(`Failed to send SMS OTP to ${phoneNumber}:`, error);
+      console.error(`Failed to send SMS OTP to ${phoneNumber}:`, error);
       throw new Error('Failed to send verification code via SMS');
     }
   };
