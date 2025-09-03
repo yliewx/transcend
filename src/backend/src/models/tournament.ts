@@ -247,28 +247,54 @@ class Tournament {
     //     `, [matchId, userId, userId]);
     // }
 
+    // static async getMatchForPlayer(db: Database, matchId: number, userId: number) {
+    //     return db.get(`
+    //         SELECT
+    //             tm.*,
+    //             t.mode AS tournament_mode
+    //         FROM tournament_matches tm
+    //         JOIN tournaments t ON tm.tournament_id = t.id
+    //         WHERE tm.id = ?
+    //         AND (
+    //             tm.player1_participant_id IN (SELECT id FROM tournament_participants WHERE user_id = ?)
+    //             OR
+    //             tm.player2_participant_id IN (SELECT id FROM tournament_participants WHERE user_id = ?)
+    //             OR
+    //             (
+    //                 t.mode = 'local' AND (
+    //                     tm.player1_participant_id IN (SELECT tp_guest.id FROM tournament_participants tp_guest JOIN tournament_participants tp_host ON tp_guest.host_id = tp_host.id WHERE tp_host.user_id = ? AND tp_guest.is_guest = 1)
+    //                     OR
+    //                     tm.player2_participant_id IN (SELECT tp_guest.id FROM tournament_participants tp_guest JOIN tournament_participants tp_host ON tp_guest.host_id = tp_host.id WHERE tp_host.user_id = ? AND tp_guest.is_guest = 1)
+    //                 )
+    //             )
+    //         )
+    //         AND tm.status IN ('scheduled', 'in_progress')
+    //     `, [matchId, userId, userId, userId, userId]);
+    // }
+
     static async getMatchForPlayer(db: Database, matchId: number, userId: number) {
         return db.get(`
-            SELECT
-                tm.*,
-                t.mode AS tournament_mode
-            FROM tournament_matches tm
-            JOIN tournaments t ON tm.tournament_id = t.id
-            WHERE tm.id = ?
-            AND (
-                tm.player1_participant_id IN (SELECT id FROM tournament_participants WHERE user_id = ?)
-                OR
-                tm.player2_participant_id IN (SELECT id FROM tournament_participants WHERE user_id = ?)
-                OR
-                (
-                    t.mode = 'local' AND (
-                        tm.player1_participant_id IN (SELECT tp_guest.id FROM tournament_participants tp_guest JOIN tournament_participants tp_host ON tp_guest.host_id = tp_host.id WHERE tp_host.user_id = ? AND tp_guest.is_guest = 1)
-                        OR
-                        tm.player2_participant_id IN (SELECT tp_guest.id FROM tournament_participants tp_guest JOIN tournament_participants tp_host ON tp_guest.host_id = tp_host.id WHERE tp_host.user_id = ? AND tp_guest.is_guest = 1)
-                    )
-                )
+            SELECT tm.*, t.mode AS tournament_mode 
+            FROM tournament_matches tm 
+            JOIN tournaments t ON tm.tournament_id = t.id 
+            WHERE tm.id = ? 
+            AND tm.status IN ('scheduled', 'in_progress') 
+            AND ( 
+                tm.player1_participant_id IN ( 
+                    SELECT tp.id FROM tournament_participants tp 
+                    WHERE tp.user_id = ? -- Direct participation
+                    OR (tp.is_guest = 1 AND tp.host_id IN ( 
+                        SELECT id FROM tournament_participants WHERE user_id = ? 
+                    )) 
+                ) 
+                OR tm.player2_participant_id IN ( 
+                    SELECT tp.id FROM tournament_participants tp 
+                    WHERE tp.user_id = ? -- Direct participation
+                    OR (tp.is_guest = 1 AND tp.host_id IN ( 
+                        SELECT id FROM tournament_participants WHERE user_id = ? 
+                    )) 
+                ) 
             )
-            AND tm.status IN ('scheduled', 'in_progress')
         `, [matchId, userId, userId, userId, userId]);
     }
 
@@ -400,11 +426,11 @@ class Tournament {
     let params: (number | null)[];
 
     if (userId === null) {
-        console.log('inside getParticipantIdByUserIdAndTournamentId userId === null');
+        // console.log('inside getParticipantIdByUserIdAndTournamentId userId === null');
         sql = `
             SELECT id FROM tournament_participants
             WHERE tournament_id = ? AND user_id IS NULL
-            -- AND is_guest = 1 -- Potentially add this if you strictly link null user_id to guests
+            -- AND is_guest = 1 
         `;
         params = [tournamentId];
     } else {
