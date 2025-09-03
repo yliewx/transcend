@@ -298,6 +298,24 @@ class Tournament {
         `, [matchId, userId, userId, userId, userId]);
     }
 
+    static async getMatchForFrontend(db: Database, tournamentId: number, matchId: number) {
+        return db.get(`
+            SELECT
+                tm.*,
+                tp1.alias as player1_alias,
+                tp2.alias as player2_alias,
+                u1.username as player1_username,
+                u2.username as player2_username
+            FROM tournament_matches tm
+            LEFT JOIN tournament_participants tp1 ON tm.player1_participant_id = tp1.id -- Correct: Join on participant ID
+            LEFT JOIN tournament_participants tp2 ON tm.player2_participant_id = tp2.id -- Correct: Join on participant ID
+            LEFT JOIN users u1 ON tp1.user_id = u1.id -- Correct: Join users via participant's user_id
+            LEFT JOIN users u2 ON tp2.user_id = u2.id -- Correct: Join users via participant's user_id
+            WHERE tm.id = ? AND tm.tournament_id = ?
+        `, [matchId, tournamentId]);
+    
+    }
+
 
     static async setMatchGameId(db: Database, matchId: number, gameId: string) {
         await db.run(`
@@ -339,6 +357,13 @@ class Tournament {
             JOIN tournaments t ON tm.tournament_id = t.id
             WHERE tm.game_id = ?
         `, [gameId]);
+    }
+
+    static async findMatchById(db: Database, matchId: number) {
+        return db.get(`
+            SELECT * FROM tournament_matches
+            WHERE id = ?
+        `, [matchId]);
     }
     
     // static async setParticipantStatus(db: Database, tournamentId: number, userId: number, status: string) {
@@ -421,29 +446,29 @@ class Tournament {
     //     return result ? result.id : null;
     // }
 
-    static async getParticipantIdByUserIdAndTournamentId(db: Database, tournamentId: number, userId: number | null): Promise<number | null> {
-    let sql: string;
-    let params: (number | null)[];
+//     static async getParticipantIdByUserIdAndTournamentId(db: Database, tournamentId: number, userId: number | null): Promise<number | null> {
+//     let sql: string;
+//     let params: (number | null)[];
 
-    if (userId === null) {
-        // console.log('inside getParticipantIdByUserIdAndTournamentId userId === null');
-        sql = `
-            SELECT id FROM tournament_participants
-            WHERE tournament_id = ? AND user_id IS NULL
-            -- AND is_guest = 1 
-        `;
-        params = [tournamentId];
-    } else {
-        sql = `
-            SELECT id FROM tournament_participants
-            WHERE tournament_id = ? AND user_id = ?
-        `;
-        params = [tournamentId, userId];
-    }
+//     if (userId === null) {
+//         // console.log('inside getParticipantIdByUserIdAndTournamentId userId === null');
+//         sql = `
+//             SELECT id FROM tournament_participants
+//             WHERE tournament_id = ? AND user_id IS NULL
+//             -- AND is_guest = 1 
+//         `;
+//         params = [tournamentId];
+//     } else {
+//         sql = `
+//             SELECT id FROM tournament_participants
+//             WHERE tournament_id = ? AND user_id = ?
+//         `;
+//         params = [tournamentId, userId];
+//     }
 
-    const result = await db.get<{ id: number }>(sql, params);
-    return result ? result.id : null;
-}
+//     const result = await db.get<{ id: number }>(sql, params);
+//     return result ? result.id : null;
+// }
 
 }
 
