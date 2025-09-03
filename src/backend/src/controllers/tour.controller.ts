@@ -8,6 +8,7 @@ import { onlineUsers } from '../game/ws.types.js';
 import { GameState } from "../game/PongGame";
 import  GameStats from '../models/game.stats';
 import { getUserParticipantIdInMatch} from './game.controller';
+
 /*-----------------------------NOTIFY RECIPIENT-----------------------------*/
 
 async function notifyOnlineUsers(eventType: string, eventData: {
@@ -64,21 +65,7 @@ async function notifyTournamentParticipants(
 async function notifyMatchUpdate(db: Database, tournamentId: number, matchId: number): Promise<void> {
   try {
     console.log('Notifying match update:', tournamentId, matchId);
-    const match = await db.get(`
-      SELECT
-        tm.*,
-        tp1.alias as player1_alias,
-        tp2.alias as player2_alias,
-        u1.username as player1_username,
-        u2.username as player2_username
-      FROM tournament_matches tm
-      LEFT JOIN tournament_participants tp1 ON tm.player1_participant_id = tp1.id -- Correct: Join on participant ID
-      LEFT JOIN tournament_participants tp2 ON tm.player2_participant_id = tp2.id -- Correct: Join on participant ID
-      LEFT JOIN users u1 ON tp1.user_id = u1.id -- Correct: Join users via participant's user_id
-      LEFT JOIN users u2 ON tp2.user_id = u2.id -- Correct: Join users via participant's user_id
-      WHERE tm.id = ? AND tm.tournament_id = ?`,
-      [matchId, tournamentId]
-    );
+    const match = await Tournament.getMatchForFrontend(db, tournamentId, matchId);
 
     if (!match) return;
 
@@ -319,11 +306,11 @@ async function startTournamentInternal(db: Database, tournamentId: number, mode:
       const hosts = participants.filter(p => !p.is_guest);
       const guests = participants.filter(p => p.is_guest);
 
-      // Verify assumptions: Should have 2 hosts and 2 guests for a 4-player local tournament
-      if (hosts.length !== 2 || guests.length !== 2) {
-        console.warn(`Local tournament ${tournamentId} has unexpected participant count/distribution. Hosts: ${hosts.length}, Guests: ${guests.length}`);
-        // You might want to throw an error here or handle it more robustly
-      }
+      // // Verify assumptions: Should have 2 hosts and 2 guests for a 4-player local tournament
+      // if (hosts.length !== 2 || guests.length !== 2) {
+      //   console.warn(`Local tournament ${tournamentId} has unexpected participant count/distribution. Hosts: ${hosts.length}, Guests: ${guests.length}`);
+      //   // You might want to throw an error here or handle it more robustly
+      // }
 
       // Match 1: First host vs their guest
       const host1 = hosts[0];
