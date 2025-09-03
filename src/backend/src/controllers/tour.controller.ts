@@ -8,6 +8,7 @@ import { onlineUsers } from '../game/ws.types.js';
 import { GameState } from "../game/PongGame";
 import  GameStats from '../models/game.stats';
 import { getUserParticipantIdInMatch} from './game.controller';
+
 /*-----------------------------NOTIFY RECIPIENT-----------------------------*/
 
 async function notifyOnlineUsers(eventType: string, eventData: {
@@ -678,8 +679,8 @@ export async function updateTournamentMatchResult(
     gameId: string,
     winnerParticipantId: number,
     finalState: GameState,
-    gameLeftParticipantId: number,  // NEW: Actual participantId of the player on the left in the game
-    gameRightParticipantId: number  // NEW: Actual participantId of the player on the right in the game
+    gameLeftParticipantId: number,
+    gameRightParticipantId: number
 ): Promise<void> {
   const db = await getDb();
 
@@ -707,104 +708,14 @@ export async function updateTournamentMatchResult(
 
     // Conditional logic for Elo/Stats/Match History updates for remote (ranked) tournament games
     if (match.mode === 'remote') {
-        const winnerUserId = await Tournament.getUserIdByParticipantId(db, winnerParticipantId);
-        const loserUserId = await Tournament.getUserIdByParticipantId(db, loserParticipantId);
-
-        if (winnerUserId === null || loserUserId === null) {
-            console.error(`Could not retrieve user IDs for participants ${winnerParticipantId} and ${loserParticipantId}. Elo/Match History not updated.`);
-            await db.run('ROLLBACK'); // Rollback the ongoing tournament transaction if we can't record stats
-            return;
-        }
-
-        console.log(`Updating Elo and Match History for remote tournament game between user ${winnerUserId} and ${loserUserId}`);
-        
-        // --- Determine actual left/right user IDs for GameStats.recordGameResult ---
-        // Use the explicitly passed gameLeftParticipantId and gameRightParticipantId
-        const leftSideUserId = await Tournament.getUserIdByParticipantId(db, gameLeftParticipantId);
-        const rightSideUserId = await Tournament.getUserIdByParticipantId(db, gameRightParticipantId);
-
-        if (leftSideUserId === null || rightSideUserId === null) {
-             console.error(`Could not retrieve user IDs for left/right side participants (${gameLeftParticipantId}, ${gameRightParticipantId}). Cannot record detailed game result.`);
-             // Decide how to handle: you might still proceed with Elo updates if possible,
-             // but definitely skip GameStats.recordGameResult which relies on these.
-        } else {
-            // Record the full game result using the correct left/right user IDs and scores
-            // This ensures player1_id gets left_score, player2_id gets right_score in match_history
-            await GameStats.recordGameResult(
-                db,
-                leftSideUserId,  // player1_id (corresponds to actual left player in game)
-                rightSideUserId, // player2_id (corresponds to actual right player in game)
-                winnerUserId,    // winner_id (user_id)
-                finalState.scoreLeft,
-                finalState.scoreRight,
-                match.tournament_id // Pass tournamentId
-            );
-        }
-
-        // --- Update individual player stats (Elo, win streak etc.) ---
-        // These now get accurate scores based on who was who in the game.
-
-
-        // Process winner's stats
-        await processUserGameResults(
-            db,
-            winnerUserId,
-            loserUserId,
-            winnerUserId,
-            gameId, // Pass gameId to helper
-            true // within transaction
-        );
-
-        // Process loser's stats
-        await processUserGameResults(
-            db,
-            loserUserId,
-            winnerUserId,
-            winnerUserId, // winner_id for this context is still the overall winner's user ID
-            gameId, // Pass gameId to helper
-            true // within transaction
-        );
-
+      await updateRemoteTourStats(db, match, winnerParticipantId, loserParticipantId, finalState, gameLeftParticipantId, gameRightParticipantId);
     } else { // match.mode === 'local'
         console.log(`Local tournament match completed. Elo/Match History not updated for local mode.`);
     }
 
     // Tournament progression logic remains the same
     if (match.round === 2) { // Assuming 2 is the final round
-      await Tournament.updateTournamentStatus(db, match.tournament_id, 'completed');
-      await Tournament.setParticipantStatus(db, match.tournament_id, winnerParticipantId, 'winner');
-
-      const tournament = await Tournament.findById(db, match.tournament_id);
-      const matches = await Tournament.getTournamentMatches(db, match.tournament_id);
-      const participants = await Tournament.getTournamentParticipants(db, match.tournament_id);
-      const winner = participants.find((p: any) => p.participant_id === winnerParticipantId);
-
-      await notifyTournamentParticipants(
-        db,
-        match.tournament_id,
-        'tournament-completed',
-        {
-          tournamentId: match.tournament_id,
-          tournament,
-          matches,
-          participants,
-          winner,
-          message: `The tournament has been completed! ${winner?.alias || 'Someone'} is the champion!`
-        }
-      );
-      await notifyTournamentParticipants(
-        db,
-        match.tournament_id,
-        'tournament-update',
-        {
-          tournamentId: match.tournament_id,
-          tournament,
-          matches,
-          participants,
-          winner,
-          message: `The tournament has been completed! ${winner?.alias || 'Someone'} is the champion!`
-        }
-      );
+      await announceFinalMatchResult(db, match, winnerParticipantId);
     } else {
       await advanceToNextRound(db, match, winnerParticipantId);
     }
@@ -814,6 +725,73 @@ export async function updateTournamentMatchResult(
     await db.run('ROLLBACK');
     console.error('Error updating tournament match result:', error);
   }
+}
+
+async function updateRemoteTourStats(
+    db: Database,
+    match: any,
+    winnerParticipantId: number,
+    loserParticipantId: number,
+    finalState: GameState,
+    gameLeftParticipantId: number,
+    gameRightParticipantId: number
+): Promise<void> {    
+    const [winnerUserId, loserUserId, leftSideUserId, rightSideUserId] = await Promise.all([
+        Tournament.getUserIdByParticipantId(db, winnerParticipantId),
+        Tournament.getUserIdByParticipantId(db, loserParticipantId),
+        Tournament.getUserIdByParticipantId(db, gameLeftParticipantId),
+        Tournament.getUserIdByParticipantId(db, gameRightParticipantId)
+    ]);
+
+    if (!winnerUserId || !loserUserId) {
+        throw new Error(`Could not retrieve user IDs for participants ${winnerParticipantId} and ${loserParticipantId}`);
+    }
+
+    console.log(`Updating Elo and Match History for remote tournament game between user ${winnerUserId} and ${loserUserId}`);
+
+    // Record match history if we have left/right user IDs
+    if (leftSideUserId && rightSideUserId) {
+        await GameStats.recordGameResult(
+            db,
+            leftSideUserId,
+            rightSideUserId,
+            winnerUserId,
+            finalState.scoreLeft,
+            finalState.scoreRight,
+            match.tournament_id
+        );
+    } else {
+        console.error(`Could not retrieve user IDs for left/right side participants (${gameLeftParticipantId}, ${gameRightParticipantId}). Cannot record detailed game result.`);
+    }
+
+    await Promise.all([
+        processUserGameResults(db, winnerUserId, loserUserId, winnerUserId, match.game_id, true),
+        processUserGameResults(db, loserUserId, winnerUserId, winnerUserId, match.game_id, true)
+    ]);
+}
+
+async function announceFinalMatchResult(db: any, match: any, winnerParticipantId: number) {
+  await Tournament.updateTournamentStatus(db, match.tournament_id, 'completed');
+  await Tournament.setParticipantStatus(db, match.tournament_id, winnerParticipantId, 'winner');
+
+  const tournament = await Tournament.findById(db, match.tournament_id);
+  const matches = await Tournament.getTournamentMatches(db, match.tournament_id);
+  const participants = await Tournament.getTournamentParticipants(db, match.tournament_id);
+  const winner = participants.find((p: any) => p.participant_id === winnerParticipantId);
+
+  await notifyTournamentParticipants(
+    db,
+    match.tournament_id,
+    'tournament-completed',
+    {
+      tournamentId: match.tournament_id,
+      tournament,
+      matches,
+      participants,
+      winner,
+      message: `The tournament has been completed! ${winner?.alias || 'Someone'} is the champion!`
+    }
+  );
 }
 
 // async function advanceToNextRound(
