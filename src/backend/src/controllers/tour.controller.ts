@@ -7,6 +7,7 @@ import Tournament from '../models/tournament';
 import { onlineUsers } from '../game/ws.types.js';
 import { GameState } from "../game/PongGame";
 import  GameStats from '../models/game.stats';
+import { getUserParticipantIdInMatch} from './game.controller';
 /*-----------------------------NOTIFY RECIPIENT-----------------------------*/
 
 async function notifyOnlineUsers(eventType: string, eventData: {
@@ -412,6 +413,93 @@ async function startTournamentInternal(db: Database, tournamentId: number, mode:
 //   }
 // }
 
+// export async function joinTournamentMatch(request: AuthenticatedRequest, reply: FastifyReply): Promise<FastifyReply> {
+//   if (!request.params.id) {
+//     return reply.status(400).send({
+//       success: false,
+//       error: 'Match ID is required'
+//     });
+//   }
+
+//   const matchId = parseInt(request.params.id);
+//   const userId = request.user.id; // This is the user's ID from the 'users' table
+//   const db = await getDb();
+
+//   try {
+//     // Get match details and verify user participation.
+//     // getMatchForPlayer should also return player1_participant_id and player2_participant_id
+//     const match = await Tournament.getMatchForPlayer(db, matchId, userId);
+
+//     if (!match) {
+//       return reply.status(404).send({
+//         success: false,
+//         error: 'Match not found or you are not a participant'
+//       });
+//     }
+
+//     // Determine the specific tournament_participants.id for this userId in this match
+//     let currentParticipantId: number | null = null;
+
+//     // Check if the user's ID directly matches a user_id in the participant records for player1 or player2
+//     if (match.player1_participant_id) {
+//         const participant1 = await Tournament.getParticipantById(db, match.player1_participant_id);
+//         if (participant1 && participant1.user_id === userId) {
+//             currentParticipantId = match.player1_participant_id;
+//         }
+//     }
+//     if (!currentParticipantId && match.player2_participant_id) {
+//         const participant2 = await Tournament.getParticipantById(db, match.player2_participant_id);
+//         if (participant2 && participant2.user_id === userId) {
+//             currentParticipantId = match.player2_participant_id;
+//         }
+//     }
+
+//     // If still not found, and it's a local tournament, check if the userId is a host for one of the guest participants
+//     // This logic relies on Tournament.getParticipantById also returning is_guest and host_id
+//     if (!currentParticipantId && match.tournament_mode === 'local') {
+//         // Fetch participants involved in this match to find the one associated with this userId (as host)
+//         const participantsInMatch = await db.all(`
+//             SELECT tp.id, tp.user_id, tp.is_guest, tp.host_id
+//             FROM tournament_participants tp
+//             WHERE tp.id IN (?, ?) AND tp.tournament_id = ?
+//         `, [match.player1_participant_id, match.player2_participant_id, match.tournament_id]);
+
+//         for (const participant of participantsInMatch) {
+//             if (participant.is_guest && participant.host_id) {
+//                 const hostParticipant = await Tournament.getParticipantById(db, participant.host_id);
+//                 if (hostParticipant && hostParticipant.user_id === userId) {
+//                     currentParticipantId = participant.id; // This guest's participant ID is what the host will 'control'
+//                     break;
+//                 }
+//             }
+//         }
+//     }
+
+//     if (currentParticipantId === null) {
+//         return reply.status(400).send({ success: false, error: 'Could not determine your participant ID for this match context.' });
+//     }
+
+//     let gameId = match.game_id;
+
+//     if (!gameId) {
+//       gameId = gameManager.createGame(match.tournament_mode, match.tournament_id); // Use match.tournament_mode
+//       console.log(`Created new ${match.tournament_mode} game:`, gameId);
+//       await Tournament.setMatchGameId(db, matchId, gameId);
+//       await notifyMatchUpdate(db, match.tournament_id, matchId);
+//     }
+
+//     return reply.send({ success: true, gameId, participantId: currentParticipantId });
+
+//   } catch (error) {
+//     console.error('Error joining tournament match:', error);
+//     return reply.status(400).send({
+//       success: false,
+//       error: 'Failed to join match'
+//     });
+//   }
+// }
+
+
 export async function joinTournamentMatch(request: AuthenticatedRequest, reply: FastifyReply): Promise<FastifyReply> {
   if (!request.params.id) {
     return reply.status(400).send({
@@ -421,12 +509,10 @@ export async function joinTournamentMatch(request: AuthenticatedRequest, reply: 
   }
 
   const matchId = parseInt(request.params.id);
-  const userId = request.user.id; // This is the user's ID from the 'users' table
+  const userId = request.user.id;
   const db = await getDb();
 
   try {
-    // Get match details and verify user participation.
-    // getMatchForPlayer should also return player1_participant_id and player2_participant_id
     const match = await Tournament.getMatchForPlayer(db, matchId, userId);
 
     if (!match) {
@@ -436,52 +522,19 @@ export async function joinTournamentMatch(request: AuthenticatedRequest, reply: 
       });
     }
 
-    // Determine the specific tournament_participants.id for this userId in this match
-    let currentParticipantId: number | null = null;
-
-    // Check if the user's ID directly matches a user_id in the participant records for player1 or player2
-    if (match.player1_participant_id) {
-        const participant1 = await Tournament.getParticipantById(db, match.player1_participant_id);
-        if (participant1 && participant1.user_id === userId) {
-            currentParticipantId = match.player1_participant_id;
-        }
-    }
-    if (!currentParticipantId && match.player2_participant_id) {
-        const participant2 = await Tournament.getParticipantById(db, match.player2_participant_id);
-        if (participant2 && participant2.user_id === userId) {
-            currentParticipantId = match.player2_participant_id;
-        }
-    }
-
-    // If still not found, and it's a local tournament, check if the userId is a host for one of the guest participants
-    // This logic relies on Tournament.getParticipantById also returning is_guest and host_id
-    if (!currentParticipantId && match.tournament_mode === 'local') {
-        // Fetch participants involved in this match to find the one associated with this userId (as host)
-        const participantsInMatch = await db.all(`
-            SELECT tp.id, tp.user_id, tp.is_guest, tp.host_id
-            FROM tournament_participants tp
-            WHERE tp.id IN (?, ?) AND tp.tournament_id = ?
-        `, [match.player1_participant_id, match.player2_participant_id, match.tournament_id]);
-
-        for (const participant of participantsInMatch) {
-            if (participant.is_guest && participant.host_id) {
-                const hostParticipant = await Tournament.getParticipantById(db, participant.host_id);
-                if (hostParticipant && hostParticipant.user_id === userId) {
-                    currentParticipantId = participant.id; // This guest's participant ID is what the host will 'control'
-                    break;
-                }
-            }
-        }
-    }
+    const currentParticipantId = await getUserParticipantIdInMatch(db, match, userId);
 
     if (currentParticipantId === null) {
-        return reply.status(400).send({ success: false, error: 'Could not determine your participant ID for this match context.' });
+      return reply.status(400).send({
+        success: false,
+        error: 'Could not determine your participant ID for this match context.'
+      });
     }
 
     let gameId = match.game_id;
 
     if (!gameId) {
-      gameId = gameManager.createGame(match.tournament_mode, match.tournament_id); // Use match.tournament_mode
+      gameId = gameManager.createGame(match.tournament_mode, match.tournament_id);
       console.log(`Created new ${match.tournament_mode} game:`, gameId);
       await Tournament.setMatchGameId(db, matchId, gameId);
       await notifyMatchUpdate(db, match.tournament_id, matchId);
@@ -497,7 +550,6 @@ export async function joinTournamentMatch(request: AuthenticatedRequest, reply: 
     });
   }
 }
-
 
 // async function processUserGameResults(
 //     db: Database,
