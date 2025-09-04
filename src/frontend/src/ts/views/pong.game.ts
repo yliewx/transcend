@@ -250,6 +250,8 @@ private async restoreGameSession(): Promise<boolean> {
     if (data.leftUserName !== null) this.leftUserName = data.leftUserName;
     if (data.rightUserName !== null) this.rightUserName = data.rightUserName;
 
+    console.log('[handleJoinedGame] data:', JSON.stringify(data));
+
     this.setupGameUI();
     if (this.state?.status === 'playing') {
       this.setupEventHandlers();
@@ -400,8 +402,8 @@ private async restoreGameSession(): Promise<boolean> {
     if (joinGameFormElement) joinGameFormElement.classList.add('hidden');
 
     const response = await this.pongService.createGame(this.gameMode);
-    if (!response.success) {
-      console.error('Server returned error:', response.error);
+    if (!response.success || !response.gameId) {
+      console.error('Server returned error:', response.error ?? response.message);
       return;
     }
     

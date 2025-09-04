@@ -48,10 +48,16 @@ export class GameManager {
 
   /*------------------------------CREATE GAME-------------------------------*/
 
-  public createGame(mode: 'local' | 'remote', tournamentId: string | null): string {
+  public async createGame(mode: 'local' | 'remote', tourMatchId: number | null): Promise<string | null> {
     const gameId = uuidv4();
     console.log(chalk.cyan.bold('\n[GameManager] Creating game with ID: ') + chalk.cyan(gameId));
-    const room = new GameRoom(gameId, mode, this.deleteGame.bind(this), tournamentId);
+    const room = new GameRoom(gameId, mode, this.deleteGame.bind(this), tourMatchId);
+
+    if (room && tourMatchId !== null) {
+      const res = await room.initTourPlayers();
+      if (!res) return null;
+    }
+
     this.sessions.set(gameId, room);
     return gameId;
   }

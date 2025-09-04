@@ -13,7 +13,7 @@ interface ExistingGameResponse {
 }
 
 export class PongGameService extends BaseApiService {
-  public async createGame(mode: 'local' | 'remote'): Promise<{success: boolean, gameId?: string, error?: string}> {
+  public async createGame(mode: 'local' | 'remote'): Promise<{success: boolean, gameId?: string, message?: string, error?: string}> {
     return this.request<{gameId?: string}>(
       '/game/create',
       'POST',
