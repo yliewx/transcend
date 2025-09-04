@@ -13,13 +13,6 @@ interface FinalMatch {
     created_at: string;
 }
 
-interface MatchParticipant {
-    participant_id: number | null;
-    user_id: number | null;
-    alias: string | null;
-    is_guest: boolean;
-}
-
 class Tournament {
    
     /*----------------------------FOR getTournaments-----------------------------*/
