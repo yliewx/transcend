@@ -61,7 +61,7 @@ export class TournamentPage implements Page {
         const allResponse = await this.tournamentService.getTournaments();
         if (allResponse.success && allResponse.tournaments) {
           this.allTournaments = allResponse.tournaments;
-          console.log('All tournaments:', this.allTournaments);
+          // console.log('All tournaments:', this.allTournaments);
         }
       }
 

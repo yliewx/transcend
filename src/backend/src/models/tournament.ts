@@ -13,6 +13,13 @@ interface FinalMatch {
     created_at: string;
 }
 
+interface MatchParticipant {
+    participant_id: number | null;
+    user_id: number | null;
+    alias: string | null;
+    is_guest: boolean;
+}
+
 class Tournament {
    
     /*----------------------------FOR getTournaments-----------------------------*/
@@ -470,6 +477,37 @@ class Tournament {
 //     return result ? result.id : null;
 // }
 
+    /*-----------------------FOR GameRoom: setTourPlayerDetails-----------------------*/
+
+    static async getMatchParticipants(db: Database, matchId: number) {
+        return db.all<{
+            participant_id: number | null;
+            user_id: number | null;
+            alias: string | null;
+            is_guest: number | null;
+            player: 'player1' | 'player2';
+        }[]>(`
+            SELECT 'player1' as player,
+                tp1.id as participant_id,
+                tp1.user_id,
+                tp1.alias,
+                tp1.is_guest
+            FROM tournament_matches tm
+            LEFT JOIN tournament_participants tp1 ON tm.player1_participant_id = tp1.id
+            WHERE tm.id = ?
+
+            UNION ALL
+
+            SELECT 'player2' as player,
+                tp2.id as participant_id,
+                tp2.user_id,
+                tp2.alias,
+                tp2.is_guest
+            FROM tournament_matches tm
+            LEFT JOIN tournament_participants tp2 ON tm.player2_participant_id = tp2.id
+            WHERE tm.id = ?
+        `, [matchId, matchId]);
+    }
 }
 
 export default Tournament;

@@ -521,7 +521,10 @@ export async function joinTournamentMatch(request: AuthenticatedRequest, reply: 
     let gameId = match.game_id;
 
     if (!gameId) {
-      gameId = gameManager.createGame(match.tournament_mode, match.tournament_id);
+      gameId = await gameManager.createGame(match.tournament_mode, matchId);
+      if (!gameId) {
+        throw new Error(`Failed to create GameRoom for matchId=${matchId}`);
+      }
       console.log(`Created new ${match.tournament_mode} game:`, gameId);
       await Tournament.setMatchGameId(db, matchId, gameId);
       await notifyMatchUpdate(db, match.tournament_id, matchId);

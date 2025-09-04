@@ -18,7 +18,18 @@ export async function createGame(request: FastifyRequest, reply: FastifyReply) {
   }
 
   const gameId = gameManager.createGame(mode, null);
-  return { gameId, success: true };
+  if (!gameId) {
+    return reply.status(400).send({
+      success: false,
+      message: 'Failed to create game room.'
+    });
+  }
+
+  return reply.status(200).send({
+    gameId: gameId,
+    success: true
+  });
+  // return { gameId, success: true };
 }
 
 // export async function getExistingGame(request: AuthenticatedRequest, reply: FastifyReply) {
