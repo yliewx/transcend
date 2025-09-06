@@ -59,6 +59,7 @@ export class GameManager {
     }
 
     this.sessions.set(gameId, room);
+    console.log(chalk.cyan.green('\n[GameManager] Successfully created game with ID: ') + chalk.cyan(gameId));
     return gameId;
   }
 

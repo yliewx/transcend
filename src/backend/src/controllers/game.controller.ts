@@ -17,13 +17,15 @@ export async function createGame(request: FastifyRequest, reply: FastifyReply) {
     });
   }
 
-  const gameId = gameManager.createGame(mode, null);
+  const gameId = await gameManager.createGame(mode, null);
   if (!gameId) {
     return reply.status(400).send({
       success: false,
       message: 'Failed to create game room.'
     });
   }
+
+  console.log('[createGame] typeof gameId:', typeof gameId, gameId);
 
   return reply.status(200).send({
     gameId: gameId,
