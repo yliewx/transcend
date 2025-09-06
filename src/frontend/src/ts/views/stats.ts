@@ -8,7 +8,7 @@ import { Chart } from 'chart.js/auto';
 export class StatsPage implements Page {
   private router: Router;
   private gameStatsService: GameStatsService;
-  private userId: number | null = null;
+  private userId: string | null = null;
   private stats: GameStats | null = null;
   private matchHistory: MatchHistoryItem[] = [];
   private leaderboard: any[] = [];

@@ -15,12 +15,12 @@ export async function refreshAccessHandler(request: FastifyRequest, reply: Fasti
       throw new Error('User authentication failed');
     }
     const db = await getDb();
-    const user = await User.findById(db, Number(userData.id));
+    const user = await User.findById(db, userData.id);
     if (!user) {
       throw new Error('User not found');
     }
 
-    await RefreshToken.verify(db, Number(userData.id), userData);
+    await RefreshToken.verify(db, userData.id, userData);
 
     const accessToken = await createAccessToken(user, reply);
     reply.setCookie('accessToken', accessToken, accessCookieOptions);

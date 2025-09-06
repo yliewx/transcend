@@ -46,7 +46,7 @@ export function handleFriendRequest(this: FriendsPage, data: FriendRequestMessag
   Notifications.show('info', data.message);
 }
 
-export function handleFriendRemoved(this: FriendsPage, data: { friendId: number, message: string }) {
+export function handleFriendRemoved(this: FriendsPage, data: { friendId: string, message: string }) {
   this.currentFriends = this.currentFriends.filter(friend => friend.id !== data.friendId);
 
   if (this.currentTab === 'friends') {

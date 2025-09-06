@@ -9,7 +9,7 @@ import { updateTournamentMatchResult } from '../controllers/tour.controller';
 import Tournament from '../models/tournament';
 
 export interface Player {
-  userId: number | null;
+  userId: string | null;
   socket: WebSocket | null;
   participantId: number | null;
   alias: string | null;
@@ -67,7 +67,7 @@ export class GameRoom {
 
   /*------------------------------ANNOUNCE JOIN-----------------------------*/
   
-  private async announceJoin(playerId: number, side: 'left' | 'right') {
+  private async announceJoin(playerId: string, side: 'left' | 'right') {
     this.broadcast(JSON.stringify({
         type: 'player-joined',
         data: {
@@ -131,14 +131,14 @@ export class GameRoom {
 
   private async setPlayerDetails(
     side: 'left' | 'right',
-    player: Partial<Player> & { userId: number; socket: WebSocket }
+    player: Partial<Player> & { userId: string; socket: WebSocket }
   ) {
     if (!this.tourMatchId !== null) {
       console.error(`Inside setPlayerDetails in tournament; mode=${this.mode}`);
       return;
     }
     const db = await getDb();
-    const user = await User.findById(db, Number(player.userId));
+    const user = await User.findById(db, player.userId);
     const alias = user?.username ?? 'Player';
 
     this.players[side] = {
@@ -154,7 +154,7 @@ export class GameRoom {
 
   /*-------------------------------JOIN GAME--------------------------------*/
 
-  private async addNewPlayer(data: { gameId: string; playerId: number }, socket: WebSocket): Promise<boolean> {
+  private async addNewPlayer(data: { gameId: string; playerId: string }, socket: WebSocket): Promise<boolean> {
     console.log('Adding new player');
     if (this.mode === 'local') {
       if (this.localSocket) {
@@ -181,7 +181,7 @@ export class GameRoom {
     return true;
   }
  
-  public async handleJoin(data: { gameId: string; playerId: number }, socket: WebSocket): Promise<boolean> {
+  public async handleJoin(data: { gameId: string; playerId: string }, socket: WebSocket): Promise<boolean> {
     const { playerId } = data;
 
     const side = this.getPlayerSide(playerId);
@@ -256,7 +256,7 @@ export class GameRoom {
 
   /*------------------------------INPUT HANDLER-----------------------------*/
 
-  private getPlayerSide(playerId: number): 'left' | 'right' | null {
+  private getPlayerSide(playerId: string): 'left' | 'right' | null {
     if (this.players.left?.userId === playerId) return 'left';
     if (this.players.right?.userId === playerId) return 'right';
     return null;
@@ -325,9 +325,9 @@ export class GameRoom {
   /*---------------------------RECORD GAME RESULTS--------------------------*/
 
   async recordPlayerResults(db: Database,
-    userId: number | null,
-    opponentId: number | null,
-    winnerId: number | null
+    userId: string | null,
+    opponentId: string | null,
+    winnerId: string | null
   ) {
     let transactionStarted = true;
     try {
@@ -351,9 +351,9 @@ export class GameRoom {
   }
 
   async recordMatch(db: Database,
-    leftPlayerId: number,
-    rightPlayerId: number | null,
-    winnerId: number | null,
+    leftPlayerId: string,
+    rightPlayerId: string | null,
+    winnerId: string | null,
     state: GameState
   ): Promise<{ success: boolean; message: string }> {
     try {
@@ -435,9 +435,9 @@ export class GameRoom {
     }
 
     const db = await getDb();
-    const leftPlayerId = this.players.left?.userId ?? null;  // Type: number | null
-    const rightPlayerId = this.players.right?.userId ?? null; // Type: number | null
-    const winnerGameId: number | null = state.winner === 'left' ? leftPlayerId : rightPlayerId; // Type: number | null
+    const leftPlayerId = this.players.left?.userId ?? null;  // Type: string | null
+    const rightPlayerId = this.players.right?.userId ?? null; // Type: string | null
+    const winnerGameId: string | null = state.winner === 'left' ? leftPlayerId : rightPlayerId; // Type: string | null
 
     // Consolidate the check for required IDs based on game mode.
     // If this block is entered, we guarantee the necessary IDs are non-null.
@@ -499,8 +499,8 @@ export class GameRoom {
     return this.mode;
   }
 
-  public getPlayerIds(): number[] {
-    const ids: number[] = [];
+  public getPlayerIds(): string[] {
+    const ids: string[] = [];
   
     if (this.players.left?.userId != null) ids.push(this.players.left.userId);
     if (this.players.right?.userId != null) ids.push(this.players.right.userId);
@@ -508,7 +508,7 @@ export class GameRoom {
     return ids;
   }
 
-  public playerIsCreator(playerId: number): boolean {
+  public playerIsCreator(playerId: string): boolean {
     if (this.players.left) {
       return playerId === this.players.left.userId;
     }

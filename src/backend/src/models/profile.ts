@@ -1,12 +1,12 @@
 import { Database } from 'sqlite';
 
 class Profile {
-    static async findByUserId(db: Database, userId: number) {
+    static async findByUserId(db: Database, userId: string) {
         return db.get('SELECT * FROM profiles WHERE user_id = ?', userId);
     }
 
     static async create(db: Database, { user_id, display_name = null, avatar_path = null }: 
-        { user_id: number; display_name?: string | null; avatar_path?: string | null }) {
+        { user_id: string; display_name?: string | null; avatar_path?: string | null }) {
         
         return db.run(
             'INSERT INTO profiles (user_id, display_name, avatar_path) VALUES (?, ?, ?)',
@@ -14,7 +14,7 @@ class Profile {
         );
     }
 
-    static async updateDisplayName(db: Database, userId: number, displayName: string) {
+    static async updateDisplayName(db: Database, userId: string, displayName: string) {
         await db.run(
             'UPDATE profiles SET display_name = ? WHERE user_id = ?', 
             [displayName, userId]

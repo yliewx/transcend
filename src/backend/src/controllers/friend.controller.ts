@@ -8,7 +8,7 @@ import { Database } from 'sqlite';
 
 interface FriendRecord {
   id: number;
-  user_id: number;
+  user_id: string;
   username: string;
   display_name?: string;
   created_at: string;
@@ -19,7 +19,7 @@ interface FriendRecord {
 async function formatIncomingRequest(
   db: Database,
   requestId: number,
-  recipientId: number,
+  recipientId: string,
   requestStatus: 'pending' | 'accepted' | 'declined' | 'cancelled'
 ) {
   if (requestStatus !== 'pending') {
@@ -41,7 +41,7 @@ async function formatIncomingRequest(
   return formattedRequest;
 }
 
-async function formatSenderData(db: Database, senderId: number) {
+async function formatSenderData(db: Database, senderId: string) {
   const senderData = await db.get(
     `SELECT u.id, u.username, p.display_name
      FROM users u
@@ -62,8 +62,8 @@ async function formatSenderData(db: Database, senderId: number) {
 async function notifyRecipient(
   db: Database,
   requestId: number,
-  recipientId: number,
-  senderId: number,
+  recipientId: string,
+  senderId: string,
   requestStatus: 'pending' | 'accepted' | 'declined' | 'cancelled',
   message: string
 ) {
@@ -84,7 +84,7 @@ async function notifyRecipient(
   }
 }
 
-async function notifyRemovedFriend(friendId: number, userId: number) {
+async function notifyRemovedFriend(friendId: string, userId: string) {
   const friendSocket = onlineUsers.get(friendId);
   if (friendSocket && friendSocket.readyState === WebSocket.OPEN) {
     friendSocket.send(JSON.stringify({
@@ -199,7 +199,7 @@ export async function sendFriendRequest(request: AuthenticatedRequest, reply: Fa
   try {
     const db = await getDb();
     const senderId = request.user.id;
-    const { userId: recipientId } = request.body as { userId: number };
+    const { userId: recipientId } = request.body as { userId: string };
 
     if (!recipientId) {
       return reply.status(400).send({

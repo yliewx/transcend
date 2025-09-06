@@ -26,7 +26,7 @@ declare module "fastify" {
 
 export interface AuthenticatedRequest extends FastifyRequest {
   user: {
-    id: number;
+    id: string;
     username: string;
     email: string;
   };

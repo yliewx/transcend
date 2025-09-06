@@ -8,7 +8,7 @@ class User {
         return db.all('SELECT * FROM users');
     }
 
-    static async findById(db: Database, id: number) {
+    static async findById(db: Database, id: string) {
         return db.get('SELECT * FROM users WHERE id = ?', id);
     }
 
@@ -53,14 +53,14 @@ class User {
 
     /*----------------------------2FA PREFERENCES---------------------------*/
 
-    static async getPreferred2FAMethod(db: Database, id: number) {
+    static async getPreferred2FAMethod(db: Database, id: string) {
         const result = await db.get('SELECT otp_option FROM users WHERE id = ?', [id]);
         if (!result.otp_option)
             return null;
         return result.otp_option;
     }
 
-    static async updateOtpOption(db: Database, id: number, otp_option: string, otp_contact?: string | null) {
+    static async updateOtpOption(db: Database, id: string, otp_option: string, otp_contact?: string | null) {
         const user = await this.findById(db, id);
         if (!user) {
             throw new Error('No user with this ID');
@@ -84,7 +84,7 @@ class User {
     }
 
     /*------------------------------UPDATE USER TO BE REMOVED-----------------------------*/
-    static async update(db: Database, id: number, { username, email }: { username?: string; email?: string }) 
+    static async update(db: Database, id: string, { username, email }: { username?: string; email?: string }) 
     {
         const updateFields = [];
         const params = [];
@@ -114,27 +114,27 @@ class User {
     
     /*------------------------------UPDATE USER-----------------------------*/
 
-    static async updateGoogleId(db: Database, id: number, googleId: string) {
+    static async updateGoogleId(db: Database, id: string, googleId: string) {
         await db.run('UPDATE users SET google_id = ? WHERE id = ?', [googleId, id]);
         return { id, googleId };
     }
 
-    static async updateUsername(db: Database, id: number, username: string) {
+    static async updateUsername(db: Database, id: string, username: string) {
         await db.run('UPDATE users SET name = ? WHERE id = ?', [username, id]);
         return { id, username };
     }
 
-    static async updateEmail(db: Database, id: number, email: string) {
+    static async updateEmail(db: Database, id: string, email: string) {
         await db.run('UPDATE users SET email = ? WHERE id = ?', [email, id]);
         return { id, email };
     }
 
-    static async updatePassword(db: Database, id: number, password: string) {
+    static async updatePassword(db: Database, id: string, password: string) {
         await db.run('UPDATE users SET password = ? WHERE id = ?', [password, id]);
         return { id };
     }
 
-    static async getOtpSecret(db: Database, id: number) {
+    static async getOtpSecret(db: Database, id: string) {
         const row = await db.get('SELECT otp_secret, otp_auth_url FROM users WHERE id = ?', [id]);
         if (!row || !row.otp_secret) {
             return null;
@@ -142,7 +142,7 @@ class User {
         return row.otp_secret;
     }
 
-    static async getOtpAuthUrl(db: Database, id: number) {
+    static async getOtpAuthUrl(db: Database, id: string) {
         const row = await db.get('SELECT otp_secret, otp_auth_url FROM users WHERE id = ?', [id]);
         if (!row || !row.otp_auth_url) {
             return null;
@@ -150,19 +150,19 @@ class User {
         return row.otp_auth_url;
     }
 
-    static async setOtpSecret(db: Database, id: number, otpSecret: string, otpAuthUrl: string) {
+    static async setOtpSecret(db: Database, id: string, otpSecret: string, otpAuthUrl: string) {
         await db.run('UPDATE users SET otp_secret = ?, otp_auth_url = ? WHERE id = ?', [otpSecret, otpAuthUrl, id]);
         return { id, otpSecret, otpAuthUrl };
     }
 
-    static async setOtpVerified(db: Database, id: number, otpVerified: boolean) {
+    static async setOtpVerified(db: Database, id: string, otpVerified: boolean) {
         await db.run('UPDATE users SET otp_verified = ? WHERE id = ?', [otpVerified, id]);
         return { id, otpVerified };
     }
 
     /*------------------------------DELETE USER-----------------------------*/
 
-    static async delete(db: Database, id: number) {
+    static async delete(db: Database, id: string) {
         await db.run('DELETE FROM users WHERE id = ?', id);
     }
 }

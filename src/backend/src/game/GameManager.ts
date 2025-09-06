@@ -7,7 +7,7 @@ import chalk from 'chalk';
 
 export class GameManager {
   private sessions: Map<string, GameRoom> = new Map();
-  private activePlayers: Map<number, GameRoom> = new Map();
+  private activePlayers: Map<string, GameRoom> = new Map();
   
   /*------------------------------CONSTRUCTOR-------------------------------*/
 
@@ -27,7 +27,7 @@ export class GameManager {
     return this.sessions.get(gameId);
   }
 
-  public getPlayerSession(playerId: number): { gameId: string, gameMode: string, state: GameState, isCreator: boolean, isTourMatch: boolean } | undefined {
+  public getPlayerSession(playerId: string): { gameId: string, gameMode: string, state: GameState, isCreator: boolean, isTourMatch: boolean } | undefined {
     console.log(chalk.magenta.bold('\n[GameManager] Fetching sessions for player...'));
     console.log(chalk.magenta(`→ Player ID: ${chalk.whiteBright(playerId)}`));
     this.printActivePlayers();
@@ -64,7 +64,7 @@ export class GameManager {
 
   /*-------------------------------JOIN GAME--------------------------------*/
 
-  public async joinRoom(data: { gameId: string, playerId: number }, connection: WebSocket): Promise<boolean> {
+  public async joinRoom(data: { gameId: string, playerId: string }, connection: WebSocket): Promise<boolean> {
     const existingGame = this.activePlayers.get(data.playerId);
     if (existingGame && existingGame.getGameId() !== data.gameId) {
       console.error('Player is already in a game');
@@ -94,7 +94,7 @@ export class GameManager {
     }
   }
 
-  public joinRoomByCLI(data: { gameId: string, playerId: number }, cliSocket: WebSocket): boolean {
+  public joinRoomByCLI(data: { gameId: string, playerId: string }, cliSocket: WebSocket): boolean {
     console.log('Joining room by CLI. Player ID:', data.playerId);
     const room = this.getRoom(data.gameId);
     if (room) {

@@ -22,7 +22,7 @@ export class PongGameService extends BaseApiService {
     );
   }
 
-  public async getExistingGame(playerId: number): Promise<ExistingGameResponse> {
+  public async getExistingGame(): Promise<ExistingGameResponse> {
     return this.request<ExistingGameResponse>(
       '/game/restore',
       'GET',

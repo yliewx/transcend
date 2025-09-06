@@ -30,7 +30,7 @@ class Tournament {
 
     /*----------------------------FOR getUserTournaments-----------------------------*/
 
-    static async findTournamentsByUserId(db: Database, userId: number) {
+    static async findTournamentsByUserId(db: Database, userId: string) {
         return db.all(`
             SELECT 
                 t.*, 
@@ -113,7 +113,7 @@ class Tournament {
         `, [tournamentId]);
     }
     
-    static async isUserRegistered(db: Database, tournamentId: number, userId: number) {
+    static async isUserRegistered(db: Database, tournamentId: number, userId: string) {
         return db.get(`
             SELECT * FROM tournament_participants
             WHERE tournament_id = ? AND user_id = ?
@@ -135,7 +135,7 @@ class Tournament {
         return result.count;
     }
     
-    static async addParticipant(db: Database, tournamentId: number, userId: number, ua: string, oa: string | null) {
+    static async addParticipant(db: Database, tournamentId: number, userId: string, ua: string, oa: string | null) {
         // await db.run('BEGIN TRANSACTION');
         
         try {
@@ -272,7 +272,7 @@ class Tournament {
     //     `, [matchId, userId, userId, userId, userId]);
     // }
 
-    static async getMatchForPlayer(db: Database, matchId: number, userId: number) {
+    static async getMatchForPlayer(db: Database, matchId: number, userId: string) {
         return db.get(`
             SELECT tm.*, t.mode AS tournament_mode 
             FROM tournament_matches tm 
@@ -422,7 +422,7 @@ class Tournament {
         `, [participantId]);
     }
 
-    static async getUserIdByParticipantId(db: Database, participantId: number): Promise<number | null> {
+    static async getUserIdByParticipantId(db: Database, participantId: number): Promise<string | null> {
         const participant = await db.get(`SELECT user_id FROM tournament_participants WHERE id = ?`, participantId);
         return participant ? participant.user_id : null;
     }
@@ -475,7 +475,7 @@ class Tournament {
     static async getMatchParticipants(db: Database, matchId: number) {
         return db.all<{
             participant_id: number | null;
-            user_id: number | null;
+            user_id: string | null;
             alias: string | null;
             is_guest: number | null;
             player: 'player1' | 'player2';
@@ -501,7 +501,7 @@ class Tournament {
             WHERE tm.id = ?
         `, [matchId, matchId]);
     }
-    static async getHostUserId(db: Database, guestParticipantId: number): Promise<number | null> {
+    static async getHostUserId(db: Database, guestParticipantId: number): Promise<string | null> {
         const result = await db.get<{ user_id: number }>(`
             SELECT host.user_id
             FROM tournament_participants guest

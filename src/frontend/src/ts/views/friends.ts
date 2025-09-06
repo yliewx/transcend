@@ -9,7 +9,7 @@ export class FriendsPage implements Page {
   private router: Router;
   private wss: WebSocketManager;
   private friendService: FriendService;
-  private userId: number | null = null;
+  private userId: string | null = null;
   public currentTab: 'friends' | 'pending' | 'search' = 'friends';
   private searchQuery: string = '';
   private searchResults: any[] = [];
@@ -130,7 +130,7 @@ export class FriendsPage implements Page {
   }
 
   private async loadData(): Promise<void> {
-    this.userId = parseInt(sessionStorage.getItem('userId') || '0', 10) || null;
+    this.userId = sessionStorage.getItem('userId') || null;
     
     if (!this.userId) {
       this.showError('User ID not found');
@@ -515,7 +515,7 @@ export class FriendsPage implements Page {
   
   /*-----------------------------UTILITY FUNCTIONS------------------------------*/
 
-  public removeFriendCard(friendId: number): void {
+  public removeFriendCard(friendId: string): void {
     if (!this.element) return;
     
     const friendCard = this.element.querySelector(`button[data-friend-id="${friendId}"]`)?.closest('.bg-gray-50');
@@ -543,7 +543,7 @@ export class FriendsPage implements Page {
     }
   }
   
-  public updateSearchUserCard(userId: number, newStatus: 'add' | 'pending' | 'friend'): void {
+  public updateSearchUserCard(userId: string, newStatus: 'add' | 'pending' | 'friend'): void {
     const userCard = document.querySelector(`button[data-user-id="${userId}"]`)?.closest('.bg-gray-50');
     
     if (userCard) {
