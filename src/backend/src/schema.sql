@@ -120,6 +120,30 @@ CREATE TABLE IF NOT EXISTS player_stats (
   FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 );
 
+-- CREATE VIEW IF NOT EXISTS player_complete_stats_view AS
+-- SELECT 
+--   u.id,
+--   u.username,
+--   p.display_name,
+--   ps.elo_rating,
+--   ps.games_played,
+--   ps.games_won,
+--   ps.games_lost,
+--   ps.current_win_streak,
+--   ps.max_win_streak,
+--   CASE 
+--     WHEN ps.games_played = 0 THEN 0
+--     ELSE ROUND((ps.games_won * 100.0) / ps.games_played, 1) 
+--   END AS win_percentage,
+--   RANK() OVER (ORDER BY ps.elo_rating DESC) as rank,
+--   ps.last_updated
+-- FROM 
+--   player_stats ps
+-- JOIN 
+--   users u ON ps.user_id = u.id
+-- LEFT JOIN
+--   profiles p ON u.id = p.user_id;
+
 CREATE VIEW IF NOT EXISTS player_complete_stats_view AS
 SELECT 
   u.id,
@@ -135,7 +159,13 @@ SELECT
     WHEN ps.games_played = 0 THEN 0
     ELSE ROUND((ps.games_won * 100.0) / ps.games_played, 1) 
   END AS win_percentage,
-  RANK() OVER (ORDER BY ps.elo_rating DESC) as rank,
+  CASE 
+    WHEN ps.games_played = 0 THEN NULL
+    ELSE RANK() OVER (
+      ORDER BY 
+        CASE WHEN ps.games_played > 0 THEN ps.elo_rating END DESC NULLS LAST
+    )
+  END as rank,
   ps.last_updated
 FROM 
   player_stats ps
