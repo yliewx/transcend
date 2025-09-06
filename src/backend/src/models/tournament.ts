@@ -501,8 +501,9 @@ class Tournament {
             WHERE tm.id = ?
         `, [matchId, matchId]);
     }
+    
     static async getHostUserId(db: Database, guestParticipantId: number): Promise<number | null> {
-        const result = await db.get<{ user_id: number }>(`
+        const result = await db.get<{ user_id: number | null }>(`
             SELECT host.user_id
             FROM tournament_participants guest
             JOIN tournament_participants host ON guest.host_id = host.id
@@ -511,7 +512,6 @@ class Tournament {
         
         return result ? result.user_id : null;
     }
- 
 }
 
 export default Tournament;

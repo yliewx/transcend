@@ -115,6 +115,9 @@ export class GameRoom {
       alias: left.alias ?? null,
       socket: null
     };
+    if (left.is_guest && left.participant_id) {
+      this.players.left.userId = await Tournament.getHostUserId(db, left.participant_id);
+    }
 
     this.players.right = {
       userId: right.user_id ?? null,
@@ -122,6 +125,9 @@ export class GameRoom {
       alias: right.alias ?? null,
       socket: null
     };
+    if (right.is_guest && right.participant_id) {
+      this.players.right.userId = await Tournament.getHostUserId(db, right.participant_id);
+    }
 
     console.log('[setTourPlayerDetails] Left:', this.players.left);
     console.log('[setTourPlayerDetails] Right:', this.players.right);
@@ -155,13 +161,22 @@ export class GameRoom {
   /*-------------------------------JOIN GAME--------------------------------*/
 
   private async addNewPlayer(data: { gameId: string; playerId: number }, socket: WebSocket): Promise<boolean> {
-    console.log('Adding new player');
+    console.log('this.players.left:', JSON.stringify(this.players.left, null, 2));
+
     if (this.mode === 'local') {
+      if (this.tourMatchId !== null && data.playerId === this.players.left?.userId) {
+        console.log('[addNewPlayer] Reconnecting player for local tournament.');
+        this.localSocket = socket;
+        await this.setPlayerDetails('left', { userId: data.playerId, socket });
+        this.announceJoin(data.playerId, 'left');
+      }
       if (this.localSocket) {
         sendError(socket, 'Local game already has a player.');
         socket.close();
+        console.log('[addNewPlayer] Local game already has a player.');
         return false;
       }
+      console.log('[addNewPlayer] Adding new player.');
       this.localSocket = socket;
       await this.setPlayerDetails('left', { userId: data.playerId, socket });
       this.announceJoin(data.playerId, 'left');
@@ -190,6 +205,7 @@ export class GameRoom {
   
     if (this.mode === 'local') {
       if (side === 'left' && this.players.left) {
+        console.log('[GameRoom - handleJoin] Reconnecting local player');
         this.localSocket = socket;
         this.players.left.socket = socket;
         this.announceJoin(playerId, 'left');
@@ -199,15 +215,15 @@ export class GameRoom {
       }
     } else {
       if (side === 'left' && this.players.left) {
-        console.log('Reconnecting left');
+        console.log('[GameRoom - handleJoin] Reconnecting left');
         this.players.left.socket = socket;
         this.announceJoin(playerId, 'left');
       } else if (side === 'right' && this.players.right) {
-        console.log('Reconnecting right');
+        console.log('[GameRoom - handleJoin] Reconnecting right');
         this.players.right.socket = socket;
         this.announceJoin(playerId, 'right');
       } else {
-        console.log(`Adding new player - side: ${side}, playerId: ${playerId}`);
+        console.log(`[GameRoom - handleJoin] Adding new player - side: ${side}, playerId: ${playerId}`);
         const success = await this.addNewPlayer(data, socket);
         if (!success) return false;
       }
@@ -287,7 +303,7 @@ export class GameRoom {
   public roomIsFull(): boolean {
     return (
       (this.mode === 'local' && !!this.localSocket) ||
-      (this.mode === 'remote' && !!this.players?.left && !!this.players?.right)
+      (this.mode === 'remote' && !!this.players?.left?.socket && !!this.players?.right?.socket)
     );
   }
 
