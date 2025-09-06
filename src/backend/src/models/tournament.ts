@@ -502,7 +502,7 @@ class Tournament {
         `, [matchId, matchId]);
     }
     static async getHostUserId(db: Database, guestParticipantId: number): Promise<string | null> {
-        const result = await db.get<{ user_id: number }>(`
+        const result = await db.get<{ user_id: string }>(`
             SELECT host.user_id
             FROM tournament_participants guest
             JOIN tournament_participants host ON guest.host_id = host.id
