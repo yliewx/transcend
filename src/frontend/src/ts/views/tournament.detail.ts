@@ -63,7 +63,7 @@ export class TournamentDetailPage implements Page {
         this.tournament = response.tournament || null;
         this.matches = response.matches || [];
         this.participants = response.participants || [];
-        const userId = parseInt(sessionStorage.getItem('userId') || '0');
+        const userId = sessionStorage.getItem('userId');
 
         // Correctly find the current user's participant ID for this tournament
         const currParticipant = this.participants.find(p => p.user_id === userId);
@@ -482,9 +482,11 @@ export class TournamentDetailPage implements Page {
     try {
       const response = await this.tournamentService.joinTournamentMatch(matchId);
       if (response.success && response.gameId) {
-        const userId = parseInt(sessionStorage.getItem('userId') || '0');
+        const userId = sessionStorage.getItem('userId');
         //const participantId = response.participantId;
         //const success = await this.router.getWsManager().connectGame(response.gameId, participantId); // <-- Changed userId to participantId
+
+        if (!userId) throw new Error('User ID not found.');
 
         const success = await this.router.getWsManager().connectGame(response.gameId, userId);
         if (!success) {
@@ -653,7 +655,7 @@ export class TournamentDetailPage implements Page {
     }
     
     if (this.isRegistered) {
-      const userId = parseInt(sessionStorage.getItem('userId') || '0');
+      const userId = sessionStorage.getItem('userId');
       const userParticipant = this.participants.find(p => p.user_id === userId);
       const userAlias = userParticipant?.alias || '';
       
@@ -881,7 +883,7 @@ public renderParticipants(): string {
     <div id="tournament-participants-list" class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-md">
       <ul class="divide-y divide-gray-100 dark:divide-gray-700">
         ${this.participants.map((participant, index) => {
-          const isCurrentUser = participant.participant_id === parseInt(sessionStorage.getItem('userId') || '0');
+          const isCurrentUser = participant.user_id === sessionStorage.getItem('userId');
           
           return `
             <li id="participant-${participant.participant_id}" class="p-4 hover:bg-gray-50 dark:hover:bg-gray-700 ${isCurrentUser ? 'bg-pink-50 dark:bg-pink-900/10' : ''}">
