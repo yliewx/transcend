@@ -1,5 +1,6 @@
 import { Database } from 'sqlite';
 import bcrypt from 'bcrypt';
+import { v4 as uuidv4 } from 'uuid';
 
 class User {
     /*------------------------------SEARCH USER-----------------------------*/
@@ -26,29 +27,58 @@ class User {
 
     /*------------------------------CREATE USER-----------------------------*/
 
+    // static async create(
+    //     db: Database, 
+    //     { username, email, password, google_id }: { username: string; email: string; password?: string; google_id?: string }
+    // ) {
+    //     const existingUser = await db.get('SELECT username FROM users WHERE username = ?', username);
+    //     if (existingUser) {
+    //         throw new Error('Username already exists');
+    //     }
+    
+    //     const existingEmail = await this.findByEmail(db, email);
+    //     if (existingEmail) {
+    //         throw new Error('Email already exists');
+    //     }
+    
+    //     let hashedPassword: string | null = null;
+    //     if (password) {
+    //         hashedPassword = await bcrypt.hash(password, 10);
+    //     }
+    
+    //     return db.run(
+    //         'INSERT INTO users (username, password, email, google_id, created_at) VALUES (?, ?, ?, ?, ?)',
+    //         username, hashedPassword, email, google_id || null, new Date().toISOString()
+    //     );
+    // }
+
     static async create(
         db: Database, 
-        { username, email, password, google_id }: { username: string; email: string; password?: string; google_id?: string }
+        { id, username, email, password, google_id }: { id?: string; username: string; email: string; password?: string; google_id?: string }
     ) {
         const existingUser = await db.get('SELECT username FROM users WHERE username = ?', username);
         if (existingUser) {
             throw new Error('Username already exists');
         }
-    
+
         const existingEmail = await this.findByEmail(db, email);
         if (existingEmail) {
             throw new Error('Email already exists');
         }
-    
+
         let hashedPassword: string | null = null;
         if (password) {
             hashedPassword = await bcrypt.hash(password, 10);
         }
-    
-        return db.run(
-            'INSERT INTO users (username, password, email, google_id, created_at) VALUES (?, ?, ?, ?, ?)',
-            username, hashedPassword, email, google_id || null, new Date().toISOString()
+
+        const userId = id || uuidv4(); // Generate UUID if not provided
+
+        await db.run(
+            'INSERT INTO users (id, username, password, email, google_id, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+            userId, username, hashedPassword, email, google_id || null, new Date().toISOString()
         );
+
+        return userId; // Just return the UUID directly
     }
 
     /*----------------------------2FA PREFERENCES---------------------------*/
