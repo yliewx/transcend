@@ -20,7 +20,7 @@ export class PongGamePage implements Page {
   private ballSize: number = 30;
   private gameMode: 'local' | 'remote' = 'local';
   private gameId: string | null = null;
-  private userId: number | null = null;
+  private userId: string | null = null;
   private isCreator: boolean = false;
   private isTourMatch: boolean = false;
   private state: GameState | null = null;
@@ -44,11 +44,7 @@ export class PongGamePage implements Page {
     this.router = router;
     this.pongService = pongService;
     this.pongViewComponents = new PongViewComponents();
-
-    const id = sessionStorage.getItem('userId');
-    const parsed = id !== null ? parseInt(id, 10) : NaN;
-    this.userId = Number.isNaN(parsed) ? null : parsed;
-    
+    this.userId = sessionStorage.getItem('userId');
     this.wss = this.router.getWsManager();
     this.setupMessageHandlers();
   }
@@ -160,9 +156,7 @@ export class PongGamePage implements Page {
 
 private async restoreGameSession(): Promise<boolean> {
     if (this.userId === null) {
-      const id = sessionStorage.getItem('userId');
-      const parsed = id !== null ? parseInt(id, 10) : NaN;
-      this.userId = Number.isNaN(parsed) ? null : parsed;
+      this.userId = sessionStorage.getItem('userId');
       if (this.userId === null) {
         console.error('Cannot check for active game session. No user ID found.');
         return false;
@@ -171,7 +165,7 @@ private async restoreGameSession(): Promise<boolean> {
 
     // Assuming pongService.getExistingGame now returns participantId IF it's a tour match
     console.log('Checking for existing game session for userId:', this.userId)
-    const response = await this.pongService.getExistingGame(this.userId!);
+    const response = await this.pongService.getExistingGame();
     console.log('Response from getExistingGame:', response);
     if (response.hasExistingGame) {
       this.gameId = response.gameId ?? null;

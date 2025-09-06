@@ -131,7 +131,7 @@ export async function createGame(request: FastifyRequest, reply: FastifyReply) {
 
 
 // Helper function to determine user's participant ID in a match
-export async function getUserParticipantIdInMatch(db: Database, match: any, userId: number): Promise<number | null> {
+export async function getUserParticipantIdInMatch(db: Database, match: any, userId: string): Promise<number | null> {
   const participantIds = [match.player1_participant_id, match.player2_participant_id];
   
   for (const participantId of participantIds) {

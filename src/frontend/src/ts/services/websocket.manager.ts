@@ -3,7 +3,7 @@ export class WebSocketManager {
   private onlineSocket: WebSocket | null = null;
   private gameSocket: WebSocket | null = null;
   private gameId: string | null = null;
-  private playerId: number | null = null;
+  private playerId: string | null = null;
   private gameEventCallbacks: Map<string, (data: any) => void> = new Map();
   private onUserEventCallbacks: Map<string, (data: any) => void> = new Map();
   private onTournamentEventCallbacks: Map<string, (data: any) => void> = new Map();
@@ -31,12 +31,12 @@ export class WebSocketManager {
 
   /*------------------------------GAME SOCKET-------------------------------*/
 
-  public async connectGame(gameId: string, participantId: number): Promise<boolean> {
+  public async connectGame(gameId: string, userId: string): Promise<boolean> {
     if (this.gameSocket) {
       this.disconnectGame();
     }
     this.gameId = gameId;
-    this.playerId = participantId;
+    this.playerId = userId;
   
     try {
       this.gameSocket = new WebSocket(`${this.baseUrl}pong/${gameId}`);

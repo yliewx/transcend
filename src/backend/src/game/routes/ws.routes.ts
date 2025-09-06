@@ -13,7 +13,7 @@ interface PongParams {
   gameId: string;
 }
 
-export async function notifyFriends(userId: number, online: boolean) {
+export async function notifyFriends(userId: string, online: boolean) {
   try {
     const db = await getDb();
     const friends = await Friend.getFriendsList(db, userId);

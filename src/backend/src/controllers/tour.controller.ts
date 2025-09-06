@@ -33,7 +33,7 @@ async function notifyTournamentParticipants(
   tournamentId: number,
   eventType: string,
   eventData: any,
-  excludeUserId?: number
+  excludeUserId?: string
 ): Promise<void> {
   try {
     const participants = await Tournament.getTournamentParticipants(db, tournamentId);
@@ -571,9 +571,9 @@ export async function joinTournamentMatch(request: AuthenticatedRequest, reply: 
 
 async function processUserGameResults(
     db: Database,
-    userId: number,
-    opponentUserId: number,
-    winnerUserId: number,
+    userId: string,
+    opponentUserId: string,
+    winnerUserId: string,
     gameId: string,
     withinTransaction: boolean = false // prevent nested transactions
   ) {
