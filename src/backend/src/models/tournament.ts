@@ -511,7 +511,6 @@ class Tournament {
         
         return result ? result.user_id : null;
     }
- 
 }
 
 export default Tournament;
