@@ -71,6 +71,7 @@ export interface LeaderboardPlayer {
   elo_rating: number;
   rank: number;
   current_win_streak: number;
+  win_percentage: number;
 }
 
 export interface EloHistoryItem {
