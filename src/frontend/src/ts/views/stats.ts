@@ -650,7 +650,7 @@ private renderLeaderboard(): void {
             </div>` 
           : player.current_win_streak.toString();
         
-        const winRate = this.stats?.win_percentage || 0;
+        const winRate = player.win_percentage || 0;
         
         row.style.opacity = '0';
         row.style.transform = 'translateY(10px)';
