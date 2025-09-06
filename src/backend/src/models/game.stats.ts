@@ -127,6 +127,7 @@ class GameStats {
            current_win_streak
          FROM player_complete_stats_view 
          WHERE games_played > 0
+           AND rank IS NOT NULL
          ORDER BY rank ASC
          LIMIT 10`,
       );
