@@ -124,7 +124,8 @@ class GameStats {
            display_name, 
            elo_rating, 
            rank,
-           current_win_streak
+           current_win_streak,
+           win_percentage
          FROM player_complete_stats_view 
          WHERE games_played > 0
            AND rank IS NOT NULL
