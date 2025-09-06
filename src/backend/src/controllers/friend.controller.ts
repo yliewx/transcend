@@ -501,7 +501,7 @@ export async function removeFriend(request: AuthenticatedRequest, reply: Fastify
     await db.run('BEGIN TRANSACTION');
 
     try {
-      const areFriends = await Friend.areFriends(db, userId, parseInt(friendId));
+      const areFriends = await Friend.areFriends(db, userId, friendId);
 
       if (!areFriends) {
         await db.run('ROLLBACK');
@@ -511,11 +511,11 @@ export async function removeFriend(request: AuthenticatedRequest, reply: Fastify
         });
       }
 
-      await Friend.removeFriend(db, userId, parseInt(friendId));
+      await Friend.removeFriend(db, userId, friendId);
 
       await db.run('COMMIT');
 
-      await notifyRemovedFriend(parseInt(friendId), userId);
+      await notifyRemovedFriend(friendId, userId);
 
       return reply.send({
         success: true,

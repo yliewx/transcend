@@ -341,7 +341,7 @@ export class StatsPage implements Page {
     if (errorElement) errorElement.classList.add('hidden');
   
     const userIdStr = sessionStorage.getItem('userId');
-    this.userId = userIdStr ? parseInt(userIdStr, 10) : null;
+    this.userId = userIdStr ?? null;
     
     try {
       if (!this.userId) {

@@ -160,7 +160,7 @@ export class GameRoom {
 
   /*-------------------------------JOIN GAME--------------------------------*/
 
-  private async addNewPlayer(data: { gameId: string; playerId: number }, socket: WebSocket): Promise<boolean> {
+  private async addNewPlayer(data: { gameId: string; playerId: string }, socket: WebSocket): Promise<boolean> {
     if (this.mode === 'local') {
       if (this.tourMatchId !== null && data.playerId === this.players.left?.userId) {
         console.log('[addNewPlayer] Reconnecting player for local tournament.');
