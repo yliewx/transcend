@@ -40,12 +40,10 @@ export async function getUserParticipantIdInMatch(db: Database, match: any, user
     if (participantId) {
       const participant = await Tournament.getParticipantById(db, participantId);
       if (participant) {
-        // Check direct participation
         if (participant.user_id === userId) {
           return participantId;
         }
-        
-        // Check host-guest relationship (only for local tournaments)
+                
         if (match.tournament_mode === 'local' && participant.is_guest && participant.host_id) {
           const host = await Tournament.getParticipantById(db, participant.host_id);
           if (host && host.user_id === userId) {
