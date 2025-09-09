@@ -96,20 +96,17 @@ export class GameManager {
   }
 
   public joinRoomByCLI(data: { gameId: string, playerId: string }, cliSocket: WebSocket): boolean {
-    console.log('Joining room by CLI. Player ID:', data.playerId);
     const room = this.getRoom(data.gameId);
     if (room) {
       const players = room.getPlayerIds();
-      console.log('Players:', players.toString());
       for (let existingPlayerId of players) {
         if (existingPlayerId === data.playerId) {
-          console.log('Found existing player ID:', existingPlayerId);
           this.notifyCLISocket(room, cliSocket);
           return true;
         }
       };
     } else {
-      console.log('Room not found.');
+      console.error('Room not found.');
     }
     return false;
   }

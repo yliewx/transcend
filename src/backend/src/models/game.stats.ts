@@ -66,7 +66,6 @@ class GameStats {
       
       if (won) {
         currentStreak += 1;        
-        console.log(`Current streak: ${currentStreak}`);
         maxStreak = currentStreak > maxStreak ? currentStreak : maxStreak;
       } 
       else 
@@ -214,7 +213,6 @@ class GameStats {
         }
         
       } catch (error) {
-        console.error('Error updating ELO rating:', error);
         throw error;
       }
     }
@@ -248,7 +246,6 @@ class GameStats {
           })
         }));
       } catch (error) {
-        console.error('Error fetching ELO history:', error);
         throw error;
       }
     }

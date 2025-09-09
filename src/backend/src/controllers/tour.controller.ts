@@ -50,9 +50,7 @@ async function notifyTournamentParticipants(
           type: eventType,
           data: { ...eventData, userTournaments }
         }));
-      } else {
-        console.log('unable to notify:', participant.user_id);
-      }
+      } 
     }
   } catch (error) {
     console.error('Error notifying tournament participants:', error);
@@ -61,7 +59,6 @@ async function notifyTournamentParticipants(
 
 async function notifyMatchUpdate(db: Database, tournamentId: number, matchId: number): Promise<void> {
   try {
-    console.log('Notifying match update:', tournamentId, matchId);
     const match = await Tournament.getMatchForFrontend(db, tournamentId, matchId);
 
     if (!match) return;
@@ -329,7 +326,6 @@ export async function joinTournamentMatch(request: AuthenticatedRequest, reply: 
       if (!gameId) {
         throw new Error(`Failed to create GameRoom for matchId=${matchId}`);
       }
-      console.log(`Created new ${match.tournament_mode} game:`, gameId);
       await Tournament.setMatchGameId(db, matchId, gameId);
       await notifyMatchUpdate(db, match.tournament_id, matchId);
     }
@@ -372,7 +368,6 @@ async function processUserGameResults(
       if (transactionStarted) {
           await db.run('ROLLBACK');
       }
-      console.error(`Error processing user game results for user ${userId} in game ${gameId}:`, error);
       throw error;
     }
   }
@@ -389,7 +384,7 @@ export async function updateTournamentMatchResult(
   try {
     const match = await Tournament.findMatchByGameId(db, gameId);
     if (!match) {
-        console.warn(`Tournament match with game ID ${gameId} not found for result update.`);
+        console.error(`Tournament match with game ID ${gameId} not found for result update.`);
         return;
     }
 
@@ -403,16 +398,10 @@ export async function updateTournamentMatchResult(
 
     await notifyMatchUpdate(db, match.tournament_id, match.id);
 
-    console.log('[updateTournamentMatchResult] gameId:', gameId);
-    console.log('matchId:', match.id);
-    console.log(`winner: ${winnerParticipantId} | loser: ${loserParticipantId}`);
-
     if (match.mode === 'remote') {
       await updateRemoteTourStats(db, match, winnerParticipantId, loserParticipantId, finalState, gameLeftParticipantId, gameRightParticipantId);
-    } else {
-        console.log(`Local tournament match completed. Elo/Match History not updated for local mode.`);
-    }
-
+    } 
+    
     if (match.round === 2) {
       await announceFinalMatchResult(db, match, winnerParticipantId);
     } else {
@@ -445,8 +434,6 @@ async function updateRemoteTourStats(
     if (!winnerUserId || !loserUserId) {
         throw new Error(`Could not retrieve user IDs for participants ${winnerParticipantId} and ${loserParticipantId}`);
     }
-
-    console.log(`Updating Elo and Match History for remote tournament game between user ${winnerUserId} and ${loserUserId}`);
 
     if (leftSideUserId && rightSideUserId) {
         await GameStats.recordGameResult(
@@ -516,7 +503,6 @@ async function advanceToNextRound(
 
     const finalMatch = await Tournament.getFinalMatch(db, match.tournament_id);
     if (finalMatch && finalMatch.player1_participant_id && finalMatch.player2_participant_id) {
-      console.log(`Final match ${finalMatch.id} is ready with participants:`, finalMatch.player1_participant_id, finalMatch.player2_participant_id);  
       await db.run(`
         UPDATE tournament_matches
         SET status = 'scheduled'

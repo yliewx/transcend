@@ -46,7 +46,6 @@ export class BaseApiService {
       const responseData = await response.json();
       
       if (!response.ok) {
-        console.error(`API error: ${responseData.error || response.statusText}`);
         return { 
           success: false, 
           error: responseData.error || `Request failed (Status: ${response.status})` 

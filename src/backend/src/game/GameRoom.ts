@@ -137,7 +137,6 @@ export class GameRoom {
     player: Partial<Player> & { userId: string; socket: WebSocket }
   ) {
     if (this.tourMatchId !== null) {
-      console.error(`Inside setPlayerDetails in tournament; mode=${this.mode}`);
       return;
     }
     const db = await getDb();
@@ -346,7 +345,6 @@ export class GameRoom {
       if (transactionStarted) {
         await db.run('ROLLBACK');
       }
-      console.error('Error recording player results:', error);
       throw error;
     }
   }
@@ -365,7 +363,6 @@ export class GameRoom {
         message: 'Game result recorded successfully'
       };
     } catch (error) {
-      console.error('Error recording game result:', error);
       throw error;
     }
   }
@@ -407,7 +404,6 @@ export class GameRoom {
         }
 
         const winnerParticipantId: number = state.winner === 'left' ? leftParticipantId : rightParticipantId;
-        console.log('winnerParticipantId:', winnerParticipantId);
 
         await updateTournamentMatchResult(
             this.gameId,

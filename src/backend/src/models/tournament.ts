@@ -146,7 +146,6 @@ class Tournament {
                 `, [tournamentId, null, oa, 1, hostId]);
             }
         } catch (error) {
-            console.error("Error adding participants:", error);
             throw error;
         }
     }

@@ -280,14 +280,12 @@ export class TournamentDetailPage implements Page {
         this.showNotification(response.error || 'Failed to register for tournament', 'error');
       }
     } catch (error) {
-      console.error('Error registering for tournament:', error);
       this.showNotification('An error occurred while registering for the tournament', 'error');
     }
 }
 
 
   private async joinMatch(matchId: number): Promise<void> {
-    console.log('Attempting to join match with ID:', matchId);
     try {
       const response = await this.tournamentService.joinTournamentMatch(matchId);
       if (response.success && response.gameId) {
@@ -304,7 +302,6 @@ export class TournamentDetailPage implements Page {
         this.showNotification(response.error || 'Failed to join match', 'error');
       }
     } catch (error) {
-      console.error('Error joining match:', error);
       this.showNotification('An error occurred while joining the match', 'error');
     }
   }
