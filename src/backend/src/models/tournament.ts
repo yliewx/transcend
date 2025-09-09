@@ -100,10 +100,6 @@ class Tournament {
         return result;
     }
 
-    // static async findByStatus(db: Database, status: string) {
-    //     return db.all('SELECT * FROM tournaments WHERE status = ?', status);
-    // }
-
     /*----------------------------FOR registerForTournament-----------------------------*/
     
     static async isPendingTournament(db: Database, tournamentId: number) {
@@ -135,9 +131,7 @@ class Tournament {
         return result.count;
     }
     
-    static async addParticipant(db: Database, tournamentId: number, userId: string, ua: string, oa: string | null) {
-        // await db.run('BEGIN TRANSACTION');
-        
+    static async addParticipant(db: Database, tournamentId: number, userId: string, ua: string, oa: string | null) {        
         try {
             const result = await db.run(`
                 INSERT INTO tournament_participants (tournament_id, user_id, alias, is_guest, host_id)
@@ -151,11 +145,7 @@ class Tournament {
                     VALUES (?, ?, ?, ?, ?)
                 `, [tournamentId, null, oa, 1, hostId]);
             }
-
-            // await db.run('COMMIT');
-
         } catch (error) {
-            //await db.run('ROLLBACK');
             console.error("Error adding participants:", error);
             throw error;
         }
@@ -169,8 +159,6 @@ class Tournament {
             SET status = ?
             WHERE id = ?
         `, [status, tournamentId]);
-        
-        //return this.findById(db, tournamentId);
     }
 
     static async updateAllParticipantStatus(db: Database, tournamentId: number, status: string) {
@@ -180,16 +168,6 @@ class Tournament {
             WHERE tournament_id = ?
           `, [status, tournamentId]);
     }
-
-    // static async getParticipantsForSeeding(db: Database, tournamentId: number) {
-    //     return db.all(`
-    //         SELECT tp.id, tp.host_id, tp.is_guest, ps.elo_rating
-    //         FROM tournament_participants tp
-    //         LEFT JOIN player_stats ps ON tp.user_id = ps.user_id
-    //         WHERE tp.tournament_id = ?
-    //         ORDER BY ps.elo_rating DESC NULLS LAST
-    //     `, [tournamentId]);
-    // }
 
     static async getParticipantsForSeeding(db: Database, tournamentId: number) {
         return db.all(`
@@ -224,53 +202,6 @@ class Tournament {
 
 
     /*----------------------------FOR joinTournamentMatch-----------------------------*/
-
-    // static async getMatchForPlayer(db: Database, matchId: number, userId: number) {
-    //     return db.get(`
-    //         SELECT * FROM tournament_matches
-    //         WHERE id = ? AND (player1_id = ? OR player2_id = ?)
-    //         AND status IN ('scheduled', 'in_progress')
-    //     `, [matchId, userId, userId]);
-    // }
-
-    // static async getMatchForPlayer(db: Database, matchId: number, userId: number) {
-    //     return db.get(`
-    //         SELECT tm.* 
-    //         FROM tournament_matches tm
-    //         WHERE tm.id = ? 
-    //         AND (
-    //             tm.player1_participant_id IN (SELECT id FROM tournament_participants WHERE user_id = ?)
-    //             OR 
-    //             tm.player2_participant_id IN (SELECT id FROM tournament_participants WHERE user_id = ?)
-    //         )
-    //         AND tm.status IN ('scheduled', 'in_progress')
-    //     `, [matchId, userId, userId]);
-    // }
-
-    // static async getMatchForPlayer(db: Database, matchId: number, userId: number) {
-    //     return db.get(`
-    //         SELECT
-    //             tm.*,
-    //             t.mode AS tournament_mode
-    //         FROM tournament_matches tm
-    //         JOIN tournaments t ON tm.tournament_id = t.id
-    //         WHERE tm.id = ?
-    //         AND (
-    //             tm.player1_participant_id IN (SELECT id FROM tournament_participants WHERE user_id = ?)
-    //             OR
-    //             tm.player2_participant_id IN (SELECT id FROM tournament_participants WHERE user_id = ?)
-    //             OR
-    //             (
-    //                 t.mode = 'local' AND (
-    //                     tm.player1_participant_id IN (SELECT tp_guest.id FROM tournament_participants tp_guest JOIN tournament_participants tp_host ON tp_guest.host_id = tp_host.id WHERE tp_host.user_id = ? AND tp_guest.is_guest = 1)
-    //                     OR
-    //                     tm.player2_participant_id IN (SELECT tp_guest.id FROM tournament_participants tp_guest JOIN tournament_participants tp_host ON tp_guest.host_id = tp_host.id WHERE tp_host.user_id = ? AND tp_guest.is_guest = 1)
-    //                 )
-    //             )
-    //         )
-    //         AND tm.status IN ('scheduled', 'in_progress')
-    //     `, [matchId, userId, userId, userId, userId]);
-    // }
 
     static async getMatchForPlayer(db: Database, matchId: number, userId: string) {
         return db.get(`
@@ -316,7 +247,6 @@ class Tournament {
     
     }
 
-
     static async setMatchGameId(db: Database, matchId: number, gameId: string) {
         await db.run(`
             UPDATE tournament_matches
@@ -325,15 +255,6 @@ class Tournament {
         `, [gameId, matchId]);
     }
 
-
-    // static async setMatchWinner(db: Database, matchId: number, winnerId: number) {
-    //     await db.run(`
-    //         UPDATE tournament_matches
-    //         SET winner_id = ?, status = 'completed'
-    //         WHERE id = ?
-    //     `, [winnerId, matchId]);
-    // }
-
     static async setMatchWinner(db: Database, matchId: number, winnerParticipantId: number) {
         await db.run(`
             UPDATE tournament_matches
@@ -341,14 +262,6 @@ class Tournament {
             WHERE id = ?
         `, [winnerParticipantId, matchId]);
     }
-   
-    
-    // static async findMatchByGameId(db: Database, gameId: string) {
-    //     return db.get(`
-    //         SELECT * FROM tournament_matches
-    //         WHERE game_id = ?
-    //     `, [gameId]);
-    // }
 
     static async findMatchByGameId(db: Database, gameId: string) {
         return db.get(`
@@ -366,13 +279,6 @@ class Tournament {
         `, [matchId]);
     }
     
-    // static async setParticipantStatus(db: Database, tournamentId: number, userId: number, status: string) {
-    //     await db.run(`
-    //         UPDATE tournament_participants
-    //         SET status = ?
-    //         WHERE tournament_id = ? AND user_id = ?
-    //     `, [status, tournamentId, userId]);
-    // }
     static async setParticipantStatus(db: Database, tournamentId: number, participantId: number, status: string) {
         await db.run(`
             UPDATE tournament_participants
@@ -381,13 +287,6 @@ class Tournament {
         `, [status, tournamentId, participantId]);
     }
     
-    // static async getFinalMatch(db: Database, tournamentId: number) {
-    //     return db.get(`
-    //         SELECT * FROM tournament_matches
-    //         WHERE tournament_id = ? AND round = 2 AND match_number = 1
-    //     `, [tournamentId]);
-    // }
-    // Updated: To return player1_participant_id and player2_participant_id
     static async getFinalMatch(db: Database, tournamentId: number): Promise<FinalMatch | undefined> {
         return db.get<FinalMatch>(`
             SELECT * FROM tournament_matches
@@ -395,16 +294,6 @@ class Tournament {
         `, [tournamentId]);
     }
     
-    // static async updateMatchPlayer(db: Database, tournamentId: number, round: number, matchNumber: number, isPlayer1: boolean, playerId: number) {
-    //     const field = isPlayer1 ? 'player1_id' : 'player2_id';
-    //     await db.run(`
-    //         UPDATE tournament_matches
-    //         SET ${field} = ?
-    //         WHERE tournament_id = ? AND round = ? AND match_number = ?
-    //     `, [playerId, tournamentId, round, matchNumber]);
-    // }
-
-    // Updated: To use player1_participant_id and player2_participant_id
     static async updateMatchPlayer(db: Database, tournamentId: number, round: number, matchNumber: number, isPlayer1: boolean, participantId: number) {
         const field = isPlayer1 ? 'player1_participant_id' : 'player2_participant_id';
         await db.run(`
@@ -426,49 +315,6 @@ class Tournament {
         const participant = await db.get(`SELECT user_id FROM tournament_participants WHERE id = ?`, participantId);
         return participant ? participant.user_id : null;
     }
-
-    // static async fetchParticipantIdsByGameId(db: Database, gameId: string): Promise<MatchParticipants | null> {
-    //    const result = await db.get<MatchParticipants>(`
-    //         SELECT player1_participant_id, player2_participant_id
-    //         FROM tournament_matches
-    //         WHERE game_id = ?
-    //     `, [gameId]);
-
-    //     // Explicitly return null if result is undefined
-    //     return result || null;
-    // }
-
-    // static async getParticipantIdByUserIdAndTournamentId(db: Database, tournamentId: number, userId: number): Promise<number | null> {
-    //     const result = await db.get<{ id: number }>(`
-    //         SELECT id FROM tournament_participants
-    //         WHERE tournament_id = ? AND user_id = ?
-    //     `, [tournamentId, userId]);
-    //     return result ? result.id : null;
-    // }
-
-//     static async getParticipantIdByUserIdAndTournamentId(db: Database, tournamentId: number, userId: number | null): Promise<number | null> {
-//     let sql: string;
-//     let params: (number | null)[];
-
-//     if (userId === null) {
-//         // console.log('inside getParticipantIdByUserIdAndTournamentId userId === null');
-//         sql = `
-//             SELECT id FROM tournament_participants
-//             WHERE tournament_id = ? AND user_id IS NULL
-//             -- AND is_guest = 1 
-//         `;
-//         params = [tournamentId];
-//     } else {
-//         sql = `
-//             SELECT id FROM tournament_participants
-//             WHERE tournament_id = ? AND user_id = ?
-//         `;
-//         params = [tournamentId, userId];
-//     }
-
-//     const result = await db.get<{ id: number }>(sql, params);
-//     return result ? result.id : null;
-// }
 
     /*-----------------------FOR GameRoom: setTourPlayerDetails-----------------------*/
 
