@@ -32,7 +32,7 @@ export interface InputState {
 /*---------------------------------STATS/RECORDS----------------------------*/
 
 export interface GameStats {
-  id: string;  // Changed from number to string
+  id: string;
   username: string;
   display_name?: string;
   elo_rating: number;
@@ -58,15 +58,15 @@ export interface MatchHistoryItem {
 
 export interface MatchRecord {
   gameId: string;
-  userId: string;        // Changed from number to string
-  opponentId: string | null;  // Changed from number to string
-  winnerId: string | null;    // Changed from number to string
+  userId: string;
+  opponentId: string | null;
+  winnerId: string | null;
   leftScore: number;
   rightScore: number;
 }
 
 export interface LeaderboardPlayer {
-  id: string;  // Changed from number to string
+  id: string;
   display_name: string | null;
   elo_rating: number;
   rank: number;
@@ -88,7 +88,7 @@ export interface EloHistoryItem {
 /*---------------------------------FRIENDS----------------------------------*/
 
 export interface FriendResponse {
-  id: string;  // Changed from number to string
+  id: string;
   username: string;
   displayName: string;
   online?: boolean;

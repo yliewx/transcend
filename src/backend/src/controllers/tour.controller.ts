@@ -37,18 +37,15 @@ async function notifyTournamentParticipants(
 ): Promise<void> {
   try {
     const participants = await Tournament.getTournamentParticipants(db, tournamentId);
-    // console.log('participants:', participants);
     
     for (const participant of participants) {
       if (excludeUserId && participant.user_id === excludeUserId) {
         continue;
       }
       
-      // console.log(`[tour.controller.ts] notifyTourParticipant: ${participant.user_id}`);
       const participantSocket = onlineUsers.get(participant.user_id);
       const userTournaments = await Tournament.findTournamentsByUserId(db, participant.user_id);
       if (participantSocket && participantSocket.readyState === WebSocket.OPEN) {
-        // console.log('notifying:', participant.user_id);
         participantSocket.send(JSON.stringify({
           type: eventType,
           data: { ...eventData, userTournaments }
