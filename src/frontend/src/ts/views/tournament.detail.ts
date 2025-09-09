@@ -15,8 +15,8 @@ export class TournamentDetailPage implements Page {
   public tournamentId: string | null = null;
   private isRegistered: boolean = false;
   private boundEventHandlers: {[key: string]: EventListener} = {};
-  private currParticipantId: number | null = null; // Current user's participant ID in this tournament
-  private guestParticipantId: number | null = null; // For local mode tournaments
+  private currParticipantId: number | null = null;
+  private guestParticipantId: number | null = null;
 
   constructor(router: Router) {
     this.router = router;
@@ -58,27 +58,19 @@ export class TournamentDetailPage implements Page {
   private async loadData(): Promise<{ success: boolean; error?: string }> {
     try {
       const response = await this.tournamentService.getTournamentDetails(this.tournamentId);
-      // console.log('Tournament details response:', response);
+      
       if (response.success) {
         this.tournament = response.tournament || null;
         this.matches = response.matches || [];
         this.participants = response.participants || [];
         const userId = sessionStorage.getItem('userId');
-
-        // Correctly find the current user's participant ID for this tournament
         const currParticipant = this.participants.find(p => p.user_id === userId);
         this.currParticipantId = currParticipant ? currParticipant.participant_id : null;
-
         const guestParticipant = this.participants.find(p => p.host_id === this.currParticipantId);
         this.guestParticipantId = guestParticipant ? guestParticipant.participant_id : null;
 
-        this.isRegistered = currParticipant !== undefined; // User is registered if a participant is found
+        this.isRegistered = currParticipant !== undefined;
         
-        // Log for debugging:
-        // console.log('Current User ID:', userId);
-        // console.log('currentParticipant:', currParticipant);
-        // console.log('CurrentParticipant ID:', this.currParticipantId);
-        // console.log('Is Registered:', this.isRegistered);
         return { success: true };
       } else {
         return { success: false, error: response.error || 'Failed to load tournament details' };
@@ -138,123 +130,11 @@ export class TournamentDetailPage implements Page {
       }
       return;
     }
-    
-    // const submitButton = target.id === 'submit-registration' || target.closest('#submit-registration');
-    // if (submitButton) {
-    //   e.preventDefault();
-
-    //   const form = document.getElementById('registration-form') as HTMLFormElement;
-    //   if (form) {
-    //     const aliasInput = form.querySelector('#alias') as HTMLInputElement;
-    //     const alias = aliasInput?.value.trim();
-        
-    //     if (alias) {
-    //       this.registerForTournament(alias);
-    //       const modal = document.getElementById('registration-modal');
-    //       if (modal) modal.remove();
-    //     }
-    //   }
-    // }
   }
 
   
 
-  // private renderModal(): void {
-  //   const modalOverlay = document.createElement('div');
-  //   modalOverlay.className = 'fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50';
-  //   modalOverlay.id = 'registration-modal';
-    
-  //   // Create the modal container
-  //   const modalContainer = document.createElement('div');
-  //   modalContainer.className = 'bg-white dark:bg-gray-800 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl transform transition-all animate-fadeIn';
-    
-  //   // Create header with title and close button
-  //   const headerDiv = document.createElement('div');
-  //   headerDiv.className = 'flex justify-between items-center mb-6';
-  //   headerDiv.innerHTML = `
-  //     <h3 class="text-xl font-bold text-gray-900 dark:text-white">Tournament Registration</h3>
-  //     <button type="button" id="close-modal" class="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 transition-colors">
-  //       <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-  //         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-  //       </svg>
-  //     </button>
-  //   `;
-    
-  //   // Create description
-  //   const description = document.createElement('p');
-  //   description.className = 'text-gray-600 dark:text-gray-300 mb-6';
-  //   description.textContent = 'Please choose an alias.';
-    
-  //   // Create form
-  //   const form = document.createElement('form');
-  //   form.id = 'registration-form';
-  //   form.className = 'space-y-5';
-    
-  //   // Create input container
-  //   const inputContainer = document.createElement('div');
-  //   inputContainer.className = 'relative';
-    
-  //   // Create input wrapper
-  //   const inputWrapper = document.createElement('div');
-  //   inputWrapper.className = 'relative flex justify-start';
-  //   inputWrapper.innerHTML = `
-  //     <input type="text" id="userAlias" name="alias" maxlength="20" required
-  //       class="pl-10 block w-2/3 h-12 border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:ring-pink-500 focus:border-pink-500 dark:bg-gray-700 dark:text-white"
-  //       placeholder="Enter your alias">
-  //   `;
-    
-  //   inputContainer.appendChild(inputWrapper);
-    
-  //   // Add opponent input if in local mode
-  //   if (this.tournament?.mode === 'local') {
-  //     const opponentWrapper = document.createElement('div');
-  //     opponentWrapper.className = 'relative flex justify-start mt-4';
-  //     opponentWrapper.innerHTML = `
-  //       <input type="text" id="opponentAlias" name="opponent-alias" maxlength="20" required
-  //         class="pl-10 block w-2/3 h-12 border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:ring-pink-500 focus:border-pink-500 dark:bg-gray-700 dark:text-white"
-  //         placeholder="Enter your opponent's alias">
-  //     `;
-      
-  //     inputContainer.appendChild(opponentWrapper);
-  //   }
-    
-  //   // Create helper text
-  //   const helperText = document.createElement('p');
-  //   helperText.className = 'mt-2 text-sm text-gray-500 dark:text-gray-400';
-  //   helperText.textContent = 'This is how other players will see you during the tournament.';
-    
-  //   inputContainer.appendChild(helperText);
-    
-  //   // Create buttons container
-  //   const buttonsContainer = document.createElement('div');
-  //   buttonsContainer.className = 'flex justify-end space-x-4 mt-8';
-  //   buttonsContainer.innerHTML = `
-  //     <button type="button" id="cancel-registration" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors">
-  //       Cancel
-  //     </button>
-  //     <button type="submit" id="submit-registration" class="px-4 py-2 bg-gradient-to-r from-pink-600 to-pink-500 text-white rounded-lg hover:from-pink-700 hover:to-pink-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 shadow-lg transition-all transform hover:translate-y-0.5">
-  //       Register
-  //     </button>
-  //   `;
-    
-  //   // Append all elements
-  //   form.appendChild(inputContainer);
-  //   form.appendChild(buttonsContainer);
-    
-  //   modalContainer.appendChild(headerDiv);
-  //   modalContainer.appendChild(description);
-  //   modalContainer.appendChild(form);
-
-  //   modalOverlay.appendChild(modalContainer);
-    
-  //   // Add event listeners
-  //   this.addModalEventListeners(modalOverlay, form);
-    
-  //   // Add animations stylesheet
-  //   this.ensureAnimationsStylesheet();
-    
-  //   document.body.appendChild(modalOverlay);
-  // }
+ 
 
   private renderModal(): void {
     const modalOverlay = document.createElement('div');
@@ -297,7 +177,6 @@ export class TournamentDetailPage implements Page {
 
     const aliasContainer = modalOverlay.querySelector('#alias-container') as HTMLFormElement;
 
-    // Add opponent input if in local mode
     if (this.tournament?.mode === 'local' && aliasContainer) {
       const opponentWrapper = document.createElement('div');
       opponentWrapper.className = 'relative flex justify-start mt-4';
@@ -308,21 +187,16 @@ export class TournamentDetailPage implements Page {
       `;
       aliasContainer.appendChild(opponentWrapper);
     }
-    // Add event listeners
     const form = modalOverlay.querySelector('#registration-form') as HTMLFormElement;
     this.addModalEventListeners(modalOverlay, form);
     
-    // Add animations stylesheet
     this.ensureAnimationsStylesheet();
     
     document.body.appendChild(modalOverlay);
   }
   
-  /**
-   * Adds event listeners to the modal elements
-   */
+
   private addModalEventListeners(modalOverlay: HTMLElement, form: HTMLFormElement): void {
-    // Modal click handlers
     modalOverlay.addEventListener('click', (e) => {
       const target = e.target as HTMLElement;
       
@@ -332,7 +206,6 @@ export class TournamentDetailPage implements Page {
       }
     });
     
-    // Form submission handler
     form.addEventListener('submit', (e) => {
       e.preventDefault();
       const userAliasInput = form.querySelector('#userAlias') as HTMLInputElement;
@@ -346,17 +219,13 @@ export class TournamentDetailPage implements Page {
     });
   }
   
-  /**
-   * Closes the modal with a fade-out animation
-   */
+
   private closeModalWithAnimation(modal: HTMLElement): void {
     modal.classList.add('animate-fadeOut');
     setTimeout(() => modal.remove(), 200);
   }
   
-  /**
-   * Ensures the animations stylesheet is added to the document
-   */
+
   private ensureAnimationsStylesheet(): void {
     if (!document.getElementById('tournament-animations')) {
       const style = document.createElement('style');
@@ -376,62 +245,6 @@ export class TournamentDetailPage implements Page {
       document.head.appendChild(style);
     }
   }
-
-
-  // private async registerForTournament(userAlias: string, opponentAlias?: string): Promise<void> {
-  //   try {
-  //     const ua = userAlias?.trim();
-  //     const oa = opponentAlias?.trim();
-  //     if (!ua || ua.length < 3 || ua.length > 20) {
-  //       this.showNotification('User alias must be between 3 and 20 characters', 'error');
-  //       return;
-  //     }
-  //     if (this.tournament?.mode == 'local' && (!oa || oa.length < 3 || oa.length > 20)) {
-  //       this.showNotification('Opponent alias must be between 3 and 20 characters', 'error');
-  //       return;
-  //     }
-  //     if (!this.tournamentId) return;
-      
-  //     const response = await this.tournamentService.registerForTournament(this.tournamentId, ua, oa);
-      
-  //     if (response.success) {
-  //       this.isRegistered = true;
-        
-  //       if (response.tournament_started) {
-  //         this.showNotification('Tournament has started! The bracket is now available.', 'success');
-          
-  //         const event = new CustomEvent('tournamentStarted', {
-  //           detail: { tournament: { ...this.tournament, status: 'active' } }
-  //         });
-  //         document.dispatchEvent(event);
-  //       } else {
-  //         this.showNotification(response.message || 'Successfully registered for tournament', 'success');
-          
-  //         const userId = parseInt(sessionStorage.getItem('userId') || '0');
-  //         const userName = sessionStorage.getItem('username') || 'User';
-          
-  //         const newParticipant = {
-  //           id: userId,
-  //           username: userName,
-  //           alias: ua,
-  //           status: 'active'
-  //         };
-          
-  //         this.participants.push(newParticipant);          
-  //         const event = new CustomEvent('participantJoined', {
-  //           detail: { participant: newParticipant }
-  //         });
-  //         document.dispatchEvent(event);
-  //       }        
-  //       await this.update();
-  //     } else {
-  //       this.showNotification(response.error || 'Failed to register for tournament', 'error');
-  //     }
-  //   } catch (error) {
-  //     console.error('Error registering for tournament:', error);
-  //     this.showNotification('An error occurred while registering for the tournament', 'error');
-  //   }
-  // }
   
   private async registerForTournament(userAlias: string, opponentAlias?: string): Promise<void> {
     try {
@@ -451,21 +264,17 @@ export class TournamentDetailPage implements Page {
       const response = await this.tournamentService.registerForTournament(this.tournamentId, ua, oa);
       
       if (response.success) {
-        // Remove direct modification of this.isRegistered and this.participants
-        // Rely on loadData() to refresh the state accurately after backend registration.
         if (response.tournament_started) {
           this.showNotification('Tournament has started! The bracket is now available.', 'success');
-          // Dispatch tournamentStarted event - consider if this is better handled by backend WebSocket
           const event = new CustomEvent('tournamentStarted', {
             detail: { tournament: { ...this.tournament, status: 'active' } }
           });
           document.dispatchEvent(event);
         } else {
-          // Message might indicate successful registration, or waiting for more players
           this.showNotification(response.message || 'Successfully registered for tournament. Waiting for more players...', 'success');
         }
-        await this.loadData(); // Reloads tournament, matches, and participants
-        await this.update(); // Re-renders the UI based on fresh data and updated state
+        await this.loadData();
+        await this.update();
         
       } else {
         this.showNotification(response.error || 'Failed to register for tournament', 'error');
@@ -483,8 +292,6 @@ export class TournamentDetailPage implements Page {
       const response = await this.tournamentService.joinTournamentMatch(matchId);
       if (response.success && response.gameId) {
         const userId = sessionStorage.getItem('userId');
-        //const participantId = response.participantId;
-        //const success = await this.router.getWsManager().connectGame(response.gameId, participantId); // <-- Changed userId to participantId
 
         if (!userId) throw new Error('User ID not found.');
 
@@ -750,14 +557,6 @@ export class TournamentDetailPage implements Page {
   }
   
 private renderMatchContent(match: TournamentMatch): string {
-  // console.log(`--- Rendering Match ${match.id} ---`);
-  // console.log('Match Object:', match);
-  // console.log('Match Status:', match.status);
-  // console.log('Match Winner ID:', match.winner_participant_id);
-  // console.log('Player 1 ID:', match.player1_participant_id, 'Player 2 ID:', match.player2_participant_id);
-  // console.log('Is Player 1 Winner?', match.winner_participant_id === match.player1_participant_id);
-  // console.log('Is Player 2 Winner?', match.winner_participant_id === match.player2_participant_id);
-  // console.log('-----------------------------');
   const player1Name = match.player1_alias || 'TBD';
   const player2Name = match.player2_alias || 'TBD';
   
@@ -778,8 +577,6 @@ private renderMatchContent(match: TournamentMatch): string {
   if (userNotInFinalLocalMatch) {
     matchIsPlayable = false;
   }
-  // console.log('User in Match:', userInMatch);
-  // console.log('Match is Playable:', matchIsPlayable); 
 
   const statusColors = {
     scheduled: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',

@@ -48,9 +48,7 @@ server.register(websocket, {
     clientTracking: true,
   }
 });
-// server.addHook("onRequest", async (req, reply) => {
-//   server.log.info(`Received request: ${req.method} ${req.url}`);
-// });
+
 server.register(authRoutes);
 server.register(setupRoutes);
 server.register(setupWebSocket);

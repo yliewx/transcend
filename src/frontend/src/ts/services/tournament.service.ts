@@ -12,33 +12,16 @@ export interface Tournament {
   alias?: string;
 }
 
-// export interface TournamentMatch {
-//   id: string;
-//   tournament_id: string;
-//   round: number;
-//   match_number: number;
-//   player1_id: number | null;
-//   player2_id: number | null;
-//   player1_username?: string;
-//   player2_username?: string;
-//   player1_alias?: string;
-//   player2_alias?: string;
-//   winner_id: number | null;
-//   match_date: string | null;
-//   game_id: string | null;
-//   status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
-// }
-
 export interface TournamentMatch {
-  game_id: string | null; // <-- Ensure this is here
+  game_id: string | null;
   id: string;
   tournament_id: string;
   mode: 'local' | 'remote';
   round: number;
   match_number: number;
-  player1_participant_id: number | null; // <-- Ensure this is here
-  player2_participant_id: number | null; // <-- Ensure this is here
-  player1_alias: string; // Assuming aliases are also part of the match object
+  player1_participant_id: number | null;
+  player2_participant_id: number | null;
+  player1_alias: string;
   player2_alias: string;
   winner_participant_id: number | null;
   status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
@@ -47,7 +30,7 @@ export interface TournamentMatch {
 
 export interface TournamentParticipant {
   user_id: string;
-  host_id: number | null; // This is the ID of the user who created the guest participant
+  host_id: number | null;
   participant_id: number;
   username: string | null;
   alias: string;

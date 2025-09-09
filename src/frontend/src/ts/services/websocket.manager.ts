@@ -149,47 +149,6 @@ export class WebSocketManager {
     state.isReconnecting = false;
   }
 
-  /*----------------------------RECONNECT TO GAME---------------------------*/
-
-  // private async reconnectGameSocket: Promise<boolean> {
-  //   if (this.gameStatus.isReconnecting) return false;
-  //   this.gameStatus.isReconnecting = true;
-  
-  //   if (!this.gameId || !this.playerId) {
-  //     console.error("[Game Socket] Missing gameId or playerId.");
-  //     this.gameStatus.isReconnecting = false;
-  //     return false;
-  //   }
-  
-  //   while (this.gameStatus.retryCount < this.gameStatus.maxRetry) {
-  //     this.gameStatus.retryCount++;
-  //     const delay = 1000 * Math.pow(2, this.gameStatus.retryCount);
-  
-  //     console.log(`[Game Socket] Reconnecting attempt ${this.gameStatus.retryCount} in ${delay}ms...`);
-  
-  //     await new Promise(res => setTimeout(res, delay));
-  
-  //     try {
-  //       const success = await this.connectGame(this.gameId, this.playerId);
-  //       if (success) {
-  //         console.log("[Game Socket] Reconnected successfully!");
-  //         this.gameStatus.isReconnecting = false;
-  //         return true;
-  //       }
-  //     } catch (err: any) {
-  //       if (err?.message === 'Failed to join game' || err?.message === 'Game not found') {
-  //         console.error("[Game Socket] Cannot rejoin: Game not found.");
-  //         this.gameStatus.isReconnecting = false;
-  //         return false; 
-  //       }
-  //     }
-  //   }
-  
-  //   console.error("[Game Socket] Max retries reached. Giving up.");
-  //   this.gameStatus.isReconnecting = false;
-  //   return false;
-  // }
-
   /*--------------------------GAME MESSAGE HANDLERS-------------------------*/
 
   private handleGameMessages(type: string, data: any): void {
@@ -268,14 +227,12 @@ export class WebSocketManager {
       }
       const { type, data } = message;
       if (type === 'pong') {
-        // console.log('[Online Socket] Pong received from server.');
         return;
       }
       this.handleMessages(type, data);
     };
 
     this.onlineSocket.onclose = () => {
-      //console.warn("WebSocket connection closed.");
       this.endHeartbeat();
       this.reconnectOnlineSocket();
     };
@@ -324,8 +281,6 @@ export class WebSocketManager {
       return;
     }
 
-    // console.log(`New message [${type}]:`, JSON.stringify(data, null, 2));
-
     const userCallback = this.onUserEventCallbacks.get(type);
     if (userCallback) {
       userCallback(data);
@@ -356,13 +311,11 @@ export class WebSocketManager {
       state.retryCount++;
       const interval = 1000 * Math.pow(2, state.retryCount);
   
-      //console.log(`[${socketType} socket] Reconnect attempt ${state.retryCount} in ${interval}ms...`);
       await this.delay(interval);
   
       try {
         const success = await connectFn();
         if (success) {
-          //console.log(`[${socketType} socket] Reconnected successfully!`);
           state.retryCount = 0;
           state.isReconnecting = false;
           return true;

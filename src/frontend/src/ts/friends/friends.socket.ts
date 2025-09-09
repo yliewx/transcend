@@ -28,15 +28,10 @@ export function handleFriendRequest(this: FriendsPage, data: FriendRequestMessag
     case 'cancelled':
       this.pendingRequests = this.pendingRequests.filter(req => req.id !== data.request.id);
       if (this.currentTab === 'pending') {
-        //this.renderPendingRequests();
         this.removeRequestCard(data.request.id);
       } else if (this.currentTab === 'search') {
         this.updateSearchUserCard(data.friend.id, 'add');
-        //this.renderSearchResults();
       } 
-      // else if (this.currentTab === 'friends') {
-      //   this.renderFriendsList();
-      // }
       break;
     default:
       return;

@@ -108,53 +108,7 @@ export class PongGamePage implements Page {
 
   /*--------------------------MANAGE GAME SESSION---------------------------*/
 
-  // private async restoreGameSession(): Promise<boolean> {
-  //   if (this.userId === null) {
-  //     const id = sessionStorage.getItem('userId');
-  //     const parsed = id !== null ? parseInt(id, 10) : NaN;
-  //     this.userId = Number.isNaN(parsed) ? null : parsed;
-  //     if (this.userId === null) {
-  //       console.error('Cannot check for active game session. No user ID found.');
-  //       return false;
-  //     }
-  //   }
-  
-  //   const response = await this.pongService.getExistingGame(this.userId!);
-  //   if (response.hasExistingGame) {
-  //     this.gameId = response.gameId ?? null;
-  //     this.gameMode = response.gameMode ?? 'local';
-  //     this.state = response.state ?? null;
-  //     this.isCreator = response.isCreator ?? false;
-  //     this.isTourMatch = response.isTourMatch ?? false;
-
-  //     if (this.gameId && this.state?.status !== 'finished') {
-  //       this.updateGameStatusUI('Reconnecting to previous game...');
-  //       try {
-  //         const success = await this.wss.connectGame(this.gameId, this.userId);
-  //         if (success) {
-  //           const gameIdElement = this.element?.querySelector('#game-id');
-  //           if (gameIdElement) gameIdElement.textContent = this.gameId;
-  //           this.updateGameStatusUI('Reconnected to game!');
-  //           this.toggleDisplayedControls();
-  //           if (this.state?.status === 'waiting') {
-  //             this.element?.querySelector('#start-game-btn')?.classList.remove('hidden');
-  //           } else {
-  //             this.element?.querySelector('#start-game-btn')?.classList.add('hidden');
-  //           }
-  //           this.startGameLoop();
-  //           return true;
-  //         }
-  //       } catch (error) {
-  //         console.warn('Failed to reconnect to previous game.');
-  //       }
-  //     }
-  //   }
-  //   return false;
-  // }
-
-  // Assuming this is in your frontend PlayView or similar component
-
-private async restoreGameSession(): Promise<boolean> {
+  private async restoreGameSession(): Promise<boolean> {
     if (this.userId === null) {
       this.userId = sessionStorage.getItem('userId');
       if (this.userId === null) {
@@ -163,7 +117,6 @@ private async restoreGameSession(): Promise<boolean> {
       }
     }
 
-    // Assuming pongService.getExistingGame now returns participantId IF it's a tour match
     console.log('Checking for existing game session for userId:', this.userId)
     const response = await this.pongService.getExistingGame();
     console.log('Response from getExistingGame:', response);
@@ -173,14 +126,12 @@ private async restoreGameSession(): Promise<boolean> {
       this.state = response.state ?? null;
       this.isCreator = response.isCreator ?? false;
       this.isTourMatch = response.isTourMatch ?? false;
-      // Add participantId from the response if it's a tour match
-      const participantIdForReconnect = this.userId; // <-- NEW: Use participantId if available, else fall back to userId
+      const participantIdForReconnect = this.userId;
 
       if (this.gameId && this.state?.status !== 'finished') {
         this.updateGameStatusUI('Reconnecting to previous game...');
         try {
-          // Pass participantIdForReconnect to connectGame
-          const success = await this.wss.connectGame(this.gameId, participantIdForReconnect); // <-- Changed this.userId to participantIdForReconnect
+          const success = await this.wss.connectGame(this.gameId, participantIdForReconnect); 
           if (success) {
             const gameIdElement = this.element?.querySelector('#game-id');
             if (gameIdElement) gameIdElement.textContent = this.gameId;
