@@ -44,10 +44,8 @@ async function websocketRoutes(server: FastifyInstance) {
       connection.close();
       return;
     }
-    // console.log(chalk.green.bold('\n[ws.routes] New online socket connection'));
-    // printAuthTokenPayload(user);
-    connection.send('Connected to server');
 
+    connection.send('Connected to server');
     onlineUsers.set(user.id, connection);
     notifyFriends(user.id, true);
 
@@ -60,7 +58,6 @@ async function websocketRoutes(server: FastifyInstance) {
     connection.on('message', (msg: string) => {
       const message = JSON.parse(msg);
       if (message.type === 'ping') {
-        // console.log(chalk.green.bold('\n[ws.routes] Ping received from client'));
         connection.send(JSON.stringify({ type: 'pong' }));
         return;
       }
