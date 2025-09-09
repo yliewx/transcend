@@ -157,32 +157,30 @@ CREATE TABLE IF NOT EXISTS tournaments (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- Updated tournament_participants table with host relationship
 CREATE TABLE IF NOT EXISTS tournament_participants (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   tournament_id INTEGER NOT NULL,
-  user_id TEXT,  -- Changed from INTEGER to TEXT
+  user_id TEXT,
   alias TEXT NOT NULL,
-  is_guest BOOLEAN NOT NULL DEFAULT 0,  -- Flag to identify guest/local players
-  host_id INTEGER,  -- Reference to the registered player hosting this guest (if applicable)
+  is_guest BOOLEAN NOT NULL DEFAULT 0,
+  host_id INTEGER,
   status TEXT CHECK(status IN ('registered', 'active', 'eliminated', 'winner')) DEFAULT 'registered',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (tournament_id) REFERENCES tournaments(id) ON DELETE CASCADE,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   FOREIGN KEY (host_id) REFERENCES tournament_participants(id) ON DELETE CASCADE,
-  UNIQUE(tournament_id, user_id) -- Will only apply when user_id is not NULL
+  UNIQUE(tournament_id, user_id)
 );
 
--- Simplified tournament_matches table using only participant references
 CREATE TABLE IF NOT EXISTS tournament_matches (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   tournament_id INTEGER NOT NULL,
   mode TEXT NOT NULL CHECK(mode IN ('local', 'remote')),
   round INTEGER NOT NULL,
   match_number INTEGER NOT NULL,
-  player1_participant_id INTEGER, -- Reference to tournament_participants
-  player2_participant_id INTEGER, -- Reference to tournament_participants
-  winner_participant_id INTEGER,  -- Reference to tournament_participants
+  player1_participant_id INTEGER, 
+  player2_participant_id INTEGER, 
+  winner_participant_id INTEGER, 
   game_id TEXT,
   status TEXT CHECK(status IN ('scheduled', 'in_progress', 'completed', 'cancelled')) DEFAULT 'scheduled',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -195,7 +193,7 @@ CREATE TABLE IF NOT EXISTS tournament_matches (
 
 CREATE TABLE IF NOT EXISTS elo_history (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id TEXT NOT NULL,  -- Changed from INTEGER to TEXT
+  user_id TEXT NOT NULL,
   match_id INTEGER NOT NULL,
   elo_rating INTEGER NOT NULL,
   previous_rating INTEGER NOT NULL,
