@@ -161,6 +161,7 @@ class User {
 
     static async updatePassword(db: Database, id: string, password: string) {
         await db.run('UPDATE users SET password = ? WHERE id = ?', [password, id]);
+        console.log("Password updated in DB for user ID:", id);
         return { id };
     }
 

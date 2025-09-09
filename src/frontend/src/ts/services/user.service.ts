@@ -63,6 +63,7 @@ export class UserService extends BaseApiService {
   public async updatePassword(
     passwordData: { currentPassword: string, newPassword: string }
   ): Promise<{success: boolean, message?: string, error?: string}> {
+    console.log("UserService: Initiating password update request", passwordData);
     return this.request<{message?: string, error?: string}>(
       '/user/password', 
       'PUT', 

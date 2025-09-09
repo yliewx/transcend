@@ -120,6 +120,7 @@ export class ProfilePage implements Page {
                       <input 
                         type="password" 
                         id="newPassword" 
+                        name="newPassword"
                         maxlength="20"
                         class="input-field"
                       >
@@ -310,6 +311,7 @@ export class ProfilePage implements Page {
   }
   
   private async handleFormSubmit(event: Event): Promise<void> {
+    console.log("ProfilePage: Form submission initiated");
     event.preventDefault();
     
     if (!this.element) return;
@@ -341,17 +343,20 @@ export class ProfilePage implements Page {
       this.showNotification('Password cannot be changed when signed in with google authentication', 'error');
       return;
     }
-    
+    console.log("ProfilePage: Password change section validation passed");
     if (currentPassword || newPassword || confirmPassword) {
       if (currentPassword && (currentPassword.length < 8 || currentPassword.length > 20)) {
+        console.log("ProfilePage: Current password length invalid");
         this.showNotification('Current password must be between 8 and 20 characters', 'error');
         return;
       }
       if (newPassword && (newPassword.length < 8 || newPassword.length > 20)) {
+        console.log("ProfilePage: New password length invalid");
         this.showNotification('New password must be between 8 and 20 characters', 'error');
         return;
       }    
       if (newPassword && newPassword !== confirmPassword) {
+        console.log("ProfilePage: New password mismatch");
         this.showNotification('New passwords do not match', 'error');
         return;
       }
@@ -366,10 +371,14 @@ export class ProfilePage implements Page {
       displayName: (formData.get('displayName') as string) || undefined,
     };
     
+    console.log(newPassword);
+    console.log(this.userProfile?.userData?.otp_option);
     const passwordData = (newPassword && this.userProfile?.userData?.otp_option !== null) ? {
       currentPassword: formData.get('currentPassword') as string,
       newPassword: newPassword,
     } : null;
+
+    console.log(passwordData)
     
     try {      
       let hasError = false;
@@ -378,6 +387,7 @@ export class ProfilePage implements Page {
         const userResult = await this.userService.updateUserData(userDataUpdate);
         if (!userResult.success) {
           this.showNotification(`User data update failed: ${userResult.error}`, 'error');
+          console.log(hasError, userDataUpdate);
           hasError = true;
         }
       }
@@ -387,10 +397,13 @@ export class ProfilePage implements Page {
         if (!profileResult.success) {
           this.showNotification(`Profile data update failed: ${profileResult.error}`, 'error');
           hasError = true;
+          console.log(hasError, profileResult);
         }
       }
-      
+      console.log("ProfilePage: Right before to update password");
+      console.log(hasError);
       if (!hasError && passwordData) {
+        console.log("ProfilePage: Attempting to update password");
         const passwordResult = await this.userService.updatePassword(passwordData);
         if (!passwordResult.success) {
           const errorMessage = passwordResult.error || 'Password update failed';

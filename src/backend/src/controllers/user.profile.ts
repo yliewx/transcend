@@ -146,6 +146,10 @@ export async function updatePasswordHandler(request: AuthenticatedRequest, reply
       newPassword: string;
     };
 
+    console.log("Received password update request for user ID:", userId);
+    console.log("Current Password Provided:", !!currentPassword);
+    console.log("New Password Provided:", !!newPassword); 
+
     const db = await getDb();
     
     const user = await User.findById(db, userId);
