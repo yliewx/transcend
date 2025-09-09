@@ -128,9 +128,6 @@ export class GameRoom {
     if (right.is_guest && right.participant_id) {
       this.players.right.userId = await Tournament.getHostUserId(db, right.participant_id);
     }
-
-    console.log('[setTourPlayerDetails] Left:', this.players.left);
-    console.log('[setTourPlayerDetails] Right:', this.players.right);
   }
 
   /*---------------------------SET PLAYER DETAILS---------------------------*/
@@ -153,9 +150,6 @@ export class GameRoom {
       participantId: null,
       alias: alias ?? null,
     } as Player;
-
-    console.log('[setPlayerDetails] Left:', this.players.left);
-    console.log('[setPlayerDetails] Right:', this.players.right);
   }
 
   /*-------------------------------JOIN GAME--------------------------------*/
@@ -163,7 +157,6 @@ export class GameRoom {
   private async addNewPlayer(data: { gameId: string; playerId: string }, socket: WebSocket): Promise<boolean> {
     if (this.mode === 'local') {
       if (this.tourMatchId !== null && data.playerId === this.players.left?.userId) {
-        console.log('[addNewPlayer] Reconnecting player for local tournament.');
         this.localSocket = socket;
         await this.setPlayerDetails('left', { userId: data.playerId, socket });
         this.announceJoin(data.playerId, 'left');
@@ -174,7 +167,6 @@ export class GameRoom {
         console.log('[addNewPlayer] Local game already has a player:', this.players.left?.userId);
         return false;
       }
-      console.log('[addNewPlayer] Adding new player.');
       this.localSocket = socket;
       await this.setPlayerDetails('left', { userId: data.playerId, socket });
       this.announceJoin(data.playerId, 'left');
@@ -198,10 +190,6 @@ export class GameRoom {
     const { playerId } = data;
 
     const side = this.getPlayerSide(playerId);
-
-    console.log(`[GameRoom - handleJoin] side: ${side}, playerId: ${playerId}`);
-    console.log('[handleJoin] Current Left:', this.players.left);
-    console.log('[handleJoin] Current Right:', this.players.right);
 
     if (this.mode === 'local') {
       if (side === 'left' && this.players.left) {
@@ -239,9 +227,7 @@ export class GameRoom {
     socket.removeAllListeners('message');
 
     socket.on('message', (msg: any) => {
-      const message = JSON.parse(msg.toString());
-      console.log('[GameRoom] Full message:', message.type, JSON.stringify(message.data, null, 2));
-    
+      const message = JSON.parse(msg.toString());    
       switch (message.type) {
         case 'input':
           this.handleInput(message.data, socket);
@@ -279,7 +265,6 @@ export class GameRoom {
   }
 
   public handleInput(data: InputMessage, socket: WebSocket) {
-    // console.log('[GameRoom handleInput] Full data:', JSON.stringify(data, null, 2));
     let side;
     if (this.mode === 'local') {
       if (!data.side || (data.side !== 'left' && data.side !== 'right')) {
@@ -385,64 +370,6 @@ export class GameRoom {
     }
   }
 
-  // async recordResults(state: GameState) {
-  //   const winScore = state.winner === 'left' ? state.scoreLeft : state.scoreRight;
-  //   if (winScore !== 5) {
-  //     console.log("Game ended before reaching a score of 5. Match result not recorded.");
-  //     return;
-  //   }
-
-  //   const db = await getDb();
-  //   const leftPlayerId = this.players.left?.userId ?? null;
-  //   const rightPlayerId = this.players.right?.userId ?? null;
-  //   const winnerId: number | null = state.winner === 'left' ? leftPlayerId : rightPlayerId;
-  
-  //   if ((leftPlayerId && rightPlayerId && winnerId) || (leftPlayerId && this.mode === 'local'))  {
-  //     await this.recordMatch(db, leftPlayerId, rightPlayerId, winnerId, state);
-  //     await this.recordPlayerResults(db, leftPlayerId, rightPlayerId, winnerId);
-  //     await this.recordPlayerResults(db, rightPlayerId, leftPlayerId, winnerId);
-  //     await updateTournamentMatchResult(this.gameId, winnerId!);
-  //   }
-  // }
-
-  // async recordResults(state: GameState) {
-  //   const winScore = state.winner === 'left' ? state.scoreLeft : state.scoreRight;
-  //   if (winScore !== 5) {
-  //     console.log("Game ended before reaching a score of 5. Match result not recorded.");
-  //     return;
-  //   }
-
-  //   const db = await getDb();
-  //   const leftPlayerId = this.players.left?.userId ?? null;  
-  //   const rightPlayerId = this.players.right?.userId ?? null; 
-  //   const winnerId: number | null = state.winner === 'left' ? leftPlayerId : rightPlayerId;
-  
-  //   // Ensure both players are present and a winner is determined for remote games (including tournament)
-  //   // For local games, only leftPlayerId is needed as it's single player.
-  //   if (!leftPlayerId || (this.mode === 'remote' && !rightPlayerId) || winnerId === null) {
-  //       console.error("Game ended, but player IDs or winner ID could not be determined. Results not recorded.", this.gameId);
-  //       return;
-  //   }
-
-  //   // Determine the type of game and delegate responsibility
-  //   if (this.tourMatchId !== null) {
-  //       await updateTournamentMatchResult(this.gameId, winnerId, state, leftPlayerId, rightPlayerId);
-  //   } else {
-  //       // This is a regular (non-tournament) game
-  //       if (this.mode === 'remote') {
-  //           // For regular remote games, Player.id IS the user_id.
-  //           // So, pass leftPlayerId, rightPlayerId, winnerId directly to GameStats functions.
-  //           // We've already checked if both are present above.
-  //           await this.recordMatch(db, leftPlayerId, rightPlayerId!, winnerId, state);
-  //           await this.recordPlayerResults(db, leftPlayerId, rightPlayerId!, winnerId);
-  //           await this.recordPlayerResults(db, rightPlayerId!, leftPlayerId, winnerId);
-  //       } else if (this.mode === 'local') {
-  //           // For local non-tournament games, we explicitly do NOT update Elo or record match history.
-  //           console.log(`Local non-tournament game ${this.gameId} completed. Elo/Match History not updated.`);
-  //       }
-  //   }
-  // }
-
   async recordResults(state: GameState) {
     const winScore = state.winner === 'left' ? state.scoreLeft : state.scoreRight;
     if (winScore !== 5) {
@@ -451,12 +378,10 @@ export class GameRoom {
     }
 
     const db = await getDb();
-    const leftPlayerId = this.players.left?.userId ?? null;  // Type: string | null
-    const rightPlayerId = this.players.right?.userId ?? null; // Type: string | null
-    const winnerGameId: string | null = state.winner === 'left' ? leftPlayerId : rightPlayerId; // Type: string | null
+    const leftPlayerId = this.players.left?.userId ?? null;
+    const rightPlayerId = this.players.right?.userId ?? null;
+    const winnerGameId: string | null = state.winner === 'left' ? leftPlayerId : rightPlayerId;
 
-    // Consolidate the check for required IDs based on game mode.
-    // If this block is entered, we guarantee the necessary IDs are non-null.
     let essentialIdsMissing: boolean = false;
     if (this.mode === 'local') {
         if (leftPlayerId === null) {
@@ -492,14 +417,11 @@ export class GameRoom {
             rightParticipantId
         );
     } else {
-        // This is a regular (non-tournament) game
         if (this.mode === 'remote') {
-            // For remote non-tournament games, leftPlayerId, rightPlayerId, and winnerGameId are guaranteed non-null.
             await this.recordMatch(db, leftPlayerId!, rightPlayerId!, winnerGameId!, state);
             await this.recordPlayerResults(db, leftPlayerId!, rightPlayerId!, winnerGameId!);
             await this.recordPlayerResults(db, rightPlayerId!, leftPlayerId!, winnerGameId!);
         } else if (this.mode === 'local') {
-            // For local non-tournament games, we explicitly do NOT update Elo or record match history.
             console.log(`Local non-tournament game ${this.gameId} completed. Elo/Match History not updated.`);
         }
     }
