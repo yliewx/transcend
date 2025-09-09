@@ -73,7 +73,6 @@ export class TournamentPage implements Page {
 
       this.updateUI();
     } catch (error) {
-      console.error('Error fetching tournament data:', error);
       
       if (this.element) {
         const contentContainer = this.element.querySelector('.px-4.py-6');
@@ -224,7 +223,6 @@ export class TournamentPage implements Page {
       submitButton.textContent = originalButtonText;
       submitButton.disabled = false;
     } catch (error) {
-      console.error('Error creating tournament:', error);
       alert('An error occurred while creating the tournament');
       
       const submitButton = form.querySelector('button[type="submit"]') as HTMLButtonElement;

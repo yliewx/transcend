@@ -149,7 +149,6 @@ export class FriendsPage implements Page {
           this.renderSearchResults();
      
     } catch (error) {
-      console.error('Error loading friends data:', error);
       this.showError(error instanceof Error ? error.message : 'Unknown error');
     }
   }
@@ -227,7 +226,6 @@ export class FriendsPage implements Page {
       }      
       
     } catch (error) {
-      console.error('Search error:', error);
       this.showError(error instanceof Error ? error.message : 'Search failed');
       
     }

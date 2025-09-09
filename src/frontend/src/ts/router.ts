@@ -47,7 +47,6 @@ export class Router {
   private setupVisibilityListener(): void {
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) {
-        console.log('[Router] Resyncing with server...');
         this.updateCurrentPage();
       }
     });
@@ -125,7 +124,6 @@ export class Router {
   }
 
   private async redirectToLogin(message?: string): Promise<void> {
-    console.log('Redirecting to login page.', message);
     if (this.currentPath && this.currentPath !== '/login') {
       this.destroyCurrentPage();
     }

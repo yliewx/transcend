@@ -25,8 +25,6 @@ export async function createGame(request: FastifyRequest, reply: FastifyReply) {
     });
   }
 
-  console.log('[createGame] typeof gameId:', typeof gameId, gameId);
-
   return reply.status(200).send({
     gameId: gameId,
     success: true
@@ -60,7 +58,6 @@ export async function getUserParticipantIdInMatch(db: Database, match: any, user
 
 export async function getExistingGame(request: AuthenticatedRequest, reply: FastifyReply) {
   const userId = request.user.id;
-  console.log('Fetching existing game for user ID:', userId);
   const db = await getDb();
 
   const existingGameSession = gameManager.getPlayerSession(userId);

@@ -52,7 +52,6 @@ export class WebSocketManager {
       this.setupGameSocketHandlers();
       return true;
     } catch (err) {
-      console.error("[Game Socket] Error:", err);
       this.gameSocket?.close();
       throw err;
     }
@@ -165,7 +164,7 @@ export class WebSocketManager {
 
     const callback = this.gameEventCallbacks.get(type);
     if (!callback) {
-      console.warn(`Unhandled game message type: ${type}`);
+      console.error(`Unhandled game message type: ${type}`);
       return;
     }
     callback(data);
@@ -204,7 +203,6 @@ export class WebSocketManager {
       this.setupOnlineSocketHandlers();
       this.startHeartbeat();
   
-      console.log("[Online Socket] Successfully connected to server!");
       state.retryCount = 0;
       state.isReconnecting = false;
       return true;
@@ -292,8 +290,6 @@ export class WebSocketManager {
       tournamentCallback(data);
       return;
     }
-
-    console.warn(`Unhandled online message type: ${type}`);
   }
 
   /*-------------------------RECONNECT ONLINE SOCKET------------------------*/
@@ -349,17 +345,12 @@ export class WebSocketManager {
     });
   }
 
-  private async passiveReconnect(interval: number = 30000): Promise<void> {
-    console.log("[Online Socket] Passive reconnecting every 30s...");
-  
+  private async passiveReconnect(interval: number = 30000): Promise<void> {  
     while (!this.onlineSocket || this.onlineSocket.readyState === WebSocket.CLOSED) {
       await this.delay(interval);
   
-      console.log("[Online Socket] Passive reconnect attempt...");
-
       const success = await this.connect();
       if (success) {
-        console.log("[Online Socket] Passive reconnect successful!");
         break;
       }
     }
@@ -374,7 +365,6 @@ export class WebSocketManager {
   close(): void {
     this.disconnectOnline();
     this.disconnectGame();
-    console.log('WebSocket connections closed.');
   }
 
   isConnected(): boolean {
