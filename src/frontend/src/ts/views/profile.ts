@@ -66,7 +66,6 @@ export class ProfilePage implements Page {
                       type="text" 
                       id="username" 
                       name="username" 
-                      value="a"
                       maxlength="20"
                       class="input-field"
                     >
@@ -79,7 +78,6 @@ export class ProfilePage implements Page {
                       type="text" 
                       id="displayName" 
                       name="displayName" 
-                      value="a"
                       maxlength="20"
                       class="input-field"
                     >
@@ -92,7 +90,6 @@ export class ProfilePage implements Page {
                       type="email" 
                       id="email" 
                       name="email" 
-                      value="a@gmail.com"
                       maxlength="40"
                       class="input-field"
                     >
@@ -120,6 +117,7 @@ export class ProfilePage implements Page {
                       <input 
                         type="password" 
                         id="newPassword" 
+                        name="newPassword" 
                         maxlength="20"
                         class="input-field"
                       >
