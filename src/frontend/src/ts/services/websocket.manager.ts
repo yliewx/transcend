@@ -1,3 +1,5 @@
+import { Notifications } from '../components/notifications';
+
 export class WebSocketManager {
   private baseUrl: string;
   private onlineSocket: WebSocket | null = null;
@@ -152,8 +154,9 @@ export class WebSocketManager {
 
   private handleGameMessages(type: string, data: any): void {
     if (type === 'error') {
-      console.error('[Game Socket] Error from server:', JSON.stringify(data, null, 2));
+      // console.error('[Game Socket] Error from server:', JSON.stringify(data, null, 2));
       if (typeof data === 'object' && data !== null && 'message' in data) {
+        Notifications.show('info', data.message);
         if (data.message === 'Game not found') {
           this.retryState.game.isReconnecting = false;
           this.gameSocket?.close();
@@ -170,11 +173,14 @@ export class WebSocketManager {
     callback(data);
   }
 
-  public sendMessage(type: string, data: any): void {
+  public async sendMessage(type: string, data: any) {
     if (this.gameSocket && this.gameSocket.readyState === WebSocket.OPEN) {
       this.gameSocket.send(JSON.stringify({ type, data }));
     } else {
-      console.error("WebSocket connection is not open.");
+      const result = await this.reconnectGameSocket();
+      if (!result) {
+        console.error("WebSocket connection is not open.");
+      }
     }
   }
 

@@ -66,12 +66,6 @@ export class GameManager {
   /*-------------------------------JOIN GAME--------------------------------*/
 
   public async joinRoom(data: { gameId: string, playerId: string }, connection: WebSocket): Promise<boolean> {
-    const existingGame = this.activePlayers.get(data.playerId);
-    if (existingGame && existingGame.getGameId() !== data.gameId) {
-      console.error('Player is already in a game');
-      sendError(connection, 'Player cannot join more than one match at once');
-      return false;
-    }
     const room = this.getRoom(data.gameId);
     const joinSuccess = await room?.handleJoin(data, connection);
     if (room && joinSuccess) {
