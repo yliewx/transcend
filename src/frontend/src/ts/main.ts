@@ -38,6 +38,29 @@ document.addEventListener('DOMContentLoaded', async () => {
   const pongGameService = new PongGameService();
 
   const router = new Router(appContainer, controlAccess);
+
+   document.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement;
+    const link = target.closest('a');
+
+    if (!link) return;
+
+    const href = link.getAttribute('href');
+    if (!href || !href.startsWith('/')) return;
+
+    if (
+      link.target === '_blank' ||
+      link.hasAttribute('download') ||
+      e.metaKey ||
+      e.ctrlKey
+    ) {
+      return;
+    }
+
+    e.preventDefault();
+    router.navigateTo(href);
+  });
+
   
   router.addRoute('/login', new LoginPage(router));
   router.addRoute('/register', new RegisterPage(router));
