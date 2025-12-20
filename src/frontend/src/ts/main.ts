@@ -54,11 +54,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   router.addRoute('/tournaments/:id', new PageWithHeader(new TournamentDetailPage(router), router));
   router.addRoute('/404', new PageWithHeader(new NotFoundPage(), router));
   router.addRoute('/privacy', new PageWithHeader(new PrivacyPage(), router));
-
   
-  router.init(controlAccess.isLoggedIn() ? '/home' : '/login').catch(error => {
+  const path = window.location.pathname;
+
+  router.init(
+    path === '/privacy'
+      ? '/privacy'
+      : controlAccess.isLoggedIn()
+        ? '/home'
+        : '/login'
+  ).catch(error => {
     console.error('Failed to initialize router:', error);
   });
+
 });
 
 function isSupportedBrowser(): boolean {
