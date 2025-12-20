@@ -19,24 +19,15 @@ Ensure the following tools are installed on your system:
 - **Docker Compose**
 - **Git**
 
-
-### Environment Setup
-
-## Prerequisites
-
-- Docker
-- Docker Compose
-- Git
-
 ## Environment Setup
 
 1. Clone the repository
    ```bash
-   git clone https://github.com/<your-repo>/parsley-pong.git
+   git clone git@github.com:yliewx/transcend.git parsley-pong
    cd parsley-pong
    ```
 
-2. Create a `.env` file at the project root
+2. Create a `.env` file at the project root (refer to the `env.example` provided)
 
 3. Add SSL certificates for Nginx
    ```
@@ -54,7 +45,8 @@ Ensure the following tools are installed on your system:
    ```
 
 5. Start the application
-   ```make
+   ```
+   make
    ```
 
 6. Access the application at https://parsleypong.com
@@ -69,7 +61,7 @@ Ensure the following tools are installed on your system:
 | :----------- | :------------------------------------------------------------ | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **hyan-yi** | **Product Owner (PO), Developer** | Defines product vision and feature priorities, designs system architecture and database schema (ERD), makes technology stack decisions, reviews critical code changes, validates completed work, and implements core game logic.  |
 | **yliew** | **Project Manager (PM) / Scrum Master, Technical Lead / Architect, Developer**    | Organizes team meetings and sprint planning, tracks progress and deadlines, manages risks and blockers, ensures team communication, and implements backend features including websockets, and API security. |
-| **agan** | ** Developer**                                        | Implements frontend features, participates in code reviews, testing, QA, and documentation.                                                                |
+| **agan** | **Developer**                                        | Implements frontend features, participates in code reviews, testing, QA, and documentation.                                                                |
 
 
 
@@ -328,7 +320,6 @@ Stores tournament-specific match structure.
 
 Implementation:
 - Built using Fastify REST endpoints
-- Avatar uploads handled using multipart parsing and file validation
 - Real-time friend status powered by WebSockets
 - User profile data and avatars stored in SQLite
 - Frontend profile UI built with vanilla TypeScript + Tailwind components
@@ -340,6 +331,7 @@ Team Member(s):
 
 ### Web-Based Game (Pong)
 - A complete 2D real-time multiplayer Pong game with clear win/loss conditions.
+
 Implementation:
 - HTML canvas + animation loop for display
 - TypeScript game engine with paddle/ball physics, scoring, collisions
@@ -358,7 +350,6 @@ Implementation:
 - Dedicated Fastify WebSocket endpoints for rooms
 - Player input transmitted over the network + state reconciled server-side
 - Full reconnection and resync logic
-- Network timeout detection
 
 Team Member(s):
 - yliew
@@ -511,6 +502,7 @@ Expired tokens immediately disconnect the socket.
   "exp": <timestamp>,
   "iat": <timestamp>
 }
+```
 
 ---
 
@@ -519,10 +511,7 @@ Team Member(s):
 
 
 
-##Contributions
-
-
-—
+## Contributions
 
 
 ### hyan-yi – Product Owner (PO), Developer
