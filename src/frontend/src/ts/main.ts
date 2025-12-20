@@ -19,7 +19,8 @@ import { TournamentDetailPage } from './views/tournament.detail';
 import { FriendService } from './services/friend.service';
 import { FriendsPage } from './views/friends';
 import { NotFoundPage } from './views/notfound';
-import  { BrowserWarning } from './components/warning';
+import { BrowserWarning } from './components/warning';
+import { PrivacyPage } from './views/privacy.page';
 
 document.addEventListener('DOMContentLoaded', async () => {  
   if (!isSupportedBrowser()) {
@@ -51,6 +52,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   router.addRoute('/tournaments', new PageWithHeader(new TournamentPage(router), router));
   router.addRoute('/tournaments/:id', new PageWithHeader(new TournamentDetailPage(router), router));
   router.addRoute('/404', new PageWithHeader(new NotFoundPage(), router));
+  router.addRoute('/privacy', new PageWithHeader(new PrivacyPage(), router));
+
   
   router.init(controlAccess.isLoggedIn() ? '/home' : '/login').catch(error => {
     console.error('Failed to initialize router:', error);
