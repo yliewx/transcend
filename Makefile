@@ -1,9 +1,7 @@
 # define makefile variables
 
 COMPOSE_FILE = -f ./docker-compose.yml
-COMPOSE_FILE_DEV = -f ./docker-compose.dev.yml
 ENV_FILE = --env-file ./.env
-ENV_FILE_DEV = --env-file ./.env.dev
 
 #------------------------------------------------------------------------
 
@@ -20,15 +18,10 @@ END = \033[0m
 
 all: down up
 
-# default: production mode (parsleypong.com)
+# production mode (parsleypong.com)
 up:
 	@echo "$(RED)[ Starting containers in production mode... ]$(END)"
 	@docker compose $(COMPOSE_FILE) $(ENV_FILE) up --build --force-recreate -d
-
-# make dev: development mode (localhost:8080)
-dev: down
-	@echo "$(GREEN)[ Starting containers in development mode... ]$(END)"
-	@docker compose $(COMPOSE_FILE_DEV) $(ENV_FILE_DEV) up --build --force-recreate -d
 
 cli:
 	@echo "$(GREEN)[ Running Pong-CLI... ]$(END)"
@@ -37,7 +30,6 @@ cli:
 down:
 	@echo "$(BROWN)[ Stopping and removing containers... ]$(END)"
 	@docker compose $(COMPOSE_FILE) down || true
-	@docker compose $(COMPOSE_FILE_DEV) down || true
 	@docker volume rm -f frontend_data || true
 
 clean: down
@@ -54,4 +46,4 @@ re: down up
 
 #------------------------------------------------------------------------
 
-.PHONY: all up down clean fclean re dev cli
+.PHONY: all up down clean fclean re cli
