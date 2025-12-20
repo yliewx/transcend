@@ -154,7 +154,6 @@ export class WebSocketManager {
 
   private handleGameMessages(type: string, data: any): void {
     if (type === 'error') {
-      // console.error('[Game Socket] Error from server:', JSON.stringify(data, null, 2));
       if (typeof data === 'object' && data !== null && 'message' in data) {
         Notifications.show('info', data.message);
         if (data.message === 'Game not found') {
