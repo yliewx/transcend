@@ -1,7 +1,0 @@
-tunnel: db705420-77c1-4c06-af5b-5495bdf4801b
-credentials-file: /etc/cloudflared/db705420-77c1-4c06-af5b-5495bdf4801b.json
-
-ingress:
-  - hostname: parsleypong.com
-    service: https://parsleypong.com:443
-  - service: http_status:404

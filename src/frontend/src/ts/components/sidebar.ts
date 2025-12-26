@@ -1,7 +1,7 @@
 import { Router } from '../router';
 import { ControlAccess } from '../services/control.access';
 import { IconNavLink } from './navlink';
-import { homeIcon, gamepadIcon, chartIcon, userIcon, friendsIcon, trophyIcon } from './icons'; 
+import { homeIcon, gamepadIcon, chartIcon, userIcon, friendsIcon, trophyIcon, privacyIcon } from './icons'; 
 import { LogoutButton } from './logout.button';
 
 export class SidebarComponent {
@@ -19,6 +19,7 @@ export class SidebarComponent {
       new IconNavLink('/stats', chartIcon, 'Stats'),
       new IconNavLink('/profile', userIcon, 'Profile'),
       new IconNavLink('/friends', friendsIcon, 'Friends'),
+      new IconNavLink('/privacy', privacyIcon, 'Privacy'),
     ];
 
 
