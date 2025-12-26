@@ -8,7 +8,7 @@ import { Chart } from 'chart.js/auto';
 export class StatsPage implements Page {
   private router: Router;
   private gameStatsService: GameStatsService;
-  private userId: number | null = null;
+  private userId: string | null = null;
   private stats: GameStats | null = null;
   private matchHistory: MatchHistoryItem[] = [];
   private leaderboard: any[] = [];
@@ -341,7 +341,7 @@ export class StatsPage implements Page {
     if (errorElement) errorElement.classList.add('hidden');
   
     const userIdStr = sessionStorage.getItem('userId');
-    this.userId = userIdStr ? parseInt(userIdStr, 10) : null;
+    this.userId = userIdStr ?? null;
     
     try {
       if (!this.userId) {
@@ -650,7 +650,7 @@ private renderLeaderboard(): void {
             </div>` 
           : player.current_win_streak.toString();
         
-        const winRate = this.stats?.win_percentage || 0;
+        const winRate = player.win_percentage || 0;
         
         row.style.opacity = '0';
         row.style.transform = 'translateY(10px)';

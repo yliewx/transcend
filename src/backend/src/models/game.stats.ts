@@ -2,7 +2,7 @@ import { Database } from 'sqlite';
 
 interface EloHistoryRow {
   id: number;
-  user_id: number;
+  user_id: string;
   match_id: number;
   elo_rating: number;
   previous_rating: number;
@@ -14,9 +14,9 @@ interface EloHistoryRow {
 class GameStats {
     static async recordGameResult(
         db: Database,
-        userId: number | null,
-        opponentId: number | null,
-        winnerId: number | null,
+        userId: string | null,
+        opponentId: string | null,
+        winnerId: string | null,
         leftScore: number,
         rightScore: number,
         tournamentId: number = 0
@@ -35,7 +35,7 @@ class GameStats {
       );
     }
 
-    static async updateMatches(db: Database, userId: number, result: 'win' | 'loss'): Promise<void> {
+    static async updateMatches(db: Database, userId: string, result: 'win' | 'loss'): Promise<void> {
       await db.run(
         `INSERT INTO player_stats (
           user_id, 
@@ -55,7 +55,7 @@ class GameStats {
       );
     }
 
-    static async updateWinStreak(db: Database, userId: number, won: boolean): Promise<void> {
+    static async updateWinStreak(db: Database, userId: string, won: boolean): Promise<void> {
       const player = await db.get(
         `SELECT current_win_streak, max_win_streak FROM player_stats WHERE user_id = ?`,
         userId
@@ -66,7 +66,6 @@ class GameStats {
       
       if (won) {
         currentStreak += 1;        
-        console.log(`Current streak: ${currentStreak}`);
         maxStreak = currentStreak > maxStreak ? currentStreak : maxStreak;
       } 
       else 
@@ -95,7 +94,7 @@ class GameStats {
     }
   
 
-    static async getUserEloRating(db: Database, userId: number): Promise<number> {
+    static async getUserEloRating(db: Database, userId: string): Promise<number> {
       const rating = await db.get(
         `SELECT elo_rating FROM player_stats WHERE user_id = ?`,
         userId
@@ -103,7 +102,7 @@ class GameStats {
       return rating ? rating.elo_rating : 1200;
     }
     
-    static async getUserStats(db: Database, userId: number) {
+    static async getUserStats(db: Database, userId: string) {
       const userStats = await db.get(
         `SELECT * FROM player_complete_stats_view WHERE id = ?`,
         userId
@@ -124,15 +123,17 @@ class GameStats {
            display_name, 
            elo_rating, 
            rank,
-           current_win_streak
+           current_win_streak,
+           win_percentage
          FROM player_complete_stats_view 
          WHERE games_played > 0
+           AND rank IS NOT NULL
          ORDER BY rank ASC
          LIMIT 10`,
       );
     }
 
-    static async getUserMatchHistory(db: Database, userId: number) {
+    static async getUserMatchHistory(db: Database, userId: string) {
         const rows = await db.all(`
           SELECT 
             mh.id, 
@@ -165,7 +166,7 @@ class GameStats {
     }
 
 
-    static async updatePlayerElo(db: Database, userId: number, opponentId: number, actualScore: number): Promise<void> {
+    static async updatePlayerElo(db: Database, userId: string, opponentId: string, actualScore: number): Promise<void> {
       try {
         const result = await db.get(
           `SELECT elo_rating, games_played FROM player_stats WHERE user_id = ?`,
@@ -212,12 +213,11 @@ class GameStats {
         }
         
       } catch (error) {
-        console.error('Error updating ELO rating:', error);
         throw error;
       }
     }
 
-    static async getUserEloHistory(db: Database, userId: number) {
+    static async getUserEloHistory(db: Database, userId: string) {
       try {
         const rows = await db.all(`
           SELECT 
@@ -246,7 +246,6 @@ class GameStats {
           })
         }));
       } catch (error) {
-        console.error('Error fetching ELO history:', error);
         throw error;
       }
     }

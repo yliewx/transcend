@@ -25,6 +25,14 @@ export const chartIcon = `
 `;
 
 
+export const privacyIcon = `
+<svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+  <path stroke-linecap="round" stroke-linejoin="round" d="M7 3h7l5 5v13a1 1 0 01-1 1H7a1 1 0 01-1-1V4a1 1 0 011-1z" />
+  <path stroke-linecap="round" stroke-linejoin="round" d="M14 3v5h5" />
+  <path stroke-linecap="round" stroke-linejoin="round" d="M12 12l3 1v3a4 4 0 01-3 3 4 4 0 01-3-3v-3l3-1z" />
+</svg>
+`;
+
 
 export const userIcon = `
 <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">

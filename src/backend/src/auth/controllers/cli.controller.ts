@@ -10,7 +10,7 @@ export async function generateCLIToken(request: FastifyRequest, reply: FastifyRe
       const userData = request.user as AuthTokenPayload;
       
       const db = await getDb();
-      const user = await User.findById(db, Number(userData.id));
+      const user = await User.findById(db, userData.id);
   
       if (!user) {
         return reply.status(401).send({

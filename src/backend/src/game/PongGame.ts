@@ -165,11 +165,9 @@ export class PongGame {
   /*-------------------------------PAUSE GAME-------------------------------*/
 
   public pauseGame(): string {
-    console.log(`[pauseGame] initial status: ${this.state.status}`);
       if (this.state.status === 'playing' || this.state.status === 'paused') {
         this.state.status = this.state.status === 'playing' ? 'paused' : 'playing';
       }
-      console.log(`[pauseGame] after: ${this.state.status}`);
       return this.state.status;
   }
 

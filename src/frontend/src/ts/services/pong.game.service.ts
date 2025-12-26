@@ -8,11 +8,12 @@ interface ExistingGameResponse {
   state?: GameState,
   isCreator?: boolean,
   isTourMatch?: boolean,
+  participantId?: number,
   message?: string
 }
 
 export class PongGameService extends BaseApiService {
-  public async createGame(mode: 'local' | 'remote'): Promise<{success: boolean, gameId?: string, error?: string}> {
+  public async createGame(mode: 'local' | 'remote'): Promise<{success: boolean, gameId?: string, message?: string, error?: string}> {
     return this.request<{gameId?: string}>(
       '/game/create',
       'POST',
@@ -21,7 +22,7 @@ export class PongGameService extends BaseApiService {
     );
   }
 
-  public async getExistingGame(playerId: number): Promise<ExistingGameResponse> {
+  public async getExistingGame(): Promise<ExistingGameResponse> {
     return this.request<ExistingGameResponse>(
       '/game/restore',
       'GET',

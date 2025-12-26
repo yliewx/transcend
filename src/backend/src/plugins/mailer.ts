@@ -17,7 +17,7 @@ export default fp(async function setupMailer(server: FastifyInstance) {
     await transporter.verify();
     server.log.info('Nodemailer connection established');
   } catch (error) {
-    server.log.error('Failed to establish Nodemailer connection', error);
+    console.error('Failed to establish Nodemailer connection', error);
   }
 
   if (!server.hasDecorator("mailer")) {
@@ -49,7 +49,7 @@ export default fp(async function setupMailer(server: FastifyInstance) {
       server.log.info(`Email OTP sent to ${email}, messageId: ${info.messageId}`);
       return true;
     } catch (error) {
-      server.log.error('Failed to send Email OTP:', error);
+      console.error('Failed to send Email OTP:', error);
       throw new Error('Failed to send verification code via Email');
     }
   }

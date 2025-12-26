@@ -8,21 +8,30 @@ export function handleFriendRequest(this: FriendsPage, data: FriendRequestMessag
       this.pendingRequests.push({ ...data.request, userId: data.friend.id });
       if (this.currentTab === 'pending') {
         this.renderPendingRequests();
-      }
+      } else if (this.currentTab === 'search') {
+        this.updateSearchUserCard(data.friend.id, 'pending');
+      } 
       break;
     case 'accepted':
       this.currentFriends.push(data.friend);
+      this.pendingRequests = this.pendingRequests.filter(req => req.id !== data.request.id);
+      if (this.currentTab === 'friends') {
+        this.renderFriendsList();
+      }
+      else if (this.currentTab === 'pending') {
+        this.removeRequestCard(data.request.id);
+      }
+      else if (this.currentTab === 'search') {
+        this.updateSearchUserCard(data.friend.id, 'friend');
+      }
     case 'declined':
     case 'cancelled':
       this.pendingRequests = this.pendingRequests.filter(req => req.id !== data.request.id);
       if (this.currentTab === 'pending') {
-        this.renderPendingRequests();
+        this.removeRequestCard(data.request.id);
       } else if (this.currentTab === 'search') {
         this.updateSearchUserCard(data.friend.id, 'add');
-        this.renderSearchResults();
-      } else if (this.currentTab === 'friends') {
-        this.renderFriendsList();
-      }
+      } 
       break;
     default:
       return;
@@ -32,7 +41,7 @@ export function handleFriendRequest(this: FriendsPage, data: FriendRequestMessag
   Notifications.show('info', data.message);
 }
 
-export function handleFriendRemoved(this: FriendsPage, data: { friendId: number, message: string }) {
+export function handleFriendRemoved(this: FriendsPage, data: { friendId: string, message: string }) {
   this.currentFriends = this.currentFriends.filter(friend => friend.id !== data.friendId);
 
   if (this.currentTab === 'friends') {

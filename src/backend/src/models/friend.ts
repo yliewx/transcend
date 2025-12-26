@@ -2,7 +2,7 @@ import { Database } from 'sqlite';
 
 class Friend {
   /*------------------------------ FRIEND RELATIONSHIPS -----------------------------*/
-  static async getFriendsList(db: Database, userId: number) {
+  static async getFriendsList(db: Database, userId: string) {
     return db.all(`
       SELECT 
         f.id,
@@ -23,7 +23,7 @@ class Friend {
     `, userId);
   }
 
-  static async areFriends(db: Database, userId: number, friendId: number) {
+  static async areFriends(db: Database, userId: string, friendId: string) {
     const friendship = await db.get(
       'SELECT id FROM friendships WHERE (user_id = ? AND friend_id = ?)',
       [userId, friendId]
@@ -31,14 +31,14 @@ class Friend {
     return !!friendship;
   }
 
-  static async removeFriend(db: Database, userId: number, friendId: number) {
+  static async removeFriend(db: Database, userId: string, friendId: string) {
     return db.run(
       'DELETE FROM friendships WHERE (user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)',
       [userId, friendId, friendId, userId]
     );
   }
 
-  static async createFriendship(db: Database, userId: number, friendId: number) {
+  static async createFriendship(db: Database, userId: string, friendId: string) {
     await db.run(
       'INSERT INTO friendships (user_id, friend_id) VALUES (?, ?)',
       [userId, friendId]
@@ -52,7 +52,7 @@ class Friend {
 
   /*------------------------------ FRIEND REQUESTS -----------------------------*/
 
-  static async getIncomingRequests(db: Database, userId: number) {
+  static async getIncomingRequests(db: Database, userId: string) {
     return db.all(`
       SELECT 
         id,
@@ -69,7 +69,7 @@ class Friend {
     `, userId);
   }
 
-  static async getOutgoingRequests(db: Database, userId: number) {
+  static async getOutgoingRequests(db: Database, userId: string) {
     return db.all(`
       SELECT 
         id,
@@ -86,7 +86,7 @@ class Friend {
     `, userId);
   }
 
-  static async getExistingRequest(db: Database, userId1: number, userId2: number) {
+  static async getExistingRequest(db: Database, userId1: string, userId2: string) {
     return db.get(
       'SELECT id, sender_id, recipient_id, status FROM friend_requests WHERE (sender_id = ? AND recipient_id = ?) OR (sender_id = ? AND recipient_id = ?)',
       [userId1, userId2, userId2, userId1]
@@ -100,7 +100,7 @@ class Friend {
     );
   }
 
-  static async getIncomingRequestById(db: Database, requestId: number, userId: number) {
+  static async getIncomingRequestById(db: Database, requestId: number, userId: string) {
     return db.get(`
       SELECT 
         id,
@@ -115,7 +115,7 @@ class Friend {
     `, [requestId, userId]);
   }
 
-  static async createRequest(db: Database, senderId: number, recipientId: number) {
+  static async createRequest(db: Database, senderId: string, recipientId: string) {
     const result = await db.run(
       'INSERT INTO friend_requests (sender_id, recipient_id, status) VALUES (?, ?, ?)',
       [senderId, recipientId, 'pending']
@@ -144,7 +144,7 @@ class Friend {
 
   /*------------------------------ USER SEARCH -----------------------------*/
 
-  static async searchUsers(db: Database, query: string, currentUserId: number) {
+  static async searchUsers(db: Database, query: string, currentUserId: string) {
     return db.all(`
       SELECT 
         u.id,

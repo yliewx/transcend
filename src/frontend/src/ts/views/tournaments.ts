@@ -73,7 +73,6 @@ export class TournamentPage implements Page {
 
       this.updateUI();
     } catch (error) {
-      console.error('Error fetching tournament data:', error);
       
       if (this.element) {
         const contentContainer = this.element.querySelector('.px-4.py-6');
@@ -168,6 +167,8 @@ export class TournamentPage implements Page {
     const descriptionInput = form.querySelector('#description') as HTMLTextAreaElement;
     const nameValue = nameInput?.value?.trim();
     const descriptionValue = descriptionInput?.value?.trim() || '';
+    const localModeInput = form.querySelector('#local-mode') as HTMLInputElement;
+    const remoteModeInput = form.querySelector('#remote-mode') as HTMLInputElement;
     
     if (!nameValue) {
       alert('Please provide a tournament name');
@@ -182,10 +183,16 @@ export class TournamentPage implements Page {
       return;
     }
     
+    let mode: 'local' | 'remote' = 'local';
+    if (localModeInput?.checked) {
+      mode = 'local';
+    } else if (remoteModeInput?.checked) {
+      mode = 'remote';
+    }
     const tournamentData = {
-      name: nameInput.value,
-      description: descriptionInput?.value || 'No description provided',
-      max_participants: 4 
+      name: nameValue,
+      description: descriptionValue || 'No description provided',
+      mode: mode
     };
     
     try {
@@ -216,7 +223,6 @@ export class TournamentPage implements Page {
       submitButton.textContent = originalButtonText;
       submitButton.disabled = false;
     } catch (error) {
-      console.error('Error creating tournament:', error);
       alert('An error occurred while creating the tournament');
       
       const submitButton = form.querySelector('button[type="submit"]') as HTMLButtonElement;
@@ -307,6 +313,20 @@ export class TournamentPage implements Page {
               <label for="name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Tournament Name</label>
               <input type="text" id="name" maxlength="20" required class="input-field">
             </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tournament Mode</label>
+              <div class="flex items-center space-x-4">
+                <div class="flex items-center">
+                  <input type="radio" name="tournament-mode" id="local-mode" value="local" checked class="h-4 w-4 text-pink-600 dark:text-pink-400" />
+                  <label for="local-mode" class="ml-2 text-sm text-gray-700 dark:text-gray-300">Local</label>
+                </div>
+                <div class="flex items-center">
+                  <input type="radio" name="tournament-mode" id="remote-mode" value="remote" class="h-4 w-4 text-pink-600 dark:text-pink-400" />
+                  <label for="remote-mode" class="ml-2 text-sm text-gray-700 dark:text-gray-300">Remote</label>
+                </div>
+              </div>
+            </div>
             
             <div>
               <label for="description" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
@@ -361,6 +381,7 @@ export class TournamentPage implements Page {
                 `<div><span class="font-medium">Your Status:</span> ${this.formatParticipantStatus(tournament.participant_status)}</div>` 
                 : ''}
               <div><span class="font-medium">Participants:</span> ${tournament.current_participants || 0} / 4</div>
+              <div><span class="font-medium">Mode:</span> ${tournament.mode}</div>
             </div>
           </div>
           

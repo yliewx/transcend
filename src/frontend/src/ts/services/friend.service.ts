@@ -33,7 +33,7 @@ export class FriendService extends BaseApiService {
     );
   }
   
-  public async sendFriendRequest(userId: number): Promise<{success: boolean, request?: RequestResponse, error?: string}> {
+  public async sendFriendRequest(userId: string): Promise<{success: boolean, request?: RequestResponse, error?: string}> {
     const response = await this.request<{request?: RequestResponse}>(
       '/friends/request', 
       'POST', 
@@ -135,7 +135,7 @@ export class FriendService extends BaseApiService {
   }
   
  
-  public async removeFriend(friendId: number): Promise<{success: boolean, error?: string}> {
+  public async removeFriend(friendId: string): Promise<{success: boolean, error?: string}> {
     const response = await this.request<{}>(
       `/friends/${friendId}`, 
       'DELETE', 

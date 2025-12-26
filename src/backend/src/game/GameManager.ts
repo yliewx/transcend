@@ -7,7 +7,7 @@ import chalk from 'chalk';
 
 export class GameManager {
   private sessions: Map<string, GameRoom> = new Map();
-  private activePlayers: Map<number, GameRoom> = new Map();
+  private activePlayers: Map<string, GameRoom> = new Map();
   
   /*------------------------------CONSTRUCTOR-------------------------------*/
 
@@ -23,16 +23,17 @@ export class GameManager {
     console.log(chalk.cyan.bold('\n[GameManager] Fetching game...'));
     console.log(chalk.cyan(`→ Game ID: ${chalk.whiteBright(gameId)}`));
     this.printSessions();
-
+    console.log(this.sessions.get(gameId) ? chalk.green('→ Game found!') : chalk.red('→ Game not found!'));
     return this.sessions.get(gameId);
   }
 
-  public getPlayerSession(playerId: number): { gameId: string, gameMode: string, state: GameState, isCreator: boolean, isTourMatch: boolean } | undefined {
+  public getPlayerSession(playerId: string): { gameId: string, gameMode: string, state: GameState, isCreator: boolean, isTourMatch: boolean } | undefined {
     console.log(chalk.magenta.bold('\n[GameManager] Fetching sessions for player...'));
     console.log(chalk.magenta(`→ Player ID: ${chalk.whiteBright(playerId)}`));
     this.printActivePlayers();
     
     const room = this.activePlayers.get(playerId);
+    console.log(room ? chalk.green('→ Player session found!') : chalk.red('→ Player session not found!'));
     if (room) {
       return {
         gameId: room.getGameId(),
@@ -47,25 +48,27 @@ export class GameManager {
 
   /*------------------------------CREATE GAME-------------------------------*/
 
-  public createGame(mode: 'local' | 'remote', isTour: boolean): string {
+  public async createGame(mode: 'local' | 'remote', tourMatchId: number | null): Promise<string | null> {
     const gameId = uuidv4();
     console.log(chalk.cyan.bold('\n[GameManager] Creating game with ID: ') + chalk.cyan(gameId));
-    const room = new GameRoom(gameId, mode, this.deleteGame.bind(this), isTour);
+    const room = new GameRoom(gameId, mode, this.deleteGame.bind(this), tourMatchId);
+
+    if (room && tourMatchId !== null) {
+      const res = await room.initTourPlayers();
+      if (!res) return null;
+    }
+
     this.sessions.set(gameId, room);
+    console.log(chalk.cyan.green('\n[GameManager] Successfully created game with ID: ') + chalk.cyan(gameId));
     return gameId;
   }
 
   /*-------------------------------JOIN GAME--------------------------------*/
 
-  public joinRoom(data: { gameId: string, playerId: number }, connection: WebSocket): boolean {
-    const existingGame = this.activePlayers.get(data.playerId);
-    if (existingGame && existingGame.getGameId() !== data.gameId) {
-      console.error('Player is already in a game');
-      sendError(connection, 'Player cannot join more than one match at once');
-      return false;
-    }
+  public async joinRoom(data: { gameId: string, playerId: string }, connection: WebSocket): Promise<boolean> {
     const room = this.getRoom(data.gameId);
-    if (room && room.handleJoin(data, connection)) {
+    const joinSuccess = await room?.handleJoin(data, connection);
+    if (room && joinSuccess) {
       this.activePlayers.set(data.playerId, room);
       return true;
     }
@@ -86,21 +89,18 @@ export class GameManager {
     }
   }
 
-  public joinRoomByCLI(data: { gameId: string, playerId: number }, cliSocket: WebSocket): boolean {
-    console.log('Joining room by CLI. Player ID:', data.playerId);
+  public joinRoomByCLI(data: { gameId: string, playerId: string }, cliSocket: WebSocket): boolean {
     const room = this.getRoom(data.gameId);
     if (room) {
       const players = room.getPlayerIds();
-      console.log('Players:', players.toString());
       for (let existingPlayerId of players) {
         if (existingPlayerId === data.playerId) {
-          console.log('Found existing player ID:', existingPlayerId);
           this.notifyCLISocket(room, cliSocket);
           return true;
         }
       };
     } else {
-      console.log('Room not found.');
+      console.error('Room not found.');
     }
     return false;
   }

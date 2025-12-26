@@ -15,7 +15,9 @@ export class TournamentDetailPage implements Page {
   public tournamentId: string | null = null;
   private isRegistered: boolean = false;
   private boundEventHandlers: {[key: string]: EventListener} = {};
-  
+  private currParticipantId: number | null = null;
+  private guestParticipantId: number | null = null;
+
   constructor(router: Router) {
     this.router = router;
     this.tournamentService = new TournamentService();
@@ -46,17 +48,8 @@ export class TournamentDetailPage implements Page {
   }
 
   private removeDataEventListeners(): void {
-    const events = [
-      'participantJoined',
-      'tournamentStarted',
-      'tournamentUpdated',
-      'notification'
-    ] as const;
-    
-    events.forEach(event => {
-      if (event in this.boundEventHandlers) {
-        document.removeEventListener(event, this.boundEventHandlers[event]);
-      }
+    Object.entries(this.boundEventHandlers).forEach(([eventName, handler]) => {
+      document.removeEventListener(eventName, handler);
     });
     
     this.boundEventHandlers = {};
@@ -70,8 +63,13 @@ export class TournamentDetailPage implements Page {
         this.tournament = response.tournament || null;
         this.matches = response.matches || [];
         this.participants = response.participants || [];
-        const userId = parseInt(sessionStorage.getItem('userId') || '0');
-        this.isRegistered = this.participants.some(p => p.id === userId);
+        const userId = sessionStorage.getItem('userId');
+        const currParticipant = this.participants.find(p => p.user_id === userId);
+        this.currParticipantId = currParticipant ? currParticipant.participant_id : null;
+        const guestParticipant = this.participants.find(p => p.host_id === this.currParticipantId);
+        this.guestParticipantId = guestParticipant ? guestParticipant.participant_id : null;
+
+        this.isRegistered = currParticipant !== undefined;
         
         return { success: true };
       } else {
@@ -116,7 +114,7 @@ export class TournamentDetailPage implements Page {
     
     if (target.id === 'register-btn' || target.closest('#register-btn')) {
       e.preventDefault();
-      this.showRegistrationModal();
+      this.renderModal();
       return;
     }
     
@@ -132,26 +130,13 @@ export class TournamentDetailPage implements Page {
       }
       return;
     }
-    
-    const submitButton = target.id === 'submit-registration' || target.closest('#submit-registration');
-    if (submitButton) {
-      e.preventDefault();
-
-      const form = document.getElementById('registration-form') as HTMLFormElement;
-      if (form) {
-        const aliasInput = form.querySelector('#alias') as HTMLInputElement;
-        const alias = aliasInput?.value.trim();
-        
-        if (alias) {
-          this.registerForTournament(alias);
-          const modal = document.getElementById('registration-modal');
-          if (modal) modal.remove();
-        }
-      }
-    }
   }
 
-  private showRegistrationModal(): void {
+  
+
+ 
+
+  private renderModal(): void {
     const modalOverlay = document.createElement('div');
     modalOverlay.className = 'fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50';
     modalOverlay.id = 'registration-modal';
@@ -167,18 +152,18 @@ export class TournamentDetailPage implements Page {
           </button>
         </div>
         
-        <p class="text-gray-600 dark:text-gray-300 mb-6">Please choose an alias.</p>
-        
+        <p class="text-gray-600 dark:text-gray-300">${this.tournament?.mode == "local" ? "Select your aliases" : "Select your alias"}</p>
+        <p class="mt-2 mb-6 text-sm text-gray-500 dark:text-gray-400">This is how other players will see you during the tournament.</p>
+
         <form id="registration-form" class="space-y-5">
-          <div class="relative">
+          <div class="relative" id="alias-container">
             <div class="relative flex justify-start">
-              <input type="text" id="alias" name="alias" maxlength="20" required
-                  class="pl-10 block w-2/3 h-12 border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:ring-pink-500 focus:border-pink-500 dark:bg-gray-700 dark:text-white"
-                  placeholder="Enter something fun">
+              <input type="text" id="userAlias" name="alias" maxlength="20" required
+                  class="pl-4 block w-2/3 h-12 border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:ring-pink-500 focus:border-pink-500 dark:bg-gray-700 dark:text-white"
+                  placeholder="My alias">
             </div>
-            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">This is how other players will see you during the tournament.</p>
           </div>
-          <div class="flex justify-end space-x-4 mt-8">
+          <div class="flex justify-between space-x-4 mt-8">
             <button type="button" id="cancel-registration" class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors">
               Cancel
             </button>
@@ -189,41 +174,59 @@ export class TournamentDetailPage implements Page {
         </form>
       </div>
     `;
+
+    const aliasContainer = modalOverlay.querySelector('#alias-container') as HTMLFormElement;
+
+    if (this.tournament?.mode === 'local' && aliasContainer) {
+      const opponentWrapper = document.createElement('div');
+      opponentWrapper.className = 'relative flex justify-start mt-4';
+      opponentWrapper.innerHTML = `
+        <input type="text" id="opponentAlias" name="opponent-alias" maxlength="20" required
+          class="pl-4 block w-2/3 h-12 border-gray-300 dark:border-gray-600 rounded-lg shadow-sm focus:ring-pink-500 focus:border-pink-500 dark:bg-gray-700 dark:text-white"
+          placeholder="Opponent alias">
+      `;
+      aliasContainer.appendChild(opponentWrapper);
+    }
+    const form = modalOverlay.querySelector('#registration-form') as HTMLFormElement;
+    this.addModalEventListeners(modalOverlay, form);
     
+    this.ensureAnimationsStylesheet();
+    
+    document.body.appendChild(modalOverlay);
+  }
+  
+
+  private addModalEventListeners(modalOverlay: HTMLElement, form: HTMLFormElement): void {
     modalOverlay.addEventListener('click', (e) => {
       const target = e.target as HTMLElement;
       
-      if (target === modalOverlay || target.id === 'close-modal' || target.closest('#close-modal')) {
-        modalOverlay.classList.add('animate-fadeOut');
-        setTimeout(() => modalOverlay.remove(), 200);
-        return;
-      }
-      
-      if (target.id === 'cancel-registration' || target.closest('#cancel-registration')) {
-        modalOverlay.classList.add('animate-fadeOut');
-        setTimeout(() => modalOverlay.remove(), 200);
-        return;
-      }
-      
-      if (target.id === 'submit-registration' || target.closest('#submit-registration')) {
-        const form = document.getElementById('registration-form') as HTMLFormElement;
-        if (form) {
-          form.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const aliasInput = form.querySelector('#alias') as HTMLInputElement;
-            const alias = aliasInput?.value.trim();
-
-            if (alias) {
-              this.registerForTournament(alias);
-              modalOverlay.classList.add('animate-fadeOut');
-              setTimeout(() => modalOverlay.remove(), 200);
-            }
-          });
-        }
-        return;
+      if (target === modalOverlay || target.id === 'close-modal' || target.closest('#close-modal') ||
+        target.id === 'cancel-registration' || target.closest('#cancel-registration')) {
+        this.closeModalWithAnimation(modalOverlay);
       }
     });
     
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const userAliasInput = form.querySelector('#userAlias') as HTMLInputElement;
+      const userAlias = userAliasInput?.value.trim();
+      const opponentAliasInput = form.querySelector('#opponentAlias') as HTMLInputElement;
+      const opponentAlias = opponentAliasInput?.value.trim();
+      
+      this.registerForTournament(userAlias, opponentAlias);
+      this.closeModalWithAnimation(modalOverlay);
+      
+    });
+  }
+  
+
+  private closeModalWithAnimation(modal: HTMLElement): void {
+    modal.classList.add('animate-fadeOut');
+    setTimeout(() => modal.remove(), 200);
+  }
+  
+
+  private ensureAnimationsStylesheet(): void {
     if (!document.getElementById('tournament-animations')) {
       const style = document.createElement('style');
       style.id = 'tournament-animations';
@@ -241,67 +244,55 @@ export class TournamentDetailPage implements Page {
       `;
       document.head.appendChild(style);
     }
-    
-    document.body.appendChild(modalOverlay);
   }
   
-  private async registerForTournament(alias: string): Promise<void> {
+  private async registerForTournament(userAlias: string, opponentAlias?: string): Promise<void> {
     try {
-      if (!alias || alias.trim() === '') {
-        this.showNotification('Alias cannot be empty', 'error');
+      const ua = userAlias?.trim();
+      const oa = opponentAlias?.trim();
+
+      if (!ua || ua.length < 3 || ua.length > 20) {
+        this.showNotification('Your alias must be between 3 and 20 characters', 'error');
         return;
       }
-      if (alias.length < 3 || alias.length > 20) {
-        this.showNotification('Alias must be between 3 and 20 characters', 'error');
+      if (this.tournament?.mode === 'local' && (!oa || oa.length < 3 || oa.length > 20)) {
+        this.showNotification('Opponent alias must be between 3 and 20 characters', 'error');
         return;
       }
+      if (!this.tournamentId) return;
       
-      const response = await this.tournamentService.registerForTournament(this.tournamentId, alias);
+      const response = await this.tournamentService.registerForTournament(this.tournamentId, ua, oa);
       
       if (response.success) {
-        this.isRegistered = true;
-        
         if (response.tournament_started) {
           this.showNotification('Tournament has started! The bracket is now available.', 'success');
-          
           const event = new CustomEvent('tournamentStarted', {
             detail: { tournament: { ...this.tournament, status: 'active' } }
           });
           document.dispatchEvent(event);
         } else {
-          this.showNotification(response.message || 'Successfully registered for tournament', 'success');
-          
-          const userId = parseInt(sessionStorage.getItem('userId') || '0');
-          const userName = sessionStorage.getItem('username') || 'User';
-          
-          const newParticipant = {
-            id: userId,
-            username: userName,
-            alias: alias,
-            status: 'active'
-          };
-          
-          this.participants.push(newParticipant);          
-          const event = new CustomEvent('participantJoined', {
-            detail: { participant: newParticipant }
-          });
-          document.dispatchEvent(event);
-        }        
+          this.showNotification(response.message || 'Successfully registered for tournament. Waiting for more players...', 'success');
+        }
+        await this.loadData();
         await this.update();
+        
       } else {
         this.showNotification(response.error || 'Failed to register for tournament', 'error');
       }
     } catch (error) {
-      console.error('Error registering for tournament:', error);
       this.showNotification('An error occurred while registering for the tournament', 'error');
     }
-  }
-  
+}
+
+
   private async joinMatch(matchId: number): Promise<void> {
     try {
       const response = await this.tournamentService.joinTournamentMatch(matchId);
       if (response.success && response.gameId) {
-        const userId = parseInt(sessionStorage.getItem('userId') || '0');
+        const userId = sessionStorage.getItem('userId');
+
+        if (!userId) throw new Error('User ID not found.');
+
         const success = await this.router.getWsManager().connectGame(response.gameId, userId);
         if (!success) {
           this.showNotification('Failed to connect to game room.', 'error');
@@ -311,7 +302,6 @@ export class TournamentDetailPage implements Page {
         this.showNotification(response.error || 'Failed to join match', 'error');
       }
     } catch (error) {
-      console.error('Error joining match:', error);
       this.showNotification('An error occurred while joining the match', 'error');
     }
   }
@@ -469,8 +459,8 @@ export class TournamentDetailPage implements Page {
     }
     
     if (this.isRegistered) {
-      const userId = parseInt(sessionStorage.getItem('userId') || '0');
-      const userParticipant = this.participants.find(p => p.id === userId);
+      const userId = sessionStorage.getItem('userId');
+      const userParticipant = this.participants.find(p => p.user_id === userId);
       const userAlias = userParticipant?.alias || '';
       
       return `
@@ -564,15 +554,26 @@ export class TournamentDetailPage implements Page {
   }
   
 private renderMatchContent(match: TournamentMatch): string {
-  const player1Name = match.player1_alias || match.player1_username || 'TBD';
-  const player2Name = match.player2_alias || match.player2_username || 'TBD';
+  const player1Name = match.player1_alias || 'TBD';
+  const player2Name = match.player2_alias || 'TBD';
   
-  const player1Class = match.winner_id === match.player1_id ? 'bg-green-50 dark:bg-green-900/20 border-green-500 text-green-700 dark:text-green-300' : '';
-  const player2Class = match.winner_id === match.player2_id ? 'bg-green-50 dark:bg-green-900/20 border-green-500 text-green-700 dark:text-green-300' : '';
+  const player1Class = match.winner_participant_id === match.player1_participant_id ? 'bg-green-50 dark:bg-green-900/20 border-green-500 text-green-700 dark:text-green-300' : '';
+  const player2Class = match.winner_participant_id === match.player2_participant_id ? 'bg-green-50 dark:bg-green-900/20 border-green-500 text-green-700 dark:text-green-300' : '';
   
-  const userId = parseInt(sessionStorage.getItem('userId') || '0');
-  const userInMatch = match.player1_id === userId || match.player2_id === userId;
-  const matchIsPlayable = userInMatch && (match.status === 'scheduled' || match.status === 'in_progress');
+  const userInMatch = [match.player1_participant_id, match.player2_participant_id].includes(this.currParticipantId) ||
+      [match.player1_participant_id, match.player2_participant_id].includes(this.guestParticipantId);
+      
+  const usersReady = match.player1_participant_id !== null && match.player2_participant_id !== null;
+
+  const userNotInFinalLocalMatch = (match.mode === 'local' && match.round === 2 &&
+      (this.matches[0].player1_participant_id !== this.currParticipantId && this.matches[0].player2_participant_id !== this.currParticipantId));
+
+  const matchNotCompleted = (match.status === 'scheduled' || match.status === 'in_progress');
+
+  let matchIsPlayable = userInMatch && usersReady && matchNotCompleted;
+  if (userNotInFinalLocalMatch) {
+    matchIsPlayable = false;
+  }
 
   const statusColors = {
     scheduled: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
@@ -600,10 +601,10 @@ private renderMatchContent(match: TournamentMatch): string {
             </div>
             <div>
               <span class="font-medium dark:text-white">${player1Name}</span>
-              ${userId === match.player1_id ? '<span class="ml-2 text-xs text-pink-600 dark:text-pink-400 font-medium">You</span>' : ''}
+              ${this.currParticipantId === match.player1_participant_id ? '<span class="ml-2 text-xs text-pink-600 dark:text-pink-400 font-medium">You</span>' : ''}
             </div>
           </div>
-          ${match.winner_id === match.player1_id ? '<span class="text-green-600 dark:text-green-400 text-sm font-bold flex items-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>Winner</span>' : ''}
+          ${match.winner_participant_id === match.player1_participant_id ? '<span class="text-green-600 dark:text-green-400 text-sm font-bold flex items-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>Winner</span>' : ''}
         </div>
       </div>
       
@@ -621,10 +622,10 @@ private renderMatchContent(match: TournamentMatch): string {
             </div>
             <div>
               <span class="font-medium dark:text-white">${player2Name}</span>
-              ${userId === match.player2_id ? '<span class="ml-2 text-xs text-pink-600 dark:text-pink-400 font-medium">You</span>' : ''}
+              ${this.currParticipantId === match.player2_participant_id ? '<span class="ml-2 text-xs text-pink-600 dark:text-pink-400 font-medium">You</span>' : ''}
             </div>
           </div>
-          ${match.winner_id === match.player2_id ? '<span class="text-green-600 dark:text-green-400 text-sm font-bold flex items-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>Winner</span>' : ''}
+          ${match.winner_participant_id === match.player2_participant_id ? '<span class="text-green-600 dark:text-green-400 text-sm font-bold flex items-center"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>Winner</span>' : ''}
         </div>
       </div>
       
@@ -676,10 +677,10 @@ public renderParticipants(): string {
     <div id="tournament-participants-list" class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-md">
       <ul class="divide-y divide-gray-100 dark:divide-gray-700">
         ${this.participants.map((participant, index) => {
-          const isCurrentUser = participant.id === parseInt(sessionStorage.getItem('userId') || '0');
+          const isCurrentUser = participant.user_id === sessionStorage.getItem('userId');
           
           return `
-            <li id="participant-${participant.id}" class="p-4 hover:bg-gray-50 dark:hover:bg-gray-700 ${isCurrentUser ? 'bg-pink-50 dark:bg-pink-900/10' : ''}">
+            <li id="participant-${participant.participant_id}" class="p-4 hover:bg-gray-50 dark:hover:bg-gray-700 ${isCurrentUser ? 'bg-pink-50 dark:bg-pink-900/10' : ''}">
               <div class="flex justify-between items-center">
                 <div class="flex items-center">
                   <div>

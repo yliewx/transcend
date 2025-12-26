@@ -16,8 +16,10 @@ export class Router {
     this.routes = new Map();
     this.container = container;    
     this.wss = new WebSocketManager(process.env.BASE_WSS_URL as string);
-    this.wss.connect();
-
+    if (this.controlAccess.isLoggedIn()) {
+      this.wss.connect();
+    }
+    
     window.addEventListener('popstate', (event) => {
       this.isHandlingPopState = true;
       const newPath = window.location.pathname;
@@ -29,10 +31,23 @@ export class Router {
     
     this.controlAccess.addAuthStateChangeListener((isAuthenticated: boolean) => {
       if (isAuthenticated) {
-        this.wss.connect();
+        if (!this.wss.isConnected()) {
+          this.wss.connect();
+        }
         this.navigateTo('/home');
       } else {
-        this.navigateTo('/login');
+        this.wss.close();
+        this.redirectToLogin();
+      }
+    });
+
+    this.setupVisibilityListener();
+  }
+
+  private setupVisibilityListener(): void {
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) {
+        this.updateCurrentPage();
       }
     });
   }
@@ -61,13 +76,18 @@ export class Router {
   private destroyCurrentPage(): void {
     if (!this.currentPath) return;
     
-    const { routePath: currentRoutePath } = this.getRoutePath(this.currentPath);
-    const currentPage = this.routes.get(currentRoutePath);
-    
+    const currentPage = this.getCurrentPage();
     if (currentPage && typeof currentPage.destroy === 'function') {
       currentPage.destroy();
     }
-}
+  }
+
+  private async updateCurrentPage(): Promise<void> {
+    const currentPage = this.getCurrentPage();
+    if (currentPage && typeof currentPage.update === 'function') {
+      await Promise.resolve(currentPage.update());
+    }
+  }
 
   async navigateTo(path: string, pushState: boolean = true): Promise<void> {
     if (path === '/')
@@ -86,7 +106,7 @@ export class Router {
       }
       return;
     }
-        
+
     if (this.protectedRoutes.includes(routePath)) {
       const isAuthenticated = await this.controlAccess.checkAuthStatus();
       if (!isAuthenticated) {
@@ -104,7 +124,6 @@ export class Router {
   }
 
   private async redirectToLogin(message?: string): Promise<void> {
-    console.log('Redirecting to login page.', message);
     if (this.currentPath && this.currentPath !== '/login') {
       this.destroyCurrentPage();
     }
@@ -180,6 +199,11 @@ export class Router {
   public getCurrentPath(): string {
     return this.currentPath;
   }
+
+  public getCurrentPage(): Page | null {
+    const { routePath } = this.getRoutePath(this.currentPath);
+    return this.routes.get(routePath) || null;
+  }  
   
   public getControlAccess(): ControlAccess {
     return this.controlAccess;

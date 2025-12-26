@@ -1,10 +1,10 @@
 import { WebSocket } from 'ws';
 
-export const onlineUsers = new Map<number, WebSocket>();
+export const onlineUsers = new Map<string, WebSocket>();
 
 export interface InputMessage {
   gameId: string;
-  playerId: number;
+  playerId: string;
   side?: 'left' | 'right';
   input: {
     paddleUp: boolean;

@@ -13,7 +13,7 @@ interface PongParams {
   gameId: string;
 }
 
-export async function notifyFriends(userId: number, online: boolean) {
+export async function notifyFriends(userId: string, online: boolean) {
   try {
     const db = await getDb();
     const friends = await Friend.getFriendsList(db, userId);
@@ -27,7 +27,7 @@ export async function notifyFriends(userId: number, online: boolean) {
       }
     })
   } catch (error) {
-    console.log('Failed to notify friends:', error);
+    console.error('Failed to notify friends:', error);
   }
 }
 
@@ -40,14 +40,12 @@ async function websocketRoutes(server: FastifyInstance) {
     try {
         user = await request.server.authenticateUser(request);
     } catch (error) {
-      console.log('Connection failed:', error);
+      console.error('Connection failed:', error);
       connection.close();
       return;
     }
-    console.log(chalk.green.bold('\n[ws.routes] New online socket connection'));
-    printAuthTokenPayload(user);
-    connection.send('Connected to server');
 
+    connection.send('Connected to server');
     onlineUsers.set(user.id, connection);
     notifyFriends(user.id, true);
 
@@ -59,20 +57,22 @@ async function websocketRoutes(server: FastifyInstance) {
     
     connection.on('message', (msg: string) => {
       const message = JSON.parse(msg);
-      console.log(`Received: ${message}`);
+      if (message.type === 'ping') {
+        connection.send(JSON.stringify({ type: 'pong' }));
+        return;
+      }
       connection.send(`Echo: ${message}`);
     });
   
     connection.on('close', () => {
       clearInterval(pingInterval);
-      console.log(`User disconnected: ${user.id}`);
       onlineUsers.delete(user.id);
       notifyFriends(user.id, false);
     });
 
     connection.on('error', () => {
       clearInterval(pingInterval);
-      console.log(`Error in online socket: ${user.id}`);
+      console.error(`Error in online socket: ${user.id}`);
       onlineUsers.delete(user.id);
       notifyFriends(user.id, false);
     });    
@@ -85,7 +85,7 @@ async function websocketRoutes(server: FastifyInstance) {
     try {
         user = await request.server.authenticateUser(request);
     } catch (error) {
-        console.log('Connection failed:', error);
+        console.error('Connection failed:', error);
         connection.close();
         return;
     }
@@ -100,12 +100,11 @@ async function websocketRoutes(server: FastifyInstance) {
     console.log(chalk.green.bold('\n[/pong/:gameId] New connection to game: ' + chalk.green(gameId)));
     printAuthTokenPayload(user);
 
-    connection.on('message', function onFirstMessage (msg: any) {
+    connection.on('message', async function onFirstMessage (msg: any) {
       const message = JSON.parse(msg.toString());
-      console.log('[ws.routes] Full message:', message.type, JSON.stringify(message.data, null, 2));
 
       if (message.type === 'join') {
-        const joinSuccess = gameManager.joinRoom(message.data, connection);
+        const joinSuccess = await gameManager.joinRoom(message.data, connection);
           if (joinSuccess) {
             connection.off('message', onFirstMessage);
           }
@@ -122,7 +121,7 @@ async function websocketRoutes(server: FastifyInstance) {
     try {
         user = await request.server.authenticateUser(request);
     } catch (error) {
-        console.log('Connection failed:', error);
+        console.error('Connection failed:', error);
         connection.close();
         return;
     }
@@ -140,7 +139,6 @@ async function websocketRoutes(server: FastifyInstance) {
 
     connection.on('message', (msg: string) => {
       const message = JSON.parse(msg.toString());
-      console.log('[ws.routes] Full message:', message.type, JSON.stringify(message.data, null, 2));
 
       switch (message.type) {
         case 'join':

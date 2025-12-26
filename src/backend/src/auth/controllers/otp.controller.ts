@@ -21,7 +21,7 @@ export async function otpPreferenceHandler(request: FastifyRequest, reply: Fasti
       throw new Error('User authentication failed');
     }
     const db = await getDb();
-    await User.updateOtpOption(db, Number(userData.id), otp_option, otp_contact);
+    await User.updateOtpOption(db, userData.id, otp_option, otp_contact);
 
     reply.send({
       success: true, 
@@ -43,10 +43,10 @@ export async function generateQRCode(request: FastifyRequest, reply: FastifyRepl
       throw new Error('User authentication failed');
     }
     const db = await getDb();
-    await generateOtpToken(db, Number(userData.id));
+    await generateOtpToken(db, userData.id);
 
-    const secret_base32 = await User.getOtpSecret(db, Number(userData.id));
-    const otpAuthUrl = await User.getOtpAuthUrl(db, Number(userData.id));
+    const secret_base32 = await User.getOtpSecret(db, userData.id);
+    const otpAuthUrl = await User.getOtpAuthUrl(db, userData.id);
     const qrCodeDataUrl = await QRCode.toDataURL(otpAuthUrl);
 
     return reply.status(202).send({
@@ -83,7 +83,7 @@ async function sendOtp(request: FastifyRequest, db: Database, user: any, otpToke
   }
 }
 
-async function generateOtpToken(db: Database, user_id: number)
+async function generateOtpToken(db: Database, user_id: string)
 {
   const secret_base32 = await User.getOtpSecret(db, user_id);
 
@@ -109,7 +109,7 @@ export async function generateOtp(request: FastifyRequest, reply: FastifyReply) 
       throw new Error('User authentication failed');
     }
     const db = await getDb();
-    const user = await User.findById(db, Number(userData.id));
+    const user = await User.findById(db, userData.id);
 
     if (user.otp_option === null) {
       throw new Error('Preferred 2FA option not set');
@@ -155,7 +155,7 @@ export async function verifyOtp(request: FastifyRequest, reply: FastifyReply) {
       throw new Error('User authentication failed');
     }
     const db = await getDb();
-    const user = await User.findById(db, Number(userData.id));
+    const user = await User.findById(db, userData.id);
 
     if (!user || !user.otp_secret) {
       return reply.status(401).send({

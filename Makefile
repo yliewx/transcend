@@ -1,7 +1,7 @@
 # define makefile variables
 
-COMPOSE = docker compose
-COMPOSE_FILE = ./src/docker-compose.yml
+COMPOSE_FILE = -f ./docker-compose.yml
+ENV_FILE = --env-file ./.env
 
 #------------------------------------------------------------------------
 
@@ -18,13 +18,10 @@ END = \033[0m
 
 all: down up
 
-# ensure docker is installed and all required files/directories exist
-# create and start all containers in the docker compose file
-# --build: build images before starting
-# -d: run detached in background
+# production mode (parsleypong.com)
 up:
-	@echo "$(GREEN)[ Starting containers... ]$(END)"
-	@$(COMPOSE) -f $(COMPOSE_FILE) up --build --force-recreate -d
+	@echo "$(RED)[ Starting containers in production mode... ]$(END)"
+	@docker compose $(COMPOSE_FILE) $(ENV_FILE) up --build --force-recreate -d
 
 cli:
 	@echo "$(GREEN)[ Running Pong-CLI... ]$(END)"
@@ -32,8 +29,8 @@ cli:
 
 down:
 	@echo "$(BROWN)[ Stopping and removing containers... ]$(END)"
-	@$(COMPOSE) -f $(COMPOSE_FILE) down
-	@docker volume rm -f frontend_data
+	@docker compose $(COMPOSE_FILE) down || true
+	@docker volume rm -f frontend_data || true
 
 clean: down
 	@echo "$(BROWN)[ Removing build cache... ]$(END)"
@@ -43,10 +40,10 @@ clean: down
 fclean: clean
 	@echo "$(BROWN)[ Removing volumes... ]$(END)"
 	@docker system prune --volumes -af
-	@docker volume rm -f sqlite_data avatar_data cloudflared_data
+	@docker volume rm -f sqlite_data avatar_data cloudflared_data || true
 
 re: down up
 
 #------------------------------------------------------------------------
 
-.PHONY: all up down clean fclean re
+.PHONY: all up down clean fclean re cli

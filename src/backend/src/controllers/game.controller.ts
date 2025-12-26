@@ -3,6 +3,8 @@ import { gameManager } from '../game/GameManager';
 import GameStats from '../models/game.stats';
 import { AuthenticatedRequest } from '../../@types/fastify';
 import { getDb } from '../db.js';
+import { Database } from 'sqlite';
+import Tournament from '../models/tournament';
 
 
 export async function createGame(request: FastifyRequest, reply: FastifyReply) {
@@ -15,22 +17,82 @@ export async function createGame(request: FastifyRequest, reply: FastifyReply) {
     });
   }
 
-  const gameId = gameManager.createGame(mode, false);
-  return { gameId, success: true };
+  const gameId = await gameManager.createGame(mode, null);
+  if (!gameId) {
+    return reply.status(400).send({
+      success: false,
+      message: 'Failed to create game room.'
+    });
+  }
+
+  return reply.status(200).send({
+    gameId: gameId,
+    success: true
+  });
 }
 
-export function getExistingGame(request: AuthenticatedRequest, reply: FastifyReply) {
-  const playerId = request.user.id;
-  const existingGame = gameManager.getPlayerSession(playerId);
-  if (!existingGame) {
+export async function getUserParticipantIdInMatch(db: Database, match: any, userId: string): Promise<number | null> {
+  const participantIds = [match.player1_participant_id, match.player2_participant_id];
+  
+  for (const participantId of participantIds) {
+    if (participantId) {
+      const participant = await Tournament.getParticipantById(db, participantId);
+      if (participant) {
+        if (participant.user_id === userId) {
+          return participantId;
+        }
+                
+        if (match.tournament_mode === 'local' && participant.is_guest && participant.host_id) {
+          const host = await Tournament.getParticipantById(db, participant.host_id);
+          if (host && host.user_id === userId) {
+            return participantId;
+          }
+        }
+      }
+    }
+  }
+  
+  return null;
+}
+
+
+export async function getExistingGame(request: AuthenticatedRequest, reply: FastifyReply) {
+  const userId = request.user.id;
+  const db = await getDb();
+
+  const existingGameSession = gameManager.getPlayerSession(userId);
+
+  if (!existingGameSession) {
     return reply.status(200).send({
       hasExistingGame: false,
       message: 'No existing game found.'
     });
   }
 
-  const { gameId, gameMode, state, isCreator, isTourMatch } = existingGame;
-  return { hasExistingGame: true, gameId, gameMode, state, isCreator, isTourMatch };
+  const { gameId, gameMode, state, isCreator, isTourMatch } = existingGameSession;
+  let participantId: number | undefined;
+
+  if (isTourMatch) {
+    try {
+      const match = await Tournament.findMatchByGameId(db, gameId);
+      if (match) {
+        const foundParticipantId = await getUserParticipantIdInMatch(db, match, userId);
+        participantId = foundParticipantId || undefined;
+      }
+    } catch (error) {
+      console.error("Error determining participantId for existing tournament game session:", error);
+    }
+  }
+
+  return reply.status(200).send({
+    hasExistingGame: true,
+    gameId,
+    gameMode,
+    state,
+    isCreator,
+    isTourMatch,
+    participantId
+  });
 }
 
 export async function getGameStats(request: FastifyRequest, reply: FastifyReply) {

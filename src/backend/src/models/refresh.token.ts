@@ -5,13 +5,13 @@ import bcrypt from 'bcrypt';
 class RefreshToken {
     /*------------------------------SEARCH USER-----------------------------*/
 
-    static async findByUser(db: Database, user_id: number) {
+    static async findByUser(db: Database, user_id: string) {
         return db.get('SELECT * FROM refresh_tokens WHERE user_id = ?', user_id);
     }
 
     /*-----------------------------MANAGE TOKEN-----------------------------*/
 
-    static async create(db: Database, user_id: number) {
+    static async create(db: Database, user_id: string) {
         const token_id = crypto.randomUUID();
         const hashed_token_id = await bcrypt.hash(token_id, 10); 
 
@@ -23,7 +23,7 @@ class RefreshToken {
         return token_id;
     }
 
-    static async verify(db: Database, user_id: number, decoded: AuthTokenPayload) {
+    static async verify(db: Database, user_id: string, decoded: AuthTokenPayload) {
         if (decoded.token_type !== 'refresh' || !decoded.token_id) {
             throw new Error('Invalid token type or missing token ID');
         }
@@ -46,7 +46,7 @@ class RefreshToken {
         }
     }
 
-    static async deleteByUser(db: Database, user_id: number) {
+    static async deleteByUser(db: Database, user_id: string) {
         const storedToken = await db.get(
             'DELETE * FROM refresh_tokens WHERE user_id = ?', user_id
         );

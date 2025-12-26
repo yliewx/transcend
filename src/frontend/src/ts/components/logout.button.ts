@@ -17,7 +17,11 @@ export class LogoutButton {
       </span>
     `;
 
-    button.addEventListener('click', this.onClick);
+    button.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      this.onClick();
+    });
 
     this.element = button;
     return button;

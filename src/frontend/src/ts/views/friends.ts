@@ -9,13 +9,12 @@ export class FriendsPage implements Page {
   private router: Router;
   private wss: WebSocketManager;
   private friendService: FriendService;
-  private userId: number | null = null;
+  private userId: string | null = null;
   public currentTab: 'friends' | 'pending' | 'search' = 'friends';
   private searchQuery: string = '';
   private searchResults: any[] = [];
   public currentFriends: any[] = [];
   public pendingRequests: any[] = [];
-  private hasError: boolean = false;
   private boundEventHandlers: {[key: string]: EventListener} = {};  
   private element: HTMLElement | null = null;
 
@@ -46,28 +45,16 @@ export class FriendsPage implements Page {
             <p class="mt-2 text-gray-600 dark:text-gray-400">Connect with other players</p>
           </div>
           
-          <!-- Tab Navigation -->
+          <!-- Tabs -->
           <div class="flex justify-center border-b border-gray-200 dark:border-gray-700 mb-6">
-            <button id="tab-friends" class="py-2 px-4 font-medium text-sm ${
-              this.currentTab === 'friends'
-                ? 'text-pink-600 dark:text-pink-400 border-b-2 border-pink-600 dark:border-pink-400'
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-            }">
+            <button id="tab-friends" class="py-2 px-4 font-medium text-sm text-pink-600 dark:text-pink-400 border-b-2 border-pink-600 dark:border-pink-400">
               My Friends
             </button>
-            <button id="tab-pending" class="py-2 px-4 font-medium text-sm ${
-              this.currentTab === 'pending'
-                ? 'text-pink-600 dark:text-pink-400 border-b-2 border-pink-600 dark:border-pink-400'
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-            }">
+            <button id="tab-pending" class="py-2 px-4 font-medium text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
               Pending Requests
               <span id="pending-badge" class="hidden ml-1 px-2 py-0.5 text-xs font-medium rounded-full bg-pink-100 dark:bg-pink-800 text-pink-800 dark:text-pink-100">0</span>
             </button>
-            <button id="tab-search" class="py-2 px-4 font-medium text-sm ${
-              this.currentTab === 'search'
-                ? 'text-pink-600 dark:text-pink-400 border-b-2 border-pink-600 dark:border-pink-400'
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-            }">
+            <button id="tab-search" class="py-2 px-4 font-medium text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
               Find Friends
             </button>
           </div>
@@ -80,8 +67,8 @@ export class FriendsPage implements Page {
             </button>
           </div>
           
-          <!-- Friends Tab Content -->
-          <div id="friends-container" class="${this.currentTab === 'friends' ? '' : 'hidden'}">
+          <!-- Friends -->
+          <div id="friends-container" class="">
             <div id="friends-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <!-- Friends-->
             </div>
@@ -93,8 +80,8 @@ export class FriendsPage implements Page {
             </div>
           </div>
           
-          <!-- Pending Requests Tab Content -->
-          <div id="pending-container" class="${this.currentTab === 'pending' ? '' : 'hidden'}">
+          <!-- Pending Requests -->
+          <div id="pending-container" class="hidden">
             <div id="pending-requests-list" class="space-y-4">
               <!-- Pending requests-->
             </div>
@@ -103,22 +90,15 @@ export class FriendsPage implements Page {
             </div>
           </div>
           
-          <!-- Search Tab Content -->
-          <div id="search-container" class="${this.currentTab === 'search' ? '' : 'hidden'}">
-            <div class="mb-6">
+          <!-- Search -->
+          <div id="search-container" class="hidden">
+            <div class="mb-6">  
               <div class="flex items-center">
-                <input 
-                  id="search-input" 
-                  type="text" 
-                  placeholder="Search by username" 
-                  maxlength="20"
-                  class="flex-grow px-4 py-2 border rounded-l focus:outline-none focus:ring-2 focus:ring-pink-500 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                  value="${this.searchQuery}"
+                <input id="search-input" type="text" placeholder="Search by username" maxlength="20" 
+                       value="${this.searchQuery}"
+                       class="flex-grow px-4 py-2 border rounded-l focus:outline-none focus:ring-2 focus:ring-pink-500 border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                 >
-                <button 
-                  id="search-btn" 
-                  class="px-4 py-2 bg-pink-600 text-white rounded-r hover:bg-pink-700 dark:hover:bg-pink-500"
-                >
+                <button id="search-btn" class="px-4 py-2 bg-pink-600 text-white rounded-r hover:bg-pink-700 dark:hover:bg-pink-500">
                   Search
                 </button>
               </div>
@@ -136,11 +116,9 @@ export class FriendsPage implements Page {
     `;  
     
     this.element = container;
-    
     this.setupEventHandlers();
     this.setupDataEventListeners();
-    
-    setTimeout(() => this.loadInitialData(), 0);
+    setTimeout(() => this.loadData(), 0);
     
     return container;
   }
@@ -148,41 +126,29 @@ export class FriendsPage implements Page {
   /*------------------------------REFRESH DATA------------------------------*/
 
   update(): void {
-    if (this.element) {
-      this.loadInitialData();
-    }
+    if (this.element) this.loadData();
   }
 
-  private async loadInitialData(): Promise<void> {
-    this.userId = parseInt(sessionStorage.getItem('userId') || '0', 10) || null;
+  private async loadData(): Promise<void> {
+    this.userId = sessionStorage.getItem('userId') || null;
     
     if (!this.userId) {
       this.showError('User ID not found');
       return;
     }
-    
-    this.hasError = false;
-    this.updateUI();
-    
+
     try {
-      const [friendsResponse, pendingResponse] = await Promise.all([
-        this.friendService.getFriends(),
-        this.friendService.getPendingRequests()
-      ]);
-      
-      if (!friendsResponse.success) {
-        throw new Error(friendsResponse.error || 'Failed to load friends');
-      }
-      
-      if (!pendingResponse.success) {
-        throw new Error(pendingResponse.error || 'Failed to load pending requests');
-      }
+      const [friendsResponse, pendingResponse] = await Promise.all([this.friendService.getFriends(), this.friendService.getPendingRequests()]);
+      if (!friendsResponse.success) throw new Error(friendsResponse.error || 'Failed to load friends');
+      if (!pendingResponse.success) throw new Error(pendingResponse.error || 'Failed to load pending requests');
       
       this.currentFriends = friendsResponse.friends || [];
       this.pendingRequests = pendingResponse.requests || [];
-      this.updateUI();
+      this.currentTab === 'friends' ? this.renderFriendsList() : 
+        this.currentTab === 'pending' ? this.renderPendingRequests() : 
+          this.renderSearchResults();
+     
     } catch (error) {
-      console.error('Error loading friends data:', error);
       this.showError(error instanceof Error ? error.message : 'Unknown error');
     }
   }
@@ -192,31 +158,79 @@ export class FriendsPage implements Page {
   private setupEventHandlers(): void {
     if (!this.element) return;
     
-    type HandlerTuple = [string, string, EventListener];
-    
-    const handlers: HandlerTuple[] = [
-      ['#tab-friends', 'click', (() => this.switchTab('friends')) as EventListener],
-      ['#tab-pending', 'click', (() => this.switchTab('pending')) as EventListener],
-      ['#tab-search', 'click', (() => this.switchTab('search')) as EventListener],
-      ['#search-btn', 'click', (() => this.performSearch()) as EventListener],
-      ['#search-input', 'keypress', ((e: Event) => {
-        if ((e as KeyboardEvent).key === 'Enter') this.performSearch();
-      }) as EventListener],
-      ['#find-friends-btn', 'click', (() => this.switchTab('search')) as EventListener],
-      ['#retry-btn', 'click', (() => this.loadInitialData()) as EventListener]
-    ];
-    
-    handlers.forEach(([selector, event, handler]) => {
-      const element = this.element?.querySelector(selector);
-      if (element) element.addEventListener(event, handler);
+    this.element.querySelector('#tab-friends')?.addEventListener('click', () => this.switchTab('friends'));
+    this.element.querySelector('#tab-pending')?.addEventListener('click', () => this.switchTab('pending'));
+    this.element.querySelector('#tab-search')?.addEventListener('click', () => this.switchTab('search'));
+    this.element.querySelector('#find-friends-btn')?.addEventListener('click', () => this.switchTab('search'));
+    this.element.querySelector('#search-btn')?.addEventListener('click', () => this.performSearch());
+    this.element.querySelector('#search-input')?.addEventListener('keypress', (e: Event) => {
+      if ((e as KeyboardEvent).key === 'Enter') this.performSearch();
+    }); 
+    this.element.querySelector('#retry-btn')?.addEventListener('click', () => {
+      this.searchQuery = ''; 
+      this.element?.querySelector('#search-input')?.setAttribute('value', this.searchQuery);
+      this.element?.querySelector('#error-container')?.classList.add('hidden');
+      this.element?.querySelector(`#${this.currentTab}-container`)?.classList.remove('hidden');
     });
   }
-  
-  private switchTab(tab: 'friends' | 'pending' | 'search'): void {
-    this.currentTab = tab;
-    this.hasError = false;
-    this.updateUI();
+
+  private switchTab(newTab: 'friends' | 'pending' | 'search'): void {
+    if (!this.element || this.currentTab === newTab) return;
+    
+    this.element.querySelector('#error-container')?.classList.add('hidden');
+
+    const oldTabContainer = this.element.querySelector(`#${this.currentTab}-container`);
+    oldTabContainer?.classList.add('hidden');
+    const oldTabButton = this.element.querySelector(`#tab-${this.currentTab}`);
+    if (oldTabButton) {
+      oldTabButton.classList.remove('text-pink-600', 'dark:text-pink-400','border-b-2', 'border-pink-600', 'dark:border-pink-400');
+      oldTabButton.classList.add('text-gray-500', 'dark:text-gray-400','hover:text-gray-700', 'dark:hover:text-gray-300');
+    }
+    
+    this.currentTab = newTab;
+    const newTabContainer = this.element.querySelector(`#${newTab}-container`);
+    newTabContainer?.classList.remove('hidden');
+    const newTabButton = this.element.querySelector(`#tab-${newTab}`);
+    if (newTabButton) {
+      newTabButton.classList.remove('text-gray-500', 'dark:text-gray-400', 'hover:text-gray-700', 'dark:hover:text-gray-300');
+      newTabButton.classList.add('text-pink-600', 'dark:text-pink-400','border-b-2', 'border-pink-600', 'dark:border-pink-400');
+    }
+
+    newTab === 'friends' ? this.renderFriendsList() : 
+      newTab === 'pending' ? this.renderPendingRequests() : 
+        this.renderSearchResults();
   }
+
+
+  private async performSearch(): Promise<void> {
+    if (!this.element) return;
+    
+    const searchInput = this.element.querySelector('#search-input') as HTMLInputElement;
+    this.searchQuery = searchInput?.value.trim();
+    
+    if (this.searchQuery.length < 3 || this.searchQuery.length > 20) {
+      this.searchQuery = this.searchQuery.slice(0, 20);
+      searchInput.value = this.searchQuery;      
+      this.showError('Search query must be between 3 and 20 characters');
+      return;
+    }
+    
+    try {
+      const response = await this.friendService.searchUsers(this.searchQuery);
+      
+      if (response.success) {
+        this.searchResults = response.users || [];
+        this.renderSearchResults();
+      } else {
+        throw new Error(response.error || 'Search failed');
+      }      
+      
+    } catch (error) {
+      this.showError(error instanceof Error ? error.message : 'Search failed');
+      
+    }
+  }
+
 
   /*----------------------------MESSAGE HANDLERS----------------------------*/
 
@@ -258,123 +272,15 @@ export class FriendsPage implements Page {
     });
   }
 
-  /*-------------------------------UPDATE UI--------------------------------*/
-
-  private updateUI(): void {
-    if (!this.element) return;
-    
-    this.element.querySelector('#error-container')?.classList.toggle('hidden', !this.hasError);
-    
-    const tabs = {
-      'friends': {
-        container: '#friends-container',
-        render: () => this.renderFriendsList()
-      },
-      'pending': {
-        container: '#pending-container', 
-        render: () => this.renderPendingRequests()
-      },
-      'search': {
-        container: '#search-container',
-        render: () => this.renderSearchResults()
-      }
-    };
-    
-    Object.entries(tabs).forEach(([tabName, config]) => {
-      const isActive = this.currentTab === tabName && !this.hasError;
-      
-      const container = this.element?.querySelector(config.container);
-      container?.classList.toggle('hidden', !isActive);
-      if (isActive && container) config.render();
-      
-      const button = this.element?.querySelector(`#tab-${tabName}`);
-      if (button) {
-        button.classList.remove(
-          'text-pink-600', 'dark:text-pink-400', 
-          'text-gray-500', 'dark:text-gray-400',
-          'border-b-2', 'border-pink-600', 'dark:border-pink-400',
-          'hover:text-gray-700', 'dark:hover:text-gray-300'
-        );
-        
-        if (isActive) {
-          button.classList.add(
-            'text-pink-600', 'dark:text-pink-400',
-            'border-b-2', 'border-pink-600', 'dark:border-pink-400'
-          );
-        } else {
-          button.classList.add(
-            'text-gray-500', 'dark:text-gray-400',
-            'hover:text-gray-700', 'dark:hover:text-gray-300'
-          );
-        }
-      }
+  private removeDataEventListeners(): void {
+    Object.entries(this.boundEventHandlers).forEach(([eventName, handler]) => {
+      document.removeEventListener(eventName, handler);
     });
     
-    this.updatePendingBadge();
+    this.boundEventHandlers = {};
   }
 
-  public updatePendingBadge(): void {
-    const pendingBadge = this.element?.querySelector('#pending-badge');
-    const hasPendingRequests = this.pendingRequests.length > 0;
-    
-    pendingBadge?.classList.toggle('hidden', !hasPendingRequests);
-    if (hasPendingRequests && pendingBadge) {
-      pendingBadge.textContent = this.pendingRequests.length.toString();
-    }
-  }
 
-  public showEmptyState(listSelector: string, emptyStateSelector: string): void {
-    const list = this.element?.querySelector(listSelector);
-    const emptyState = this.element?.querySelector(emptyStateSelector);
-    
-    if (list && emptyState) {
-      list.classList.add('hidden');
-      emptyState.classList.remove('hidden');
-    }
-  }
-
-  /*-----------------------------SEARCH FRIENDS-----------------------------*/
-
-  private async performSearch(): Promise<void> {
-    if (!this.element) return;
-    
-    const searchInput = this.element.querySelector('#search-input') as HTMLInputElement;
-    this.searchQuery = searchInput?.value.trim() || '';
-    
-    if (!this.searchQuery) {
-      return;
-    }
-
-    if (!this.searchQuery) {
-      return;
-    }
-    
-    if (this.searchQuery.length > 20) {
-      this.searchQuery = this.searchQuery.substring(0, 20);
-      searchInput.value = this.searchQuery;      
-      alert('Search query cannot exceed 20 characters');
-    }
-    
-    this.hasError = false;
-    this.updateUI();
-    
-    try {
-      const response = await this.friendService.searchUsers(this.searchQuery);
-      
-      if (response.success) {
-        this.searchResults = response.users || [];
-      } else {
-        throw new Error(response.error || 'Search failed');
-      }
-      
-      this.updateUI();
-      
-    } catch (error) {
-      console.error('Search error:', error);
-      this.showError(error instanceof Error ? error.message : 'Search failed');
-      
-    }
-  }
 
   /*-----------------------------RENDER FRIENDS-----------------------------*/
 
@@ -529,18 +435,12 @@ export class FriendsPage implements Page {
     
     searchResults.innerHTML = '';
     
-    if (this.searchResults.length === 0 && this.searchQuery) {
+    if (this.searchResults.length === 0 || !this.searchQuery) {
       searchResults.classList.add('hidden');
       noResults.classList.remove('hidden');
       return;
     }
-    
-    if (!this.searchQuery) {
-      searchResults.classList.add('hidden');
-      noResults.classList.add('hidden');
-      return;
-    }
-    
+
     searchResults.classList.remove('hidden');
     noResults.classList.add('hidden');
     
@@ -596,22 +496,24 @@ export class FriendsPage implements Page {
     });
   }
 
+    /*-----------------------------RENDER ERROR------------------------------*/
+
   private showError(message: string): void {
     if (!this.element) return;
-    
-    this.hasError = true;
     
     const errorContainer = this.element.querySelector('#error-container');
     const errorMessage = errorContainer?.querySelector('p');
     
     if (errorContainer && errorMessage) {
+      errorContainer.classList.remove('hidden');
       errorMessage.textContent = message;
-    }
-    
-    this.updateUI();
+      this.element.querySelector(`#${this.currentTab}-container`)?.classList.add('hidden');
+    }    
   }
   
-  public removeFriendCard(friendId: number): void {
+  /*-----------------------------UTILITY FUNCTIONS------------------------------*/
+
+  public removeFriendCard(friendId: string): void {
     if (!this.element) return;
     
     const friendCard = this.element.querySelector(`button[data-friend-id="${friendId}"]`)?.closest('.bg-gray-50');
@@ -639,7 +541,7 @@ export class FriendsPage implements Page {
     }
   }
   
-  public updateSearchUserCard(userId: number, newStatus: 'add' | 'pending' | 'friend'): void {
+  public updateSearchUserCard(userId: string, newStatus: 'add' | 'pending' | 'friend'): void {
     const userCard = document.querySelector(`button[data-user-id="${userId}"]`)?.closest('.bg-gray-50');
     
     if (userCard) {
@@ -655,38 +557,34 @@ export class FriendsPage implements Page {
           addFriendBtn.dataset.userId = userId.toString();
           addFriendBtn.addEventListener('click', () => this.friendService.sendFriendRequest(userId));
           actionsContainer.appendChild(addFriendBtn);
-        } else if (newStatus === 'pending') {
-          const pendingTag = document.createElement('span');
-          pendingTag.className = 'px-3 py-1 text-sm bg-yellow-100 text-yellow-600 rounded';
-          pendingTag.textContent = 'Pending';
-          actionsContainer.appendChild(pendingTag);
-        } else if (newStatus === 'friend') {
-          const friendTag = document.createElement('span');
-          friendTag.className = 'px-3 py-1 text-sm bg-green-100 text-green-600 rounded';
-          friendTag.textContent = 'Friend';
-          actionsContainer.appendChild(friendTag);
+        } else if (newStatus === 'pending' || newStatus === 'friend') {
+          const tag = document.createElement('span');
+          tag.className = `px-3 py-1 text-sm ${newStatus == 'pending' ? 'bg-yellow-100' : 'bg-green-100'} text-yellow-600 rounded`;
+          tag.textContent = newStatus === 'pending' ? 'Pending' : 'Friend';
+          actionsContainer.appendChild(tag);
         }
       }
     }
   }
 
-  private removeDataEventListeners(): void {
-    const events = [
-      'friendRequestSent',
-      'friendRequestAccepted',
-      'friendRequestDeclined',
-      'friendRequestCancelled',
-      'friendRemoved',
-      'notification'
-    ] as const;
+  public updatePendingBadge(): void {
+    const pendingBadge = this.element?.querySelector('#pending-badge');
+    const hasPendingRequests = this.pendingRequests.length > 0;
     
-    events.forEach(event => {
-      if (event in this.boundEventHandlers) {
-        document.removeEventListener(event, this.boundEventHandlers[event]);
-      }
-    });
+    pendingBadge?.classList.toggle('hidden', !hasPendingRequests);
+    if (pendingBadge && hasPendingRequests) {
+      pendingBadge.textContent = this.pendingRequests.length.toString();
+    }
+  }
+
+  public showEmptyState(listSelector: string, emptyStateSelector: string): void {
+    const list = this.element?.querySelector(listSelector);
+    const emptyState = this.element?.querySelector(emptyStateSelector);
     
-    this.boundEventHandlers = {};
+    if (list && emptyState) {
+      list.classList.add('hidden');
+      emptyState.classList.remove('hidden');
+    }
   }
 
   public destroy(): void {}  

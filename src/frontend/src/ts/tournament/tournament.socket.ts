@@ -28,11 +28,10 @@ export function handleTourPageUpdate(this: TournamentPage, data: {
 
 export function handleParticipantJoined(this: TournamentDetailPage, data: { 
     tournamentId: number, 
-    participant: TournamentParticipant,
     message: string 
   }) {
   this.update();
-  this.showNotification(`${data.participant.alias} has joined the tournament!`, 'info');
+  this.showNotification(data.message, 'info');
 }
 
 export function handleTournamentStarted(this: TournamentDetailPage, data: {

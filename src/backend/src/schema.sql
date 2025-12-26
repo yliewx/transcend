@@ -1,7 +1,7 @@
 PRAGMA foreign_keys = ON;
 
 CREATE TABLE IF NOT EXISTS users (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id TEXT PRIMARY KEY,
   username TEXT UNIQUE NOT NULL,
   email TEXT UNIQUE NOT NULL,
   password TEXT NOT NULL,
@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 CREATE TABLE IF NOT EXISTS refresh_tokens (
-  user_id INTEGER PRIMARY KEY,
+  user_id TEXT PRIMARY KEY,
   token_id TEXT UNIQUE NOT NULL,
   expires_at DATETIME NOT NULL,
   created_at DATETIME DEFAULT (datetime('now')) NOT NULL,
@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
 );
 
 CREATE TABLE IF NOT EXISTS profiles (
-  user_id INTEGER PRIMARY KEY,
+  user_id TEXT PRIMARY KEY,
   display_name TEXT,
   avatar_path TEXT,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -33,9 +33,9 @@ CREATE TABLE IF NOT EXISTS profiles (
 CREATE TABLE IF NOT EXISTS match_history (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   match_date TEXT NOT NULL,
-  player1_id INTEGER,
-  player2_id INTEGER,
-  winner_id INTEGER NULL,
+  player1_id TEXT,
+  player2_id TEXT,
+  winner_id TEXT NULL,
   tournament_id INTEGER NOT NULL DEFAULT 0,
   left_score INTEGER NOT NULL DEFAULT 0,
   right_score INTEGER NOT NULL DEFAULT 0,
@@ -45,11 +45,10 @@ CREATE TABLE IF NOT EXISTS match_history (
   FOREIGN KEY (winner_id) REFERENCES users (id) ON DELETE SET NULL
 );
 
-
 CREATE TABLE IF NOT EXISTS friend_requests (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  sender_id INTEGER NOT NULL,
-  recipient_id INTEGER NOT NULL,
+  sender_id TEXT NOT NULL,
+  recipient_id TEXT NOT NULL,
   status TEXT NOT NULL CHECK(status IN ('pending', 'accepted', 'declined', 'cancelled')),
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -96,20 +95,18 @@ LEFT JOIN
 WHERE 
   fr.status = 'pending';
 
-
 CREATE TABLE IF NOT EXISTS friendships (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER NOT NULL,
-  friend_id INTEGER NOT NULL,
+  user_id TEXT NOT NULL,
+  friend_id TEXT NOT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
   FOREIGN KEY (friend_id) REFERENCES users (id) ON DELETE CASCADE,
   UNIQUE(user_id, friend_id)
 );
 
-
 CREATE TABLE IF NOT EXISTS player_stats (
-  user_id INTEGER PRIMARY KEY,
+  user_id TEXT PRIMARY KEY,
   elo_rating INTEGER NOT NULL DEFAULT 1200,
   games_played INTEGER NOT NULL DEFAULT 0,
   games_won INTEGER NOT NULL DEFAULT 0,
@@ -135,7 +132,13 @@ SELECT
     WHEN ps.games_played = 0 THEN 0
     ELSE ROUND((ps.games_won * 100.0) / ps.games_played, 1) 
   END AS win_percentage,
-  RANK() OVER (ORDER BY ps.elo_rating DESC) as rank,
+  CASE 
+    WHEN ps.games_played = 0 THEN NULL
+    ELSE RANK() OVER (
+      ORDER BY 
+        CASE WHEN ps.games_played > 0 THEN ps.elo_rating END DESC NULLS LAST
+    )
+  END as rank,
   ps.last_updated
 FROM 
   player_stats ps
@@ -144,11 +147,11 @@ JOIN
 LEFT JOIN
   profiles p ON u.id = p.user_id;
 
-
 CREATE TABLE IF NOT EXISTS tournaments (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
   description TEXT,
+  mode TEXT NOT NULL CHECK(mode IN ('local', 'remote')) DEFAULT 'local',
   status TEXT NOT NULL CHECK(status IN ('pending', 'active', 'completed', 'cancelled')) DEFAULT 'pending',
   max_participants INTEGER NOT NULL DEFAULT 4,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -157,38 +160,40 @@ CREATE TABLE IF NOT EXISTS tournaments (
 CREATE TABLE IF NOT EXISTS tournament_participants (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   tournament_id INTEGER NOT NULL,
-  user_id INTEGER NOT NULL,
+  user_id TEXT,
   alias TEXT NOT NULL,
-  seed INTEGER,
+  is_guest BOOLEAN NOT NULL DEFAULT 0,
+  host_id INTEGER,
   status TEXT CHECK(status IN ('registered', 'active', 'eliminated', 'winner')) DEFAULT 'registered',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (tournament_id) REFERENCES tournaments(id) ON DELETE CASCADE,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (host_id) REFERENCES tournament_participants(id) ON DELETE CASCADE,
   UNIQUE(tournament_id, user_id)
 );
 
 CREATE TABLE IF NOT EXISTS tournament_matches (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   tournament_id INTEGER NOT NULL,
+  mode TEXT NOT NULL CHECK(mode IN ('local', 'remote')),
   round INTEGER NOT NULL,
   match_number INTEGER NOT NULL,
-  player1_id INTEGER,
-  player2_id INTEGER,
-  winner_id INTEGER,
+  player1_participant_id INTEGER, 
+  player2_participant_id INTEGER, 
+  winner_participant_id INTEGER, 
   game_id TEXT,
   status TEXT CHECK(status IN ('scheduled', 'in_progress', 'completed', 'cancelled')) DEFAULT 'scheduled',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (tournament_id) REFERENCES tournaments(id) ON DELETE CASCADE,
-  FOREIGN KEY (player1_id) REFERENCES users(id) ON DELETE SET NULL,
-  FOREIGN KEY (player2_id) REFERENCES users(id) ON DELETE SET NULL,
-  FOREIGN KEY (winner_id) REFERENCES users(id) ON DELETE SET NULL,
+  FOREIGN KEY (player1_participant_id) REFERENCES tournament_participants(id) ON DELETE SET NULL,
+  FOREIGN KEY (player2_participant_id) REFERENCES tournament_participants(id) ON DELETE SET NULL,
+  FOREIGN KEY (winner_participant_id) REFERENCES tournament_participants(id) ON DELETE SET NULL,
   UNIQUE(tournament_id, round, match_number)
 );
 
-
 CREATE TABLE IF NOT EXISTS elo_history (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER NOT NULL,
+  user_id TEXT NOT NULL,
   match_id INTEGER NOT NULL,
   elo_rating INTEGER NOT NULL,
   previous_rating INTEGER NOT NULL,

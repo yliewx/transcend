@@ -20,7 +20,7 @@ export class PongGamePage implements Page {
   private ballSize: number = 30;
   private gameMode: 'local' | 'remote' = 'local';
   private gameId: string | null = null;
-  private userId: number | null = null;
+  private userId: string | null = null;
   private isCreator: boolean = false;
   private isTourMatch: boolean = false;
   private state: GameState | null = null;
@@ -44,11 +44,7 @@ export class PongGamePage implements Page {
     this.router = router;
     this.pongService = pongService;
     this.pongViewComponents = new PongViewComponents();
-
-    const id = sessionStorage.getItem('userId');
-    const parsed = id !== null ? parseInt(id, 10) : NaN;
-    this.userId = Number.isNaN(parsed) ? null : parsed;
-    
+    this.userId = sessionStorage.getItem('userId');
     this.wss = this.router.getWsManager();
     this.setupMessageHandlers();
   }
@@ -114,27 +110,26 @@ export class PongGamePage implements Page {
 
   private async restoreGameSession(): Promise<boolean> {
     if (this.userId === null) {
-      const id = sessionStorage.getItem('userId');
-      const parsed = id !== null ? parseInt(id, 10) : NaN;
-      this.userId = Number.isNaN(parsed) ? null : parsed;
+      this.userId = sessionStorage.getItem('userId');
       if (this.userId === null) {
         console.error('Cannot check for active game session. No user ID found.');
         return false;
       }
     }
-  
-    const response = await this.pongService.getExistingGame(this.userId!);
+
+    const response = await this.pongService.getExistingGame();
     if (response.hasExistingGame) {
       this.gameId = response.gameId ?? null;
       this.gameMode = response.gameMode ?? 'local';
       this.state = response.state ?? null;
       this.isCreator = response.isCreator ?? false;
       this.isTourMatch = response.isTourMatch ?? false;
+      const participantIdForReconnect = this.userId;
 
       if (this.gameId && this.state?.status !== 'finished') {
         this.updateGameStatusUI('Reconnecting to previous game...');
         try {
-          const success = await this.wss.connectGame(this.gameId, this.userId);
+          const success = await this.wss.connectGame(this.gameId, participantIdForReconnect); 
           if (success) {
             const gameIdElement = this.element?.querySelector('#game-id');
             if (gameIdElement) gameIdElement.textContent = this.gameId;
@@ -149,12 +144,12 @@ export class PongGamePage implements Page {
             return true;
           }
         } catch (error) {
-          console.warn('Failed to reconnect to previous game.');
+          console.error('Failed to reconnect to previous game.');
         }
       }
     }
     return false;
-  }
+}
 
   /*--------------------------GAME MESSAGE HANDLERS-------------------------*/
 
@@ -348,8 +343,7 @@ export class PongGamePage implements Page {
     if (joinGameFormElement) joinGameFormElement.classList.add('hidden');
 
     const response = await this.pongService.createGame(this.gameMode);
-    if (!response.success) {
-      console.error('Server returned error:', response.error);
+    if (!response.success || !response.gameId) {
       return;
     }
     
@@ -358,7 +352,6 @@ export class PongGamePage implements Page {
     try {
       await this.wss.connectGame(this.gameId, this.userId!);
     } catch (error) {
-      console.warn('Failed to connect to game room.');
       Notifications.show('error', 'Failed to join game');
     }
   }
@@ -410,7 +403,6 @@ export class PongGamePage implements Page {
     try {
       await this.wss.connectGame(this.gameId, this.userId!);
     } catch (error) {
-      console.warn('Failed to connect to game room.');
       Notifications.show('error', 'Failed to join game');
     }
   }
@@ -419,12 +411,12 @@ export class PongGamePage implements Page {
 
   private async startGame(): Promise<void> {
     if (!this.gameId) {
-      console.log("Cannot start game: gameId is null");
+      console.error("Cannot start game: gameId is null");
       return;
     }
     
     if (this.state && this.state.status !== 'waiting') {
-      console.log("Cannot start game: game is already finished or already has been started");
+      console.error("Cannot start game: game is already finished or already has been started");
       return;
     }
 
@@ -440,7 +432,7 @@ export class PongGamePage implements Page {
     if (!this.gameId || !this.state) return;
   
     if (this.state.status === 'finished') {
-      console.log("Cannot pause game: game is already finished");
+      console.error("Cannot pause game: game is already finished");
       return;
     }
 
@@ -453,10 +445,7 @@ export class PongGamePage implements Page {
   /*-------------------=-----------PAUSE GAME-------------------------------*/
 
   private async showCLIToken(): Promise<void> {
-    const response = await this.pongService.generateCLIToken();
-    if (!response.success) {
-      console.error('Server returned error:', response.error);;
-    }
+    await this.pongService.generateCLIToken();
   }
 
   /*------------------------------GAME STATE--------------------------------*/
